@@ -27,9 +27,12 @@ use crate::utils::{Camera, Quad, Triangle};
 use crate::window::WinitState;
 
 mod window;
-mod api;
 mod local;
 mod utils;
+mod graphics;
+
+use graphics::api;
+use graphics::hal_utils;
 
 //fn do_the_render<'a>(hal_state: &'a mut HalState, local_state: &'a LocalState) -> Result<(), &'a str> {
 //    let r = (local_state.mouse_x as f32 / local_state.frame_width as f32) as f32;
@@ -100,6 +103,11 @@ fn main() {
 
 
         let input = window::UserInput::poll_events_loop(&event);
+
+        if camera.borrow_mut().as_mut().is_some() {
+            camera.borrow_mut().as_mut().unwrap().update(&event)
+        }
+
         if input.new_frame_size.is_some() {
             info!("Resize occurred");
             drop(hal_state.replace(None).unwrap());

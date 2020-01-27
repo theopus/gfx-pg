@@ -1,6 +1,5 @@
 pub extern crate winit;
 
-use gfx_hal::window::CreationError;
 use winit::dpi::LogicalSize;
 use winit::event_loop::EventLoop;
 

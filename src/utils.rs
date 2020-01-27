@@ -1,9 +1,12 @@
+use std::mem::size_of;
+
 use glm::{
     Mat4,
     Vec3,
 };
 use nalgebra::Matrix4;
-use std::mem::size_of;
+
+use crate::window::winit::event::{ElementState, Event, KeyboardInput, VirtualKeyCode, WindowEvent};
 
 pub type Vertex2D = [f32; 2];
 pub type TriangleVertex = [f32; (2 + 3)];
@@ -67,8 +70,41 @@ pub struct Camera {
     pub fov: f32,
     pub projection: Mat4,
 }
-
+//poor-ass camera impl
 impl Camera {
+    pub fn update(&mut self, e: &Event<()>) {
+        const MOVE_DELTA: f32 = 0.1;
+
+        match e {
+            Event::WindowEvent {
+                event: WindowEvent::KeyboardInput {
+                    input: KeyboardInput {
+                        state: ElementState::Pressed,
+                        virtual_keycode: Some(code),
+                        ..
+                    }, ..
+                }, ..
+            } => {
+                match code {
+                    //x
+                    VirtualKeyCode::A => self.pos -= glm::vec3(MOVE_DELTA, 0., 0.),
+                    VirtualKeyCode::D => self.pos += glm::vec3(MOVE_DELTA, 0., 0.),
+                    //y
+                    //note: projection matrix is flipping Y values after they pass through the View matrix.
+                    VirtualKeyCode::R => self.pos -= glm::vec3(0., MOVE_DELTA, 0.),
+                    VirtualKeyCode::F => self.pos += glm::vec3(0., MOVE_DELTA, 0.),
+                    //z
+                    VirtualKeyCode::W => self.pos -= glm::vec3(0.0, 0., MOVE_DELTA),
+                    VirtualKeyCode::S => self.pos += glm::vec3(0.0, 0., MOVE_DELTA),
+                    //reset
+                    VirtualKeyCode::Back => self.pos = glm::vec3(0., 0., 5.),
+                    _ => ()
+                }
+            }
+            _ => (),
+        };
+    }
+
     pub fn default_with_aspect(aspect_ratio: f32) -> Self {
         Self {
             pos: glm::vec3(0., 0., 5.),
@@ -101,6 +137,7 @@ impl Default for Camera {
         Camera::default_with_aspect(6. / 4.)
     }
 }
+
 pub fn cast_slice<T, U>(ts: &[T]) -> Option<&[U]> {
     use core::mem::align_of;
     // Handle ZST (this all const folds)

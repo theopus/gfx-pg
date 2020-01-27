@@ -12,6 +12,7 @@ use hal::{adapter::{Adapter, Gpu, PhysicalDevice}, Backend, buffer::*, command, 
 use hal::pass::{SubpassDependency, SubpassRef};
 use log::{debug, error, info, trace, warn};
 use winit::window::Window;
+
 use crate::utils::cast_slice;
 
 pub struct DepthImage<B: Backend> {
@@ -433,9 +434,9 @@ impl<B> Drop for HalState<B> where B: Backend {
 }
 
 
-pub const VERTEX_SOURCE: &'static str = include_str!("shaders/one.vert");
+pub const VERTEX_SOURCE: &'static str = include_str!("../shaders/one.vert");
 
-pub const FRAGMENT_SOURCE: &'static str = include_str!("shaders/one.frag");
+pub const FRAGMENT_SOURCE: &'static str = include_str!("../shaders/one.frag");
 
 
 impl<B: Backend> HalState<B> {
@@ -624,7 +625,8 @@ impl<B: Backend> HalState<B> {
                 accesses: (Access::COLOR_ATTACHMENT_READ
                     | Access::COLOR_ATTACHMENT_WRITE
                     | Access::DEPTH_STENCIL_ATTACHMENT_READ
-                    | Access::DEPTH_STENCIL_ATTACHMENT_WRITE)..Access::empty(),
+                    | Access::DEPTH_STENCIL_ATTACHMENT_WRITE)
+                    ..Access::empty(),
                 flags: Dependencies::empty(),
             };
 
@@ -743,7 +745,7 @@ impl<B: Backend> HalState<B> {
             (vertices, indexes)
         };
 
-        const CREATURE_BYTES: &[u8] = include_bytes!("data/image.png");
+        const CREATURE_BYTES: &[u8] = include_bytes!("../data/image.png");
 
         let texture = LoadedImage::new(
             &adapter,
@@ -751,8 +753,8 @@ impl<B: Backend> HalState<B> {
             &mut command_pool,
             &mut queue_group.queues[0],
             image::load(Cursor::new(&CREATURE_BYTES[..]), image::PNG)
-                .map_err(|_|"Binary corrupted!")?
-                .to_rgba()
+                .map_err(|_| "Binary corrupted!")?
+                .to_rgba(),
         )?;
 
         // 5. You write the descriptors into the descriptor set using
@@ -962,8 +964,6 @@ impl<B: Backend> HalState<B> {
                 depth_bounds: None,
             };
 
-        let bindings = Vec::<DescriptorSetLayoutBinding>::new();
-        let immutable_samplers = Vec::<<B as Backend>::Sampler>::new();
         let descriptor_set_layouts: Vec<<B as Backend>::DescriptorSetLayout> = vec![unsafe {
             device
                 .create_descriptor_set_layout(
@@ -1014,7 +1014,7 @@ impl<B: Backend> HalState<B> {
 
         let push_constants = vec![
 //            (ShaderStageFlags::FRAGMENT, 0..4),
-            (ShaderStageFlags::VERTEX | ShaderStageFlags::FRAGMENT, 0..64),
+(ShaderStageFlags::VERTEX | ShaderStageFlags::FRAGMENT, 0..64),
         ];
         let layout = unsafe {
             device
@@ -1236,12 +1236,13 @@ impl<B: Backend> HalState<B> {
 //                    0,
 //                    &[time_f32.to_bits()],
 //                );
+
                 buffer.push_graphics_constants(
                     &self.pipeline_layout,
                     ShaderStageFlags::VERTEX | ShaderStageFlags::FRAGMENT,
                     0,
                     cast_slice::<f32, u32>(&cam.view_projection().as_slice())
-                            .expect("this cast never fails for same-aligned same-size data"),
+                        .expect("this cast never fails for same-aligned same-size data"),
                 );
                 buffer.draw_indexed(0..6, 0, 0..1);
                 buffer.end_render_pass();
