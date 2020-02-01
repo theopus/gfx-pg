@@ -1,6 +1,0 @@
-{
-    "rust-analyzer.highlightingOn": true,
-    "rust-analyzer.rainbowHighlightingOn": true,
-    "rust-analyzer.cargoFeatures.features": ["vulkan"],
-    "rust-analyzer.cargo-watch.arguments": ["--features=vulkan"]
-}

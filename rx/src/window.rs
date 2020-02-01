@@ -28,7 +28,7 @@ impl WinitState {
     }
 }
 
-pub const WINDOW_NAME: &str = "Hello Winit";
+pub const WINDOW_NAME: &str = "Sample window";
 
 impl Default for WinitState {
     fn default() -> Self {
