@@ -434,9 +434,9 @@ impl<B> Drop for HalState<B> where B: Backend {
 }
 
 
-pub const VERTEX_SOURCE: &'static str = include_str!("../shaders/one.vert");
+pub const VERTEX_SOURCE: &'static str = include_str!("../../../shaders/one.vert");
 
-pub const FRAGMENT_SOURCE: &'static str = include_str!("../shaders/one.frag");
+pub const FRAGMENT_SOURCE: &'static str = include_str!("../../../shaders/one.frag");
 
 
 impl<B: Backend> HalState<B> {
@@ -745,7 +745,7 @@ impl<B: Backend> HalState<B> {
             (vertices, indexes)
         };
 
-        const CREATURE_BYTES: &[u8] = include_bytes!("../data/image.png");
+        const CREATURE_BYTES: &[u8] = include_bytes!("../../../assets/images/image.png");
 
         let texture = LoadedImage::new(
             &adapter,
@@ -759,7 +759,7 @@ impl<B: Backend> HalState<B> {
 
         // 5. You write the descriptors into the descriptor set using
         //    write_descriptor_sets which you pass a set of DescriptorSetWrites
-        //    which each write in one or more descriptors to the set
+        //    which each write in one or more descriptors to the set-
         unsafe {
             device.write_descriptor_sets(vec![
                 hal::pso::DescriptorSetWrite {
@@ -779,7 +779,6 @@ impl<B: Backend> HalState<B> {
                 },
             ]);
         }
-
         Ok(Self {
             creation_instant: Instant::now(),
             vertices,

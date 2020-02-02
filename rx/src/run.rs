@@ -1,24 +1,31 @@
 #[allow(unused_imports)]
 use log::{debug, error, info, trace, warn};
 
+use crate::render::Renderer;
 use crate::window::winit::event::{Event, WindowEvent};
 use crate::window::winit::event_loop::{
     ControlFlow,
     EventLoop,
 };
+use crate::window::winit::window::Window;
 use crate::window::WinitState;
 
 pub struct Engine {
     winit_state: WinitState,
     layers: Vec<Box<dyn Layer>>,
+    renderer: Renderer
 }
 
 
 impl Default for Engine {
     fn default() -> Self {
+        let winit_state: WinitState = Default::default();
+        let window = &winit_state.window;
+        let renderer = Renderer::new(window).unwrap();
         Self {
-            winit_state: Default::default(),
+            winit_state,
             layers: Default::default(),
+            renderer
         }
     }
 }
@@ -27,7 +34,9 @@ impl Engine {
     pub fn run(mut self) {
         let WinitState { events_loop, window } = self.winit_state;
         let mut layers = self.layers;
+        let mut renderer = self.renderer;
 
+        info!("Start!");
         events_loop.run(move |event, _, control_flow| {
             //Always poll
             *control_flow = ControlFlow::Poll;
@@ -42,8 +51,14 @@ impl Engine {
                     // Queue a RedrawRequested event.
                     window.request_redraw();
                 }
-                Event::RedrawRequested(_) => { /*Render*/ }
-                Event::LoopDestroyed => { /*Onclose*/ }
+                Event::RedrawRequested(_) => {
+                    /*Render*/
+                    renderer.render();
+                }
+                Event::LoopDestroyed => {
+                    info!("On close handle")
+                    /*On close*/
+                }
                 _ => ()
             }
         });

@@ -23,12 +23,12 @@ mod shader {
     use shaderc::Compiler;
     use shaderc::ShaderKind;
 
-    pub fn compile<'a, 'b>(
-        source: &'a str,
+    pub fn compile(
+        source: &str,
         kind: shaderc::ShaderKind,
-        name: &'a str,
-        entry_point: &'a str,
-    ) -> Result<CompilationArtifact, &'b str> {
+        name: &str,
+        entry_point: &str,
+    ) -> Result<CompilationArtifact, &'static str> {
         Compiler::new()
             .ok_or("shaderc not found!")?
             .compile_into_spirv(

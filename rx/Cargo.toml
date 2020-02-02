@@ -9,11 +9,11 @@ edition = "2018"
 [dependencies]
 winit = "0.20.0"
 log = "0.4.0"
-env_logger = "0.7.1"
 gfx-hal = "0.4.0"
 arrayvec = "0.4"
 shaderc = "0.6.1"
 image = "0.22.4"
+tobj = "0.1.8"
 nalgebra = "0.18.0"
 nalgebra-glm = "0.4.0"
 specs = { version = "0.15.0" }
