@@ -40,6 +40,7 @@ pub struct BufferBundle<B: Backend> {
 
 
 pub struct HalState<B: Backend> {
+    instanced_buffers: Vec<BufferBundle<B>>,
     creation_instant: Instant,
     vertices: BufferBundle<B>,
     indexes: BufferBundle<B>,
@@ -343,6 +344,7 @@ impl<B: Backend> BufferBundle<B> {
 
     pub fn new(adapter: &Adapter<B>, device: &B::Device, size: usize, usage: Usage) -> Result<Self, &'static str> {
         unsafe {
+            info!("Buffer bundle size: {:?}", size);
             let mut buffer = device
                 .create_buffer(size as u64, usage)
                 .map_err(|_| "Couldn't create a buffer!")?;
@@ -384,6 +386,10 @@ impl<B> Drop for HalState<B> where B: Backend {
     fn drop(&mut self) {
         let _ = self.device.wait_idle();
         unsafe {
+            for buffer in self.instanced_buffers.drain(..) {
+                buffer.manually_drop(&self.device)
+            }
+
             self.vertices.manually_drop(&self.device);
             self.indexes.manually_drop(&self.device);
             self.texture.manually_drop(&self.device);
@@ -779,7 +785,19 @@ impl<B: Backend> HalState<B> {
                 },
             ]);
         }
+
+
+        //instanced
+        let instanced_buffers = (0..swapchain_img_count).map(|i| BufferBundle::new(
+            &adapter,
+            &device,
+            (size_of::<f32>() * 16 * 100) as usize,
+            Usage::VERTEX,
+        ).unwrap()).collect();
+
+
         Ok(Self {
+            instanced_buffers,
             creation_instant: Instant::now(),
             vertices,
             indexes,
@@ -879,12 +897,19 @@ impl<B: Backend> HalState<B> {
             geometry: None,
             fragment: Some(fs_entry),
         };
-        let vertex_buffers: Vec<VertexBufferDesc> = vec![VertexBufferDesc {
+        let mut vertex_buffers: Vec<VertexBufferDesc> = vec![VertexBufferDesc {
             binding: 0,
             stride: (size_of::<f32>() * (2 + 3 + 2)) as u32,
             rate: VertexInputRate::Vertex,
         }];
-        let attributes: Vec<AttributeDesc> = vec![
+
+        //instanced
+        vertex_buffers.push(VertexBufferDesc {
+            binding: 1,
+            stride: (size_of::<f32>() * 16) as u32,
+            rate: VertexInputRate::Instance(1),
+        });
+        let mut attributes: Vec<AttributeDesc> = vec![
             AttributeDesc {
                 location: 0,
                 binding: 0,
@@ -910,6 +935,19 @@ impl<B: Backend> HalState<B> {
                 },
             }
         ];
+
+        //instanced1
+        for i in 0..4 {
+            attributes.push(AttributeDesc {
+                location: 3 + i,
+                binding: 1,
+                element: Element {
+                    format: hal::format::Format::Rgba32Sfloat,
+                    offset: (size_of::<f32>() * 4) as u32 * i,
+                },
+            });
+        }
+
 
         let input_assembler_desc = InputAssemblerDesc {
             primitive: Primitive::TriangleList,
@@ -1118,7 +1156,7 @@ impl<B: Backend> HalState<B> {
         Ok(())
     }
 
-    pub fn draw_quad_frame(&mut self, quad: crate::utils::Quad, cam: &crate::utils::Camera) -> Result<(), &'static str> {
+    pub fn draw_quad_frame(&mut self, quad: crate::utils::Quad, cam: &crate::utils::Camera, model: &glm::Mat4) -> Result<(), &'static str> {
         let duration = Instant::now().duration_since(self.creation_instant);
         let time_f32 = duration.as_secs() as f32 + duration.subsec_nanos() as f32 * 1e-9;
 
@@ -1147,6 +1185,7 @@ impl<B: Backend> HalState<B> {
                 .map_err(|_| "Couldn't reset the fence!")?;
         }
 
+        let instanced_buffer = &self.instanced_buffers[i_usize];
         // WRITE THE TRIANGLE DATA
         unsafe {
             let mut data_target = self
@@ -1163,6 +1202,19 @@ impl<B: Backend> HalState<B> {
             self.device
                 .unmap_memory(&memory_ref);
 
+            //WRITE INSTANCED
+
+            let mut data_target = self
+                .device
+                .map_memory(instanced_buffer.memory.deref(), 0..instanced_buffer.requirements.size)
+                .map_err(|_| "Failed to acquire a memory writer!")?;
+
+            let mvp: glm::Mat4 = cam.view_projection() * model;
+            ptr::copy(mvp.as_slice().as_ptr() as *const u8, data_target, 16 * size_of::<f32>());
+
+            self.device
+                .flush_mapped_memory_ranges(iter::once((instanced_buffer.memory.deref(), 0..instanced_buffer.requirements.size)))
+                .map_err(|_| "Failed to flush memory!")?;
 //           MEM CHECK
 //            let mut data_target = self
 //                .device
@@ -1206,9 +1258,12 @@ impl<B: Backend> HalState<B> {
                 buffer.set_scissors(0, &[self.render_area]);
                 // Here we must force the Deref impl of ManuallyDrop to play nice.
                 let buffer_ref: &<B as Backend>::Buffer = &self.vertices.buffer;
-                let buffers: ArrayVec<[_; 1]> = [(buffer_ref, 0)].into();
-
+                let buffers: ArrayVec<[_; 2]> = [
+                    (buffer_ref, 0),
+                    (instanced_buffer.buffer.deref(), 0) //just bruh
+                ].into();
                 buffer.bind_graphics_pipeline(&self.graphics_pipeline);
+
                 buffer.bind_vertex_buffers(0, buffers);
                 buffer.bind_index_buffer(IndexBufferView {
                     buffer: &self.indexes.buffer,
@@ -1243,7 +1298,7 @@ impl<B: Backend> HalState<B> {
                     cast_slice::<f32, u32>(&cam.view_projection().as_slice())
                         .expect("this cast never fails for same-aligned same-size data"),
                 );
-                buffer.draw_indexed(0..6, 0, 0..1);
+                buffer.draw_indexed(0..6, 0, 0..2);
                 buffer.end_render_pass();
             }
             buffer.finish();

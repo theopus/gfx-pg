@@ -14,13 +14,12 @@ fn main() {
             .default_filter_or("\
             info,\
             winit::platform_impl::platform::event_loop::runner=error,\
-            gfx_backend_vulkan=warn\
+            gfx_backend_vulkan=debug\
             "))
         .init();
     let mut ecs_layer = rx::ecs::EcsLayer::default();
     let mut eng = rx::run::Engine::default();
 
-    let mut loader = rx::assets::AssetsLoader::new("assets").unwrap();
     eng.push_layer(ecs_layer);
     eng.run();
 }
