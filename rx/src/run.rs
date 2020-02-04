@@ -2,20 +2,16 @@
 use log::{debug, error, info, trace, warn};
 
 use crate::render::Renderer;
-use crate::window::winit::event::{Event, WindowEvent};
-use crate::window::winit::event_loop::{
-    ControlFlow,
-    EventLoop,
-};
-use crate::window::winit::window::Window;
 use crate::window::WinitState;
+use winit::event::{Event, WindowEvent};
+use winit::event_loop::{ControlFlow, EventLoop};
+use winit::window::Window;
 
 pub struct Engine {
     winit_state: WinitState,
     layers: Vec<Box<dyn Layer>>,
-    renderer: Renderer
+    renderer: Renderer,
 }
-
 
 impl Default for Engine {
     fn default() -> Self {
@@ -25,14 +21,17 @@ impl Default for Engine {
         Self {
             winit_state,
             layers: Default::default(),
-            renderer
+            renderer,
         }
     }
 }
 
 impl Engine {
     pub fn run(mut self) {
-        let WinitState { events_loop, window } = self.winit_state;
+        let WinitState {
+            events_loop,
+            window,
+        } = self.winit_state;
         let mut layers = self.layers;
         let mut renderer = self.renderer;
 
@@ -42,7 +41,10 @@ impl Engine {
             *control_flow = ControlFlow::Poll;
 
             match event {
-                Event::WindowEvent { event: WindowEvent::CloseRequested, .. } => {
+                Event::WindowEvent {
+                    event: WindowEvent::CloseRequested,
+                    ..
+                } => {
                     info!("The close button was pressed; stopping");
                     *control_flow = ControlFlow::Exit
                 }
@@ -59,12 +61,15 @@ impl Engine {
                     info!("On close handle")
                     /*On close*/
                 }
-                _ => ()
+                _ => (),
             }
         });
     }
 
-    pub fn push_layer<L>(&mut self, layer: L) where L: Layer + 'static {
+    pub fn push_layer<L>(&mut self, layer: L)
+    where
+        L: Layer + 'static,
+    {
         self.layers.push(Box::new(layer));
     }
 
@@ -79,9 +84,11 @@ pub trait Layer {
     fn on_update(&mut self);
 }
 
-impl<F> Layer for F where F: FnMut()  {
+impl<F> Layer for F
+where
+    F: FnMut(),
+{
     fn on_update(&mut self) {
         self()
     }
 }
-

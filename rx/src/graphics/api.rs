@@ -1,18 +1,37 @@
-use std::{iter, ptr};
 use std::hash::Hasher;
 use std::io::Cursor;
 use std::marker::PhantomData;
-use std::mem::{ManuallyDrop, size_of};
+use std::mem::{size_of, ManuallyDrop};
 use std::ops::Deref;
 use std::ptr::read;
 use std::time::Instant;
+use std::{iter, ptr};
 
 use arrayvec::ArrayVec;
-use hal::{adapter::{Adapter, Gpu, PhysicalDevice}, Backend, buffer::*, command, command::*, command::CommandBuffer, device::Device, format::{ChannelType, Swizzle}, image::{Extent, SubresourceRange, ViewKind}, IndexType, Instance, Limits, memory::*, MemoryTypeId, pass::Subpass, pool::CommandPool, pso::*, queue::*, queue::QueueType::Graphics, window::*, window::Surface};
 use hal::pass::{SubpassDependency, SubpassRef};
+use hal::{
+    adapter::{Adapter, Gpu, PhysicalDevice},
+    buffer::*,
+    command,
+    command::CommandBuffer,
+    command::*,
+    device::Device,
+    format::{ChannelType, Swizzle},
+    image::{Extent, SubresourceRange, ViewKind},
+    memory::*,
+    pass::Subpass,
+    pool::CommandPool,
+    pso::*,
+    queue::QueueType::Graphics,
+    queue::*,
+    window::Surface,
+    window::*,
+    Backend, IndexType, Instance, Limits, MemoryTypeId,
+};
 use log::{debug, error, info, trace, warn};
 use winit::window::Window;
 
+use crate::graphics::hal_utils;
 use crate::utils::cast_slice;
 
 pub struct DepthImage<B: Backend> {
@@ -30,14 +49,12 @@ pub struct LoadedImage<B: Backend> {
     pub sampler: ManuallyDrop<B::Sampler>,
 }
 
-
 pub struct BufferBundle<B: Backend> {
     pub buffer: ManuallyDrop<B::Buffer>,
     pub requirements: Requirements,
     pub memory: ManuallyDrop<B::Memory>,
     pub phantom: PhantomData<B::Device>,
 }
-
 
 pub struct HalState<B: Backend> {
     instanced_buffers: Vec<BufferBundle<B>>,
@@ -58,25 +75,33 @@ pub struct HalState<B: Backend> {
     image_available_semaphores: Vec<B::Semaphore>,
     command_buffers: Vec<B::CommandBuffer>,
     command_pool: ManuallyDrop<B::CommandPool>,
+    //swap
     framebuffers: Vec<B::Framebuffer>,
+    //swap
     image_views: Vec<(B::ImageView)>,
+    //swap
     depth_images: Vec<(DepthImage<B>)>,
     render_pass: ManuallyDrop<B::RenderPass>,
     render_area: Rect,
     queue_group: ManuallyDrop<QueueGroup<B>>,
+    //swap
     swapchain: ManuallyDrop<B::Swapchain>,
+    //
     device: ManuallyDrop<B::Device>,
     _adapter: hal::adapter::Adapter<B>,
     _surface: ManuallyDrop<B::Surface>,
     _instance: ManuallyDrop<B::Instance>,
 }
 
-
 impl<B: Backend> DepthImage<B> {
-    pub fn new(adapter: &Adapter<B>, device: &B::Device, extent: Extent2D) -> Result<Self, &'static str> {
+    pub fn new(
+        adapter: &Adapter<B>,
+        device: &B::Device,
+        extent: Extent2D,
+    ) -> Result<Self, &'static str> {
         unsafe {
-            use hal::format::Format;
             use hal::format::Aspects;
+            use hal::format::Format;
             let mut the_image = device
                 .create_image(
                     hal::image::Kind::D2(extent.width, extent.height, 1, 1),
@@ -176,7 +201,11 @@ impl<B: Backend> LoadedImage<B> {
                     row_size,
                 );
             }
-            device.flush_mapped_memory_ranges(iter::once((mem_ref, 0..staging_bundle.requirements.size)))
+            device
+                .flush_mapped_memory_ranges(iter::once((
+                    mem_ref,
+                    0..staging_bundle.requirements.size,
+                )))
                 .map_err(|_| "Couldn't flush the memory range!")?;
             device.unmap_memory(mem_ref);
 
@@ -235,7 +264,8 @@ impl<B: Backend> LoadedImage<B> {
                 ))
                 .map_err(|_| "Couldn't create the sampler!")?;
             // 6. create a command buffer
-            let mut cmd_buffer: B::CommandBuffer = command_pool.allocate_one(command::Level::Primary);
+            let mut cmd_buffer: B::CommandBuffer =
+                command_pool.allocate_one(command::Level::Primary);
             cmd_buffer.begin_primary(command::CommandBufferFlags::ONE_TIME_SUBMIT);
             // 7. Use a pipeline barrier to transition the image from empty/undefined
             //    to TRANSFER_WRITE/TransferDstOptimal
@@ -243,9 +273,9 @@ impl<B: Backend> LoadedImage<B> {
             let image_barrier = hal::memory::Barrier::Image {
                 states: (hal::image::Access::empty(), Layout::Undefined)
                     ..(
-                    hal::image::Access::TRANSFER_WRITE,
-                    Layout::TransferDstOptimal,
-                ),
+                        hal::image::Access::TRANSFER_WRITE,
+                        Layout::TransferDstOptimal,
+                    ),
                 target: &the_image,
                 families: None,
                 range: SubresourceRange {
@@ -289,9 +319,9 @@ impl<B: Backend> LoadedImage<B> {
                     Layout::TransferDstOptimal,
                 )
                     ..(
-                    hal::image::Access::SHADER_READ,
-                    Layout::ShaderReadOnlyOptimal,
-                ),
+                        hal::image::Access::SHADER_READ,
+                        Layout::ShaderReadOnlyOptimal,
+                    ),
                 target: &the_image,
                 families: None,
                 range: SubresourceRange {
@@ -342,24 +372,20 @@ impl<B: Backend> BufferBundle<B> {
         &self.memory
     }
 
-    pub fn new(adapter: &Adapter<B>, device: &B::Device, size: usize, usage: Usage) -> Result<Self, &'static str> {
+    pub fn new(
+        adapter: &Adapter<B>,
+        device: &B::Device,
+        size: usize,
+        usage: Usage,
+    ) -> Result<Self, &'static str> {
         unsafe {
             info!("Buffer bundle size: {:?}", size);
             let mut buffer = device
                 .create_buffer(size as u64, usage)
                 .map_err(|_| "Couldn't create a buffer!")?;
             let requirements = device.get_buffer_requirements(&buffer);
-            let memory_type_id = adapter
-                .physical_device
-                .memory_properties()
-                .memory_types
-                .iter()
-                .enumerate()
-                .find(|&(id, memory_type)| {
-                    requirements.type_mask & (1 << id) != 0 && memory_type.properties.contains(Properties::CPU_VISIBLE)
-                })
-                .map(|(id, _)| MemoryTypeId(id))
-                .ok_or("Couldn't find a memory type to support the buffer!")?;
+            let memory_type_id =
+                hal_utils::get_mem_id(adapter, requirements, Properties::CPU_VISIBLE)?;
             let memory = device
                 .allocate_memory(memory_type_id, requirements.size)
                 .map_err(|_| "Couldn't allocate buffer memory!")?;
@@ -382,7 +408,7 @@ impl<B: Backend> BufferBundle<B> {
     }
 }
 
-impl<B> Drop for HalState<B> where B: Backend {
+impl<B: Backend> Drop for HalState<B> {
     fn drop(&mut self) {
         let _ = self.device.wait_idle();
         unsafe {
@@ -394,14 +420,22 @@ impl<B> Drop for HalState<B> where B: Backend {
             self.indexes.manually_drop(&self.device);
             self.texture.manually_drop(&self.device);
 
-            self.descriptor_pool.free_sets(Some(ManuallyDrop::into_inner(read(&mut self.descriptor_set))));
-            self.device.destroy_descriptor_pool(ManuallyDrop::into_inner(read(&mut self.descriptor_pool)));
+            self.descriptor_pool
+                .free_sets(Some(ManuallyDrop::into_inner(read(
+                    &mut self.descriptor_set,
+                ))));
+            self.device
+                .destroy_descriptor_pool(ManuallyDrop::into_inner(read(&mut self.descriptor_pool)));
 
             for dsl in self.descriptor_set_layouts.drain(..) {
                 self.device.destroy_descriptor_set_layout(dsl);
             }
-            self.device.destroy_pipeline_layout(ManuallyDrop::into_inner(read(&mut self.pipeline_layout)));
-            self.device.destroy_graphics_pipeline(ManuallyDrop::into_inner(read(&mut self.graphics_pipeline)));
+            self.device
+                .destroy_pipeline_layout(ManuallyDrop::into_inner(read(&mut self.pipeline_layout)));
+            self.device
+                .destroy_graphics_pipeline(ManuallyDrop::into_inner(read(
+                    &mut self.graphics_pipeline,
+                )));
             for fence in self.swapchain_img_fences.drain(..) {
                 self.device.destroy_fence(fence)
             }
@@ -420,14 +454,11 @@ impl<B> Drop for HalState<B> where B: Backend {
             for di in self.depth_images.drain(..) {
                 di.manually_drop(&self.device);
             }
-            self
-                .device
+            self.device
                 .destroy_command_pool(ManuallyDrop::into_inner(read(&mut self.command_pool)));
-            self
-                .device
+            self.device
                 .destroy_render_pass(ManuallyDrop::into_inner(read(&mut self.render_pass)));
-            self
-                .device
+            self.device
                 .destroy_swapchain(ManuallyDrop::into_inner(read(&mut self.swapchain)));
             ManuallyDrop::drop(&mut self.queue_group);
             ManuallyDrop::drop(&mut self.device);
@@ -439,21 +470,23 @@ impl<B> Drop for HalState<B> where B: Backend {
     }
 }
 
-
 pub const VERTEX_SOURCE: &'static str = include_str!("../../../shaders/one.vert");
 
 pub const FRAGMENT_SOURCE: &'static str = include_str!("../../../shaders/one.frag");
 
-
 impl<B: Backend> HalState<B> {
-    pub fn new(window: &Window, instance: <B as Backend>::Instance, mut surface: B::Surface) -> Result<Self, &'static str> {
+    pub fn new(
+        window: &Window,
+        instance: <B as Backend>::Instance,
+        mut surface: B::Surface,
+    ) -> Result<Self, &'static str> {
         let adapter = instance
             .enumerate_adapters()
             .into_iter()
             .find(|a| {
-                a.queue_families
-                    .iter()
-                    .any(|qf| qf.queue_type().supports_graphics() && surface.supports_queue_family(qf))
+                a.queue_families.iter().any(|qf| {
+                    qf.queue_type().supports_graphics() && surface.supports_queue_family(qf)
+                })
             })
             .ok_or("Couldn't find a graphical Adapter!")?;
         info!("{:?}", adapter);
@@ -465,7 +498,10 @@ impl<B: Backend> HalState<B> {
                 .find(|qf| qf.queue_type().supports_graphics() && surface.supports_queue_family(qf))
                 .ok_or("Couldn't find a QueueFamily with graphics!")?;
 
-            let Gpu { device, mut queue_groups } = unsafe {
+            let Gpu {
+                device,
+                mut queue_groups,
+            } = unsafe {
                 adapter
                     .physical_device
                     .open(&[(&queue_family, &[1.0; 1])], hal::Features::empty())
@@ -496,24 +532,31 @@ impl<B: Backend> HalState<B> {
 
             let present_mode = {
                 use hal::window::PresentMode;
-                [PresentMode::MAILBOX, PresentMode::IMMEDIATE, PresentMode::FIFO, PresentMode::RELAXED]
-                    .iter()
-                    .cloned()
-                    .find(|pm| present_modes.contains(*pm))
-                    .ok_or("No PresentMode values specified!")?
+                [
+                    PresentMode::MAILBOX,
+                    PresentMode::IMMEDIATE,
+                    PresentMode::FIFO,
+                    PresentMode::RELAXED,
+                ]
+                .iter()
+                .cloned()
+                .find(|pm| present_modes.contains(*pm))
+                .ok_or("No PresentMode values specified!")?
             };
 
             info!("Selected present mode: {:?}", present_mode);
             let composite_alpha_mode = {
                 use hal::window::CompositeAlphaMode;
-                [CompositeAlphaMode::OPAQUE,
+                [
+                    CompositeAlphaMode::OPAQUE,
                     CompositeAlphaMode::INHERIT,
                     CompositeAlphaMode::PREMULTIPLIED,
-                    CompositeAlphaMode::POSTMULTIPLIED]
-                    .iter()
-                    .cloned()
-                    .find(|ca| composite_alpha_modes.contains(*ca))
-                    .ok_or("No CompositeAlpha values specified!")?
+                    CompositeAlphaMode::POSTMULTIPLIED,
+                ]
+                .iter()
+                .cloned()
+                .find(|ca| composite_alpha_modes.contains(*ca))
+                .ok_or("No CompositeAlpha values specified!")?
             };
 
             info!("Selected composite alpha mode: {:?}", composite_alpha_mode);
@@ -571,22 +614,34 @@ impl<B: Backend> HalState<B> {
             let mut render_finished_semaphores: Vec<<B as Backend>::Semaphore> = vec![];
             let mut swapchain_img_fences: Vec<<B as Backend>::Fence> = vec![];
             for _ in 0..swapchain_img_count {
-                swapchain_img_fences.push(device.create_fence(true).map_err(|_| "Could not create a fence!")?);
-                image_available_semaphores.push(device.create_semaphore().map_err(|_| "Could not create a semaphore!")?);
-                render_finished_semaphores.push(device.create_semaphore().map_err(|_| "Could not create a semaphore!")?);
+                swapchain_img_fences.push(
+                    device
+                        .create_fence(true)
+                        .map_err(|_| "Could not create a fence!")?,
+                );
+                image_available_semaphores.push(
+                    device
+                        .create_semaphore()
+                        .map_err(|_| "Could not create a semaphore!")?,
+                );
+                render_finished_semaphores.push(
+                    device
+                        .create_semaphore()
+                        .map_err(|_| "Could not create a semaphore!")?,
+                );
             }
-            (image_available_semaphores, render_finished_semaphores, swapchain_img_fences)
+            (
+                image_available_semaphores,
+                render_finished_semaphores,
+                swapchain_img_fences,
+            )
         };
-        //render pass config
+        //render pass config / to move
         let render_pass = {
-            use hal::pass::{
-                Attachment,
-                AttachmentOps,
-                AttachmentLoadOp,
-                AttachmentStoreOp,
-                SubpassDesc,
-            };
             use hal::image::Layout;
+            use hal::pass::{
+                Attachment, AttachmentLoadOp, AttachmentOps, AttachmentStoreOp, SubpassDesc,
+            };
 
             let color_attachment = Attachment {
                 format: Some(format),
@@ -619,9 +674,9 @@ impl<B: Backend> HalState<B> {
                     ..PipelineStage::COLOR_ATTACHMENT_OUTPUT | PipelineStage::EARLY_FRAGMENT_TESTS,
                 accesses: Access::empty()
                     ..(Access::COLOR_ATTACHMENT_READ
-                    | Access::COLOR_ATTACHMENT_WRITE
-                    | Access::DEPTH_STENCIL_ATTACHMENT_READ
-                    | Access::DEPTH_STENCIL_ATTACHMENT_WRITE),
+                        | Access::COLOR_ATTACHMENT_WRITE
+                        | Access::DEPTH_STENCIL_ATTACHMENT_READ
+                        | Access::DEPTH_STENCIL_ATTACHMENT_WRITE),
                 flags: Dependencies::empty(),
             };
             let out_dependency = SubpassDependency {
@@ -657,7 +712,8 @@ impl<B: Backend> HalState<B> {
 
         let (image_views, depth_images, framebuffers) = {
             let image_views: Vec<<B as Backend>::ImageView> = {
-                backbuffer.into_iter()
+                backbuffer
+                    .into_iter()
                     .map(|image| unsafe {
                         device
                             .create_image_view(
@@ -686,7 +742,8 @@ impl<B: Backend> HalState<B> {
                     .iter()
                     .zip(depth_images.iter())
                     .map(|(image_view, depth_image_view)| unsafe {
-                        let attachments: ArrayVec<[_; 2]> = [image_view, &depth_image_view.image_view].into();
+                        let attachments: ArrayVec<[_; 2]> =
+                            [image_view, &depth_image_view.image_view].into();
                         device
                             .create_framebuffer(
                                 &render_pass,
@@ -706,10 +763,7 @@ impl<B: Backend> HalState<B> {
         use hal::pool::CommandPoolCreateFlags;
         let mut command_pool = unsafe {
             device
-                .create_command_pool(
-                    queue_group.family,
-                    CommandPoolCreateFlags::RESET_INDIVIDUAL,
-                )
+                .create_command_pool(queue_group.family, CommandPoolCreateFlags::RESET_INDIVIDUAL)
                 .map_err(|_| "Could not create the raw command pool!")?
         };
         let command_buffers: Vec<<B as Backend>::CommandBuffer> = {
@@ -727,7 +781,9 @@ impl<B: Backend> HalState<B> {
         let current_frame: usize = 0;
         info!("Extent: {:?}", extent);
 
-        let (descriptor_set_layouts, desc_pool, desc_set, pipeline_layout, graphics_pipeline) = Self::create_pipeline(&mut device, extent, &render_pass)?;
+        //to move
+        let (descriptor_set_layouts, desc_pool, desc_set, pipeline_layout, graphics_pipeline) =
+            Self::create_pipeline(&mut device, extent, &render_pass)?;
 
         let (vertices, indexes) = unsafe {
             const F32_XY_RGB_UV_QUAD: usize = size_of::<f32>() * (2 + 3 + 2) * 4;
@@ -736,15 +792,22 @@ impl<B: Backend> HalState<B> {
             const U16_QUAD_INDICES: usize = size_of::<u16>() * 2 * 3;
             let indexes = BufferBundle::new(&adapter, &device, U16_QUAD_INDICES, Usage::INDEX)?;
 
-
             unsafe {
                 let mut data_target = device
                     .map_memory(indexes.mem_ref(), 0..indexes.requirements.size)
                     .map_err(|_| "Failed to acquire an index buffer mapping writer!")?;
                 const INDEX_DATA: &[u16] = &[0, 1, 2, 2, 3, 0];
-                ptr::copy(INDEX_DATA.as_ptr() as *const u8, data_target, INDEX_DATA.len() * size_of::<u16>());
+                ptr::copy(
+                    INDEX_DATA.as_ptr() as *const u8,
+                    data_target,
+                    INDEX_DATA.len() * size_of::<u16>(),
+                );
 
-                device.flush_mapped_memory_ranges(iter::once((indexes.mem_ref(), 0..indexes.requirements.size)))
+                device
+                    .flush_mapped_memory_ranges(iter::once((
+                        indexes.mem_ref(),
+                        0..indexes.requirements.size,
+                    )))
                     .map_err(|_| "Couldn't flush the index buffer memory!")?;
                 device.unmap_memory(indexes.mem_ref());
             }
@@ -766,6 +829,8 @@ impl<B: Backend> HalState<B> {
         // 5. You write the descriptors into the descriptor set using
         //    write_descriptor_sets which you pass a set of DescriptorSetWrites
         //    which each write in one or more descriptors to the set-
+
+        //move
         unsafe {
             device.write_descriptor_sets(vec![
                 hal::pso::DescriptorSetWrite {
@@ -786,15 +851,18 @@ impl<B: Backend> HalState<B> {
             ]);
         }
 
-
         //instanced
-        let instanced_buffers = (0..swapchain_img_count).map(|i| BufferBundle::new(
-            &adapter,
-            &device,
-            (size_of::<f32>() * 16 * 100) as usize,
-            Usage::VERTEX,
-        ).unwrap()).collect();
-
+        let instanced_buffers = (0..swapchain_img_count)
+            .map(|i| {
+                BufferBundle::new(
+                    &adapter,
+                    &device,
+                    (size_of::<f32>() * 16 * 100) as usize,
+                    Usage::VERTEX,
+                )
+                .unwrap()
+            })
+            .collect();
 
         Ok(Self {
             instanced_buffers,
@@ -828,7 +896,6 @@ impl<B: Backend> HalState<B> {
         })
     }
 
-
     fn create_pipeline(
         device: &mut B::Device,
         extent: Extent2D,
@@ -841,7 +908,8 @@ impl<B: Backend> HalState<B> {
             <B as Backend>::PipelineLayout,
             <B as Backend>::GraphicsPipeline,
         ),
-        &'static str> {
+        &'static str,
+    > {
         let mut compiler = shaderc::Compiler::new().ok_or("shaderc not found!")?;
 
         let vertex_compile_artifact = compiler
@@ -933,7 +1001,7 @@ impl<B: Backend> HalState<B> {
                     format: hal::format::Format::Rg32Sfloat,
                     offset: (size_of::<f32>() * (2 + 3)) as u32,
                 },
-            }
+            },
         ];
 
         //instanced1
@@ -947,7 +1015,6 @@ impl<B: Backend> HalState<B> {
                 },
             });
         }
-
 
         let input_assembler_desc = InputAssemblerDesc {
             primitive: Primitive::TriangleList,
@@ -986,20 +1053,22 @@ impl<B: Backend> HalState<B> {
             };
             BlendDesc {
                 logic_op: Some(LogicOp::Copy),
-                targets: vec![ColorBlendDesc { mask: ColorMask::ALL, blend: Some(blend_state) }],
+                targets: vec![ColorBlendDesc {
+                    mask: ColorMask::ALL,
+                    blend: Some(blend_state),
+                }],
             }
         };
 
-        let baked_states =
-            BakedStates {
-                viewport: Some(Viewport {
-                    rect: extent.to_extent().rect(),
-                    depth: (0.0..1.0),
-                }),
-                scissor: Some(extent.to_extent().rect()),
-                blend_color: None,
-                depth_bounds: None,
-            };
+        let baked_states = BakedStates {
+            viewport: Some(Viewport {
+                rect: extent.to_extent().rect(),
+                depth: (0.0..1.0),
+            }),
+            scissor: Some(extent.to_extent().rect()),
+            blend_color: None,
+            depth_bounds: None,
+        };
 
         let descriptor_set_layouts: Vec<<B as Backend>::DescriptorSetLayout> = vec![unsafe {
             device
@@ -1047,11 +1116,11 @@ impl<B: Backend> HalState<B> {
                 .allocate_set(&descriptor_set_layouts[0])
                 .map_err(|_| "Couldn't make a Descriptor Set!")?
         };
-//        let device: Device<B>;
+        //        let device: Device<B>;
 
         let push_constants = vec![
-//            (ShaderStageFlags::FRAGMENT, 0..4),
-(ShaderStageFlags::VERTEX | ShaderStageFlags::FRAGMENT, 0..64),
+            //            (ShaderStageFlags::FRAGMENT, 0..4),
+            (ShaderStageFlags::VERTEX | ShaderStageFlags::FRAGMENT, 0..64),
         ];
         let layout = unsafe {
             device
@@ -1076,7 +1145,6 @@ impl<B: Backend> HalState<B> {
             },
             flags: PipelineCreationFlags::empty(),
             parent: BasePipeline::None,
-
         };
         let pipeline = unsafe {
             device
@@ -1085,7 +1153,13 @@ impl<B: Backend> HalState<B> {
         };
         unsafe { device.destroy_shader_module(vertex_shader_module) };
         unsafe { device.destroy_shader_module(fragment_shader_module) };
-        Ok((descriptor_set_layouts, descriptor_pool, descriptor_set, layout, pipeline, ))
+        Ok((
+            descriptor_set_layouts,
+            descriptor_pool,
+            descriptor_set,
+            layout,
+            pipeline,
+        ))
     }
 
     pub fn draw_clear_frame(&mut self, color: [f32; 4]) -> Result<(), &str> {
@@ -1118,9 +1192,7 @@ impl<B: Backend> HalState<B> {
         unsafe {
             let buffer = &mut self.command_buffers[i_usize];
             let clear_values = [command::ClearValue {
-                color: command::ClearColor {
-                    float32: color,
-                },
+                color: command::ClearColor { float32: color },
             }];
             buffer.begin_primary(command::CommandBufferFlags::empty());
             buffer.begin_render_pass(
@@ -1136,8 +1208,11 @@ impl<B: Backend> HalState<B> {
 
         // SUBMISSION AND PRESENT
         let command_buffers = &self.command_buffers[i_usize..=i_usize];
-        let wait_semaphores: ArrayVec<[_; 1]> =
-            [(image_available, hal::pso::PipelineStage::COLOR_ATTACHMENT_OUTPUT)].into();
+        let wait_semaphores: ArrayVec<[_; 1]> = [(
+            image_available,
+            hal::pso::PipelineStage::COLOR_ATTACHMENT_OUTPUT,
+        )]
+        .into();
         let signal_semaphores: ArrayVec<[_; 1]> = [render_finished].into();
         // yes, you have to write it twice like this. yes, it's silly.
         let present_wait_semaphores: ArrayVec<[_; 1]> = [render_finished].into();
@@ -1156,7 +1231,12 @@ impl<B: Backend> HalState<B> {
         Ok(())
     }
 
-    pub fn draw_quad_frame(&mut self, quad: crate::utils::Quad, cam: &crate::utils::Camera, model: &glm::Mat4) -> Result<(), &'static str> {
+    pub fn draw_quad_frame(
+        &mut self,
+        quad: crate::utils::Quad,
+        cam: &crate::utils::Camera,
+        model: &glm::Mat4,
+    ) -> Result<(), &'static str> {
         let duration = Instant::now().duration_since(self.creation_instant);
         let time_f32 = duration.as_secs() as f32 + duration.subsec_nanos() as f32 * 1e-9;
 
@@ -1193,43 +1273,60 @@ impl<B: Backend> HalState<B> {
                 .map_memory(&self.vertices.memory, 0..self.vertices.requirements.size)
                 .map_err(|_| "Failed to acquire a memory writer!")?;
             let points = quad.vertex_attributes();
-            ptr::copy(points.as_ptr() as *const u8, data_target, points.len() * size_of::<f32>());
+            ptr::copy(
+                points.as_ptr() as *const u8,
+                data_target,
+                points.len() * size_of::<f32>(),
+            );
             // Here we must force the Deref impl of ManuallyDrop to play nice. / or call .deref() from impl Deref
             let memory_ref: &<B as Backend>::Memory = &self.vertices.memory;
             self.device
-                .flush_mapped_memory_ranges(iter::once((*&memory_ref, 0..self.vertices.requirements.size)))
+                .flush_mapped_memory_ranges(iter::once((
+                    *&memory_ref,
+                    0..self.vertices.requirements.size,
+                )))
                 .map_err(|_| "Failed to flush memory!")?;
-            self.device
-                .unmap_memory(&memory_ref);
+            self.device.unmap_memory(&memory_ref);
 
             //WRITE INSTANCED
 
             let mut data_target = self
                 .device
-                .map_memory(instanced_buffer.memory.deref(), 0..instanced_buffer.requirements.size)
+                .map_memory(
+                    instanced_buffer.memory.deref(),
+                    0..instanced_buffer.requirements.size,
+                )
                 .map_err(|_| "Failed to acquire a memory writer!")?;
 
             let mvp: glm::Mat4 = cam.view_projection() * model;
-            ptr::copy(mvp.as_slice().as_ptr() as *const u8, data_target, 16 * size_of::<f32>());
+            ptr::copy(
+                mvp.as_slice().as_ptr() as *const u8,
+                data_target,
+                16 * size_of::<f32>(),
+            );
 
             self.device
-                .flush_mapped_memory_ranges(iter::once((instanced_buffer.memory.deref(), 0..instanced_buffer.requirements.size)))
+                .flush_mapped_memory_ranges(iter::once((
+                    instanced_buffer.memory.deref(),
+                    0..instanced_buffer.requirements.size,
+                )))
                 .map_err(|_| "Failed to flush memory!")?;
-//           MEM CHECK
-//            let mut data_target = self
-//                .device
-//                .map_memory(&self.memory, 0..self.requirements.size)
-//                .map_err(|_| "Failed to acquire a memory writer!")?;
+            self.device.unmap_memory(instanced_buffer.memory.deref());
+            //           MEM CHECK
+            //            let mut data_target = self
+            //                .device
+            //                .map_memory(&self.memory, 0..self.requirements.size)
+            //                .map_err(|_| "Failed to acquire a memory writer!")?;
 
-//            let mut myslice: [f32; 6] = [0.0 as f32; 6];
-//            ptr::copy(data_target, myslice.as_mut_ptr() as *mut u8, myslice.len() * size_of::<f32>());
-//            info!("{:?}", myslice);
+            //            let mut myslice: [f32; 6] = [0.0 as f32; 6];
+            //            ptr::copy(data_target, myslice.as_mut_ptr() as *mut u8, myslice.len() * size_of::<f32>());
+            //            info!("{:?}", myslice);
 
-//            self.device
-//                .flush_mapped_memory_ranges(iter::once((*&memory_ref, 0..self.requirements.size)))
-//                .map_err(|_| "Failed to flush memory!")?;
-//            self.device
-//                .unmap_memory(&memory_ref);
+            //            self.device
+            //                .flush_mapped_memory_ranges(iter::once((*&memory_ref, 0..self.requirements.size)))
+            //                .map_err(|_| "Failed to flush memory!")?;
+            //            self.device
+            //                .unmap_memory(&memory_ref);
         }
 
         // RECORD COMMANDS
@@ -1239,13 +1336,13 @@ impl<B: Backend> HalState<B> {
                 command::ClearValue {
                     color: command::ClearColor {
                         float32: [0.1, 0.2, 0.3, 1.0],
-                    }
+                    },
                 },
                 command::ClearValue {
                     depth_stencil: command::ClearDepthStencil {
                         depth: 1.0,
                         stencil: 0,
-                    }
+                    },
                 },
             ];
             buffer.begin_primary(command::CommandBufferFlags::empty());
@@ -1260,8 +1357,9 @@ impl<B: Backend> HalState<B> {
                 let buffer_ref: &<B as Backend>::Buffer = &self.vertices.buffer;
                 let buffers: ArrayVec<[_; 2]> = [
                     (buffer_ref, 0),
-                    (instanced_buffer.buffer.deref(), 0) //just bruh
-                ].into();
+                    (instanced_buffer.buffer.deref(), 0), //just bruh
+                ]
+                .into();
                 buffer.bind_graphics_pipeline(&self.graphics_pipeline);
 
                 buffer.bind_vertex_buffers(0, buffers);
@@ -1284,12 +1382,12 @@ impl<B: Backend> HalState<B> {
                     TRIANGLE_CLEAR.iter(),
                     command::SubpassContents::Inline,
                 );
-//                buffer.push_graphics_constants(
-//                    &self.pipeline_layout,
-//                    ShaderStageFlags::FRAGMENT,
-//                    0,
-//                    &[time_f32.to_bits()],
-//                );
+                //                buffer.push_graphics_constants(
+                //                    &self.pipeline_layout,
+                //                    ShaderStageFlags::FRAGMENT,
+                //                    0,
+                //                    &[time_f32.to_bits()],
+                //                );
 
                 buffer.push_graphics_constants(
                     &self.pipeline_layout,

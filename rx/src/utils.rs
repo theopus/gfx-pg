@@ -1,12 +1,9 @@
 use std::mem::size_of;
 
-use glm::{
-    Mat4,
-    Vec3,
-};
+use glm::{Mat4, Vec3};
 use nalgebra::Matrix4;
 
-use crate::window::winit::event::{ElementState, Event, KeyboardInput, VirtualKeyCode, WindowEvent};
+use winit::event::{ElementState, Event, KeyboardInput, VirtualKeyCode, WindowEvent};
 
 pub type Vertex2D = [f32; 2];
 pub type TriangleVertex = [f32; (2 + 3)];
@@ -24,11 +21,7 @@ impl Triangle {
     }
     pub fn vertex_attribs(self) -> [f32; 3 * (2 + 3)] {
         let [[a, b], [c, d], [e, f]] = self.points;
-        let [
-        [r0, g0, b0],
-        [r1, g1, b1],
-        [r2, g2, b2]
-        ] = self.colors;
+        let [[r0, g0, b0], [r1, g1, b1], [r2, g2, b2]] = self.colors;
         [
             a, b, r0, g0, b0, // red
             c, d, r1, g1, b1, // green
@@ -45,14 +38,13 @@ pub struct Quad {
     pub h: f32,
 }
 
-
 impl Quad {
     pub fn vertex_attributes(self) -> [f32; 4 * (2 + 3 + 2)] {
         let x = self.x;
         let y = self.y;
         let w = self.w;
         let h = self.h;
-            #[cfg_attr(rustfmt, rustfmt_skip)]
+        #[cfg_attr(rustfmt, rustfmt_skip)]
         [
             // X    Y    R    G    B                  U    V
             x, y + h, 1.0, 0.0, 0.0, /* red     */ 0.0, 1.0, /* bottom left */
@@ -62,7 +54,6 @@ impl Quad {
         ]
     }
 }
-
 
 pub struct Camera {
     pub pos: Vec3,
@@ -77,13 +68,17 @@ impl Camera {
 
         match e {
             Event::WindowEvent {
-                event: WindowEvent::KeyboardInput {
-                    input: KeyboardInput {
-                        state: ElementState::Pressed,
-                        virtual_keycode: Some(code),
+                event:
+                    WindowEvent::KeyboardInput {
+                        input:
+                            KeyboardInput {
+                                state: ElementState::Pressed,
+                                virtual_keycode: Some(code),
+                                ..
+                            },
                         ..
-                    }, ..
-                }, ..
+                    },
+                ..
             } => {
                 match code {
                     //x
@@ -98,7 +93,7 @@ impl Camera {
                     VirtualKeyCode::S => self.pos += glm::vec3(0.0, 0., MOVE_DELTA),
                     //reset
                     VirtualKeyCode::Back => self.pos = glm::vec3(0., 0., 5.),
-                    _ => ()
+                    _ => (),
                 }
             }
             _ => (),
@@ -110,19 +105,30 @@ impl Camera {
             pos: glm::vec3(0., 0., 5.),
             rot: glm::vec3(0., 0., 0.),
             fov: 45.,
-            projection: glm::perspective(
-                aspect_ratio, glm::radians(&glm::vec1(45.)).x,
-                0.1, 1000., ),
+            projection: glm::perspective(aspect_ratio, glm::radians(&glm::vec1(45.)).x, 0.1, 1000.),
         }
     }
 
     fn get_view(pos: &Vec3, rot: Option<&Vec3>) -> Mat4 {
         let mut mtx: Matrix4<f32> = glm::identity();
         mtx = glm::translate(&mtx, &glm::vec3(pos.x, pos.y, pos.z)); // camera translate
-        if let Some(rot) = rot { //camera rot
-            mtx = glm::rotate(&mtx, glm::radians(&glm::vec1(rot.x)).x, &glm::vec3(1., 0., 0.));
-            mtx = glm::rotate(&mtx, glm::radians(&glm::vec1(rot.y)).x, &glm::vec3(0., 1., 0.));
-            mtx = glm::rotate(&mtx, glm::radians(&glm::vec1(rot.z)).x, &glm::vec3(0., 0., 1.));
+        if let Some(rot) = rot {
+            //camera rot
+            mtx = glm::rotate(
+                &mtx,
+                glm::radians(&glm::vec1(rot.x)).x,
+                &glm::vec3(1., 0., 0.),
+            );
+            mtx = glm::rotate(
+                &mtx,
+                glm::radians(&glm::vec1(rot.y)).x,
+                &glm::vec3(0., 1., 0.),
+            );
+            mtx = glm::rotate(
+                &mtx,
+                glm::radians(&glm::vec1(rot.z)).x,
+                &glm::vec3(0., 0., 1.),
+            );
         }
         glm::inverse(&mtx)
     }

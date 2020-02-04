@@ -6,6 +6,9 @@ use hal::pso::{
     Element,
 };
 
+use crate::hal::{Backend, MemoryTypeId};
+use crate::hal::adapter::{Adapter, PhysicalDevice};
+
 #[derive(Copy, Clone)]
 #[repr(C)]
 struct Vertex {
@@ -38,4 +41,25 @@ impl Vertex {
         [self.position[0], self.position[1],
             self.tex_coords[0], self.position[1]]
     }
+}
+
+
+pub fn get_mem_id<B>(
+    adapter: &Adapter<B>,
+    req: hal::memory::Requirements,
+    props: hal::memory::Properties,
+) -> Result<MemoryTypeId, &'static str>
+    where
+        B: Backend {
+    Ok(adapter
+        .physical_device
+        .memory_properties()
+        .memory_types
+        .iter()
+        .enumerate()
+        .find(|&(id, memory_type)| {
+            req.type_mask & (1 << id) as u64 != 0 && memory_type.properties.contains(props)
+        })
+        .map(|(id, _)| MemoryTypeId(id))
+        .ok_or("Couldn't find a memory type to support the buffer!")?)
 }

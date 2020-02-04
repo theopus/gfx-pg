@@ -1,12 +1,10 @@
-pub extern crate winit;
-
-use winit::dpi::LogicalSize;
-use winit::event_loop::EventLoop;
-
-use crate::window::winit::event::{Event, WindowEvent};
-
-use self::winit::error::OsError;
-use self::winit::window::{Window, WindowBuilder};
+use winit::{
+    dpi::LogicalSize,
+    error::OsError,
+    event::{Event, WindowEvent},
+    event_loop::EventLoop,
+    window::{Window, WindowBuilder},
+};
 
 #[derive(Debug)]
 pub struct WinitState {
@@ -20,7 +18,8 @@ impl WinitState {
 
         let output = WindowBuilder::new()
             .with_title(title)
-            .with_inner_size(size).build(&events_loop);
+            .with_inner_size(size)
+            .build(&events_loop);
         output.map(|window| Self {
             events_loop,
             window,
@@ -38,10 +37,10 @@ impl Default for WinitState {
                 width: 800,
                 height: 600,
             },
-        ).expect("Could not create a window!")
+        )
+        .expect("Could not create a window!")
     }
 }
-
 
 #[derive(Debug, Clone, Default)]
 pub struct UserInput {
@@ -75,4 +74,3 @@ impl UserInput {
         output
     }
 }
-

@@ -1,17 +1,12 @@
-#[cfg(feature = "dx12")]
-use gfx_backend_dx12 as back;
-#[cfg(feature = "gl")] //INFO: gl requires specific initialisation.
-use gfx_backend_gl as back;
-#[cfg(feature = "metal")]
-use gfx_backend_metal as back;
-#[cfg(feature = "vulkan")]
-use gfx_backend_vulkan as back;
 use gfx_hal::Instance;
 #[allow(unused_imports)]
 use log::{debug, error, info, trace, warn};
 
 use crate::graphics::api::HalState;
 use crate::utils::Camera;
+use back;
+
+pub type DrawCmd = (u32, glm::Mat4);
 
 pub struct Renderer {
     hal_state: HalState<back::Backend>,
@@ -31,7 +26,7 @@ impl Renderer {
     }
 }
 
-
+#[cfg(not(feature = "gl"))]
 impl HalState<back::Backend> {
     pub fn typed(window: &winit::window::Window) -> Result<Self, &str> {
         let instance = back::Instance::create("gfx-rs quad", 1)
@@ -40,6 +35,19 @@ impl HalState<back::Backend> {
         let mut surface = unsafe {
             instance.create_surface(window).expect("Failed to create a surface!")
         };
+        info!("{:?}", surface);
+        HalState::new(window, instance, surface)
+    }
+}
+
+#[cfg(feature = "gl")]
+impl HalState<back::Backend> {
+    pub fn typed(window: &winit::window::Window) -> Result<Self, &str> {
+        let builder = back::config_context(back::glutin::ContextBuilder::new(), ColorFormat::SELF, None)
+            .with_vsync(true);
+        builder.build_kek();
+        let surface = back::Surface::from_context(context);
+        info!("{:?}", instance);
         info!("{:?}", surface);
         HalState::new(window, instance, surface)
     }

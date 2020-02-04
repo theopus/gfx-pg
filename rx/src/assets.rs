@@ -7,8 +7,39 @@ use image::RgbaImage;
 #[allow(unused_imports)]
 use log::{debug, error, info, trace, warn};
 
+use crate::hal::adapter::Adapter;
+use crate::hal::Backend;
+use crate::hal::device::Device;
+
 pub struct AssetsLoader {
     dir: PathBuf
+}
+
+
+pub struct MeshPointer {
+    offset: u32,
+    length: u32,
+}
+
+
+pub struct AssetStorage {
+    //memory
+    //let
+}
+
+impl AssetStorage {
+    fn new<B>(
+        adapter: &Adapter<B>,
+        device: &B::Device,
+    ) -> Result<Self, &'static str>
+        where B: Backend {
+        Ok(Self {})
+    }
+
+    fn buffer_mesh<B>(&mut self, device: &mut B::Device, mesh: Mesh) -> MeshPointer where B: Backend{
+//        ()
+        unimplemented!()
+    }
 }
 
 impl AssetsLoader {

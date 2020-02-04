@@ -9,7 +9,7 @@ edition = "2018"
 [dependencies]
 winit = "0.20.0"
 log = "0.4.0"
-gfx-hal = "0.4.0"
+gfx-hal = "0.4"
 arrayvec = "0.4"
 shaderc = "0.6.1"
 image = "0.22.4"
@@ -20,30 +20,30 @@ specs = { version = "0.15.0" }
 specs-derive = "0.4.0"
 
 [dependencies.gfx-backend-vulkan]
-version = "0.4.0"
+version = "0.4"
 optional = true
 
 [dependencies.gfx-backend-gl]
-version = "0.4.0"
+version = "0.4"
 optional = true
 
 [target.'cfg(target_os = "linux")'.dependencies.gfx-backend-vulkan]
-version = "0.4.0"
+version = "0.4"
 features = ["x11"]
 optional = true
 
 [target.'cfg(target_os = "macos")'.dependencies.gfx-backend-metal]
-version = "0.4.0"
+version = "0.4"
 optional = true
 
 [target.'cfg(windows)'.dependencies.gfx-backend-dx12]
-version = "0.4.0"
+version = "0.4"
 optional = true
 
 
 [features]
-default = ["vulkan"]
+default = []
 metal = ["gfx-backend-metal"]
 dx12 = ["gfx-backend-dx12"]
 vulkan = ["gfx-backend-vulkan"]
-gl = ["gfx-backend-gl"]
+gl = ["gfx-backend-gl", "gfx-backend-gl/glutin"]
