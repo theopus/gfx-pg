@@ -1,3 +1,4 @@
+use std::hash::Hasher;
 use std::mem::ManuallyDrop;
 
 use arrayvec::ArrayVec;
@@ -49,8 +50,6 @@ pub struct CommonSwapchain<B: Backend> {
 impl<B: Backend> DeviceDrop<B> for CommonSwapchain<B> {
     fn drop(&mut self, device: &<B as Backend>::Device) {
         unsafe {
-            self.base.drop(device);
-
             for fence in self.img_fences.drain(..) {
                 device.destroy_fence(fence)
             }
@@ -63,10 +62,11 @@ impl<B: Backend> DeviceDrop<B> for CommonSwapchain<B> {
             for buff in self.command_buffers.drain(..) {
                 self.command_pool.free(vec![buff])
             }
+            self.base.drop(device);
             use std::ptr::read;
             device.destroy_command_pool(ManuallyDrop::into_inner(read(&mut self.command_pool)));
-            device.destroy_render_pass(ManuallyDrop::into_inner(read(&mut self.render_pass)));
             ManuallyDrop::drop(&mut self.queue_group);
+            device.destroy_render_pass(ManuallyDrop::into_inner(read(&mut self.render_pass)));
         }
     }
 }
@@ -433,9 +433,16 @@ impl<B: Backend> CommonSwapchain<B> {
     pub fn next_frame(
         &mut self,
         device: &B::Device,
-    ) -> Result<(usize, &mut B::CommandBuffer, &B::Framebuffer), &str> {
+    ) -> Result<
+        (
+            usize,
+            &mut B::CommandBuffer,
+            &B::Framebuffer,
+            &B::RenderPass,
+        ),
+        &str,
+    > {
         let image_available = &self.image_available_semaphores[self.current_frame];
-        self.current_frame = (self.current_frame + 1) % self.img_count;
 
         let (i_u32, i_usize) = unsafe {
             let image_index = self
@@ -460,15 +467,14 @@ impl<B: Backend> CommonSwapchain<B> {
             i_usize,
             &mut self.command_buffers[i_usize],
             &self.base.framebuffers[i_usize],
+            &self.render_pass,
         ))
     }
 
-    pub fn present_buffer(
-        &mut self,
-        (frame, buffer, fb): (usize, &mut B::CommandBuffer, &B::Framebuffer),
-    ) -> Result<(), &str> {
+    pub fn present_buffer(&mut self, frame: usize) -> Result<(), &str> {
         let image_available = &self.image_available_semaphores[self.current_frame];
         let render_finished = &self.render_finished_semaphores[self.current_frame];
+        self.current_frame = (self.current_frame + 1) % self.img_count;
         let flight_fence = &self.img_fences[frame];
 
         let command_buffers = &self.command_buffers[frame..=frame];
