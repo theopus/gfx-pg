@@ -26,10 +26,10 @@ use log::{debug, error, info, trace, warn};
 
 use crate::graphics::api::DepthImage;
 use crate::graphics::state::HalStateV2;
-use crate::hal::pass::{SubpassDependency, SubpassRef};
+use hal::pass::{SubpassDependency, SubpassRef};
 
 pub trait DeviceDrop<B: Backend> {
-    fn drop(&mut self, device: &B::Device);
+    unsafe fn manually_drop(&mut self, device: &B::Device);
 }
 
 pub struct CommonSwapchain<B: Backend> {
@@ -48,7 +48,7 @@ pub struct CommonSwapchain<B: Backend> {
 }
 
 impl<B: Backend> DeviceDrop<B> for CommonSwapchain<B> {
-    fn drop(&mut self, device: &<B as Backend>::Device) {
+    unsafe fn manually_drop(&mut self, device: &<B as Backend>::Device) {
         unsafe {
             for fence in self.img_fences.drain(..) {
                 device.destroy_fence(fence)
@@ -62,7 +62,7 @@ impl<B: Backend> DeviceDrop<B> for CommonSwapchain<B> {
             for buff in self.command_buffers.drain(..) {
                 self.command_pool.free(vec![buff])
             }
-            self.base.drop(device);
+            self.base.manually_drop(device);
             use std::ptr::read;
             device.destroy_command_pool(ManuallyDrop::into_inner(read(&mut self.command_pool)));
             ManuallyDrop::drop(&mut self.queue_group);
@@ -81,7 +81,7 @@ pub struct BaseSwapchain<B: Backend> {
 }
 
 impl<B: Backend> DeviceDrop<B> for BaseSwapchain<B> {
-    fn drop(&mut self, device: &<B as Backend>::Device) {
+    unsafe fn manually_drop(&mut self, device: &<B as Backend>::Device) {
         unsafe {
             for fb in self.framebuffers.drain(..) {
                 device.destroy_framebuffer(fb);
@@ -191,8 +191,10 @@ impl<B: Backend> BaseSwapchain<B> {
 
 impl<B: Backend> CommonSwapchain<B> {
     pub fn reset_inner(&mut self, state: &mut HalStateV2<B>) -> Result<(), &'static str> {
-        self.base.drop(&state.device);
-        let base = BaseSwapchain::new(state, &self.render_pass, self.swapchain_config.clone())?;
+        unsafe {
+            self.base.manually_drop(&state.device);
+            let base = BaseSwapchain::new(state, &self.render_pass, self.swapchain_config.clone())?;
+        }
         Ok(())
     }
 

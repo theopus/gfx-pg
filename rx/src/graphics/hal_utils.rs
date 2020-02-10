@@ -6,8 +6,8 @@ use hal::pso::{
     Element,
 };
 
-use crate::hal::{Backend, MemoryTypeId};
-use crate::hal::adapter::{Adapter, PhysicalDevice};
+use hal::{Backend, MemoryTypeId};
+use hal::adapter::{Adapter, PhysicalDevice};
 
 #[derive(Copy, Clone)]
 #[repr(C)]

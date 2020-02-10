@@ -1,12 +1,6 @@
-use std::hash::Hasher;
-use std::io::Cursor;
-use std::marker::PhantomData;
-use std::mem::{size_of, ManuallyDrop};
-use std::ops::Deref;
-use std::ptr::read;
-use std::time::Instant;
-use std::{iter, ptr};
-
+/////////////////
+/// DEPRECATED///
+/////////////////
 use arrayvec::ArrayVec;
 use hal::pass::{SubpassDependency, SubpassRef};
 use hal::{
@@ -29,6 +23,14 @@ use hal::{
     Backend, IndexType, Instance, Limits, MemoryTypeId,
 };
 use log::{debug, error, info, trace, warn};
+use std::hash::Hasher;
+use std::io::Cursor;
+use std::marker::PhantomData;
+use std::mem::{size_of, ManuallyDrop};
+use std::ops::Deref;
+use std::ptr::read;
+use std::time::Instant;
+use std::{iter, ptr};
 use winit::window::Window;
 
 use crate::graphics::hal_utils;
@@ -1382,12 +1384,6 @@ impl<B: Backend> HalState<B> {
                     TRIANGLE_CLEAR.iter(),
                     command::SubpassContents::Inline,
                 );
-                //                buffer.push_graphics_constants(
-                //                    &self.pipeline_layout,
-                //                    ShaderStageFlags::FRAGMENT,
-                //                    0,
-                //                    &[time_f32.to_bits()],
-                //                );
 
                 buffer.push_graphics_constants(
                     &self.pipeline_layout,
