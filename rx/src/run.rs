@@ -1,11 +1,14 @@
+use std::time::{Instant, Duration};
+
 #[allow(unused_imports)]
 use log::{debug, error, info, trace, warn};
+use winit::event::{DeviceEvent, DeviceId, Event, WindowEvent};
+use winit::event_loop::{ControlFlow, EventLoop, EventLoopWindowTarget};
+use winit::window::{Window, WindowId};
 
+use crate::glm::e;
 use crate::render::Renderer;
 use crate::window::WinitState;
-use winit::event::{Event, WindowEvent};
-use winit::event_loop::{ControlFlow, EventLoop};
-use winit::window::Window;
 
 pub struct Engine {
     winit_state: WinitState,
@@ -32,17 +35,19 @@ impl Engine {
             events_loop,
             window,
         } = self.winit_state;
+
         let mut layers = self.layers;
         let mut renderer = self.renderer;
-
-//        let mut events = Vec::with_capacity(300);
+        let mut events = Vec::with_capacity(300);
+        let mut last = Instant::now();
 
         info!("Start!");
-        events_loop.run(move |event, _, control_flow| {
+        let run_loop = move |o_event: Event<()>, _: &EventLoopWindowTarget<()>, control_flow: &mut ControlFlow| {
             //Always poll
             *control_flow = ControlFlow::Poll;
 
-            match event {
+
+            match o_event {
                 Event::WindowEvent {
                     event: WindowEvent::CloseRequested,
                     ..
@@ -55,30 +60,44 @@ impl Engine {
                     /*On close*/
                 }
                 Event::MainEventsCleared => {
-                    Self::on_update(&mut layers);
-                    // Queue a RedrawRequested event.
+                    let current = Instant::now();
+                    let elapsed = current - last;
+                    Self::on_update(&mut layers, &mut events, elapsed);
                     window.request_redraw();
+                    last = current
                 }
                 Event::RedrawRequested(_) => {
                     /*Render*/
                     renderer.render();
                 }
                 Event::WindowEvent {
-                     event: WindowEvent::Resized(phys_size),
+                    event: WindowEvent::Resized(phys_size),
                     ..
                 } => {
-                    renderer._cam.update(&event);
+                    renderer._cam.update(&o_event);
                     renderer.reset_swapchain(phys_size);
+
+                    let owned = Self::map_event(o_event);
+                    if let Some(e) = owned {
+                        Self::on_event(&mut events, e);
+                    }
                 }
-                Event::WindowEvent {
-                    ..
-                } => {
-                    /* All other events */
-                    renderer._cam.update(&event);
-                }
-                _ => (),
+                _ => {
+                    let owned = Self::map_event(o_event);
+                    if let Some(e) = owned {
+                        Self::on_event(&mut events, e);
+                    }
+                },
             }
-        });
+        };
+        events_loop.run(run_loop);
+    }
+
+
+    fn on_update(layers: &mut Vec<Box<dyn Layer>>, events: &Vec<Event<()>>, elapsed: Duration) {
+        for layer in layers.iter_mut() {
+            layer.on_update(events, elapsed);
+        }
     }
 
     pub fn push_layer<L>(&mut self, layer: L)
@@ -88,22 +107,63 @@ impl Engine {
         self.layers.push(Box::new(layer));
     }
 
-    fn on_update(layers: &mut Vec<Box<dyn Layer>>) {
-        for layer in layers.iter_mut() {
-            layer.on_update();
+
+    //TODO: find out adequate solution
+    fn map_event<'a, 'b>(src: Event<'a, ()>) -> Option<Event<'b, ()>> {
+        match src {
+            Event::WindowEvent {
+                window_id,
+                event,
+                ..
+            } => {
+                match event {
+                    WindowEvent::Resized(_) => Engine::map_window_event(window_id, event),
+                    WindowEvent::KeyboardInput { .. } => Engine::map_window_event(window_id, event),
+                    _ => None
+                }
+            },
+            Event::DeviceEvent {
+                device_id,
+                event
+            } => {
+                match event {
+//                    DeviceEvent::MouseMotion { .. } => Engine::map_device_event(device_id, event),
+                    _ => None
+                }
+            }
+            _ => None
         }
+    }
+
+
+    fn map_window_event<'a, 'b>(window_id: WindowId, event: WindowEvent) -> Option<Event<'b, ()>> {
+        Some(Event::WindowEvent {
+            window_id,
+            event: event.to_static().unwrap(),
+        })
+    }
+
+    fn map_device_event<'a, 'b>(device_id: DeviceId, event: DeviceEvent) -> Option<Event<'b, ()>> {
+        Some(Event::DeviceEvent {
+            device_id,
+            event: event.clone(),
+        })
+    }
+
+    fn on_event<'a>(vec: &mut Vec<Event<'a, ()>>, event: Event<'a, ()>) {
+        vec.push(event);
     }
 }
 
 pub trait Layer {
-    fn on_update(&mut self);
+    fn on_update(&mut self, events: &Vec<Event<()>>, elapsed: Duration);
 }
 
 impl<F> Layer for F
 where
-    F: FnMut(),
+    F: FnMut(&Vec<Event<()>>, Duration),
 {
-    fn on_update(&mut self) {
-        self()
+    fn on_update(&mut self, events: &Vec<Event<()>>, elapsed: Duration) {
+        self(events, elapsed)
     }
 }
