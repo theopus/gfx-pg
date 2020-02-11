@@ -35,6 +35,8 @@ impl Engine {
         let mut layers = self.layers;
         let mut renderer = self.renderer;
 
+//        let mut events = Vec::with_capacity(300);
+
         info!("Start!");
         events_loop.run(move |event, _, control_flow| {
             //Always poll
@@ -48,6 +50,10 @@ impl Engine {
                     info!("The close button was pressed; stopping");
                     *control_flow = ControlFlow::Exit
                 }
+                Event::LoopDestroyed => {
+                    info!("On close handle")
+                    /*On close*/
+                }
                 Event::MainEventsCleared => {
                     Self::on_update(&mut layers);
                     // Queue a RedrawRequested event.
@@ -57,9 +63,18 @@ impl Engine {
                     /*Render*/
                     renderer.render();
                 }
-                Event::LoopDestroyed => {
-                    info!("On close handle")
-                    /*On close*/
+                Event::WindowEvent {
+                     event: WindowEvent::Resized(phys_size),
+                    ..
+                } => {
+                    renderer._cam.update(&event);
+                    renderer.reset_swapchain(phys_size);
+                }
+                Event::WindowEvent {
+                    ..
+                } => {
+                    /* All other events */
+                    renderer._cam.update(&event);
                 }
                 _ => (),
             }

@@ -47,6 +47,9 @@ impl<B: Backend> ApiWrapper<B> {
     pub fn present_buffer(&mut self, present: usize) -> Result<(), &str> {
         self.swapchain.present_buffer(present)
     }
+    pub fn reset_swapchain(&mut self) -> Result<(), &str> {
+        self.swapchain.reset_inner(&mut self.hal_state)
+    }
 
     pub fn new(window: &Window, instance: B::Instance, surface: B::Surface) -> Result<Self, &str> {
         let (mut hal_state, mut queue_group) = HalStateV2::new(window, instance, surface)?;

@@ -12,6 +12,7 @@ use hal::{
 };
 #[allow(unused_imports)]
 use log::{debug, error, info, trace, warn};
+use winit::dpi::PhysicalSize;
 
 use crate::assets::{AssetsLoader, AssetsStorage, MeshPtr};
 use crate::graphics::api::HalState;
@@ -28,9 +29,11 @@ pub struct Renderer {
     api: ApiWrapper<back::Backend>,
     storage: AssetsStorage,
     loader: AssetsLoader,
-    _cam: Camera,
+    pub(crate)  _cam: Camera,
     cube_mesh_ptr: MeshPtr,
     tetra_mesh_ptr: MeshPtr,
+
+    resize_flag: Option<PhysicalSize<u32>>
 
 }
 
@@ -55,13 +58,30 @@ impl Renderer {
             loader,
             _cam: Default::default(),
             cube_mesh_ptr: cube_mesh_ptr,
-            tetra_mesh_ptr: tetra_mesh_ptr
+            tetra_mesh_ptr: tetra_mesh_ptr,
+            resize_flag: None
         })
     }
 
+    pub fn reset_swapchain(&mut self, size: PhysicalSize<u32>) {
+        self.resize_flag = Some(size)
+    }
+
     pub fn render(&mut self) {
+        match self.resize_flag {
+            None => (),
+            Some(size) => {
+                info!("Req size: {:?}", size);
+                self.api.reset_swapchain()
+                    .expect("cannot recreate swapchain");
+                self.resize_flag = None;
+            },
+        };
+
         let ex = self.api.swapchain.current_extent();
-        let frame = {
+        let next_frame = self.api.next_frame();
+        match next_frame {
+            Ok(fr) => {
             let (
                 frame,
                 buffer,
@@ -69,7 +89,7 @@ impl Renderer {
                 render_pass,
                 storage,
                 pipeline
-            ) = self.api.next_frame().expect("err");
+            ) = fr;
             //lmao dude move this outta my eyes
             unsafe {
                 const CLEAR: [ClearValue; 2] = [
@@ -145,11 +165,13 @@ impl Renderer {
                 buffer.end_render_pass();
                 buffer.finish();
             }
-
-            frame
+                self.api.present_buffer(frame).expect("");
+            }
+            Err(e) => {
+                error!("{:?}", e);
+                self.resize_flag = Some(PhysicalSize { width: 100, height: 100 });
+            }
         };
-
-        self.api.present_buffer(frame).expect("");
     }
 }
 

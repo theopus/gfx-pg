@@ -193,16 +193,17 @@ impl<B: Backend> PipelineV0<B> {
                 }],
             }
         };
+//        let baked_states = BakedStates {
+//            viewport: Some(Viewport {
+//                rect: extent.to_extent().rect(),
+//                depth: (0.0..1.0),
+//            }),
+//            scissor: Some(extent.to_extent().rect()),
+//            blend_color: None,
+//            depth_bounds: None,
+//        };
 
-        let baked_states = BakedStates {
-            viewport: Some(Viewport {
-                rect: extent.to_extent().rect(),
-                depth: (0.0..1.0),
-            }),
-            scissor: Some(extent.to_extent().rect()),
-            blend_color: None,
-            depth_bounds: None,
-        };
+        let baked_states = Default::default();
 
 //        let descriptor_set_layouts: Vec<<B as Backend>::DescriptorSetLayout> = vec![unsafe {
 //            device

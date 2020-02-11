@@ -58,6 +58,7 @@ impl AssetsStorage {
             {
                 let mesh_len = flatten_mesh_vec.len() * size_of::<f32>();
                 let bundle = &wrapper.storage.mesh_bundle;
+                //hardcoded for vertex 8 (3 + 2 + 3)
                 let offset = (self.mesh_offset * size_of::<f32>() as i32 * 8);
                 let align = offset % 64;
                 let range = (offset - align) as u64..bundle.requirements().size;

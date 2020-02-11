@@ -4,29 +4,29 @@ use std::mem::ManuallyDrop;
 use arrayvec::ArrayVec;
 use hal::{
     adapter::{Adapter, Gpu, PhysicalDevice},
+    Backend,
     buffer::*,
     command,
-    command::CommandBuffer,
     command::*,
+    command::CommandBuffer,
     device::Device,
     format::{ChannelType, Swizzle},
     image::{Extent, SubresourceRange, ViewKind},
+    IndexType,
+    Instance,
+    Limits,
     memory::*,
+    MemoryTypeId,
     pass::Subpass,
     pool::CommandPool,
-    pso::*,
-    queue::QueueType::Graphics,
-    queue::*,
-    window::Surface,
-    window::*,
-    Backend, IndexType, Instance, Limits, MemoryTypeId,
+    pso::*, queue::*, queue::QueueType::Graphics, window::*, window::Surface,
 };
+use hal::pass::{SubpassDependency, SubpassRef};
 #[allow(unused_imports)]
 use log::{debug, error, info, trace, warn};
 
 use crate::graphics::api::DepthImage;
 use crate::graphics::state::HalStateV2;
-use hal::pass::{SubpassDependency, SubpassRef};
 
 pub trait DeviceDrop<B: Backend> {
     unsafe fn manually_drop(&mut self, device: &B::Device);
@@ -99,10 +99,27 @@ impl<B: Backend> DeviceDrop<B> for BaseSwapchain<B> {
 }
 
 impl<B: Backend> BaseSwapchain<B> {
+    fn pop_old_swapchain(&mut self, device: &<B as Backend>::Device) -> B::Swapchain {
+        unsafe {
+            for fb in self.framebuffers.drain(..) {
+                device.destroy_framebuffer(fb);
+            }
+            for iv in self.image_views.drain(..) {
+                device.destroy_image_view(iv);
+            }
+            for di in self.depth_images.drain(..) {
+                di.manually_drop(device);
+            }
+        }
+        use std::ptr::read;
+        unsafe { ManuallyDrop::into_inner(read(&mut self.swapchain)) }
+    }
+
     fn new(
         state: &mut HalStateV2<B>,
         render_pass: &B::RenderPass,
         config: SwapchainConfig,
+        old_chain: Option<B::Swapchain>
     ) -> Result<Self, &'static str> {
         let (swapchain, extent, backbuffer, config) = {
             let SurfaceCapabilities { current_extent, .. } =
@@ -116,15 +133,25 @@ impl<B: Backend> BaseSwapchain<B> {
             };
             let swapchain_config = SwapchainConfig { extent, ..config };
             info!("Swapchain config: {:?}", swapchain_config);
-            let (swapchain, backbuffer) = unsafe {
-                state
-                    .device
-                    .create_swapchain(&mut state._surface, swapchain_config, None)
-                    .map_err(|_| "Failed to create the swapchain!")?
+            let (swapchain, backbuffer) = if let Some(old) = old_chain {
+                unsafe {
+                    info!("Recreating swapchain");
+                    state
+                        .device
+                        .create_swapchain(&mut state._surface, swapchain_config, Some(old))
+                        .map_err(|_| "Failed to create the swapchain!")?
+                }
+            } else {
+                unsafe {
+                    state
+                        .device
+                        .create_swapchain(&mut state._surface, swapchain_config, None)
+                        .map_err(|_| "Failed to create the swapchain!")?
+                }
             };
             (swapchain, extent, backbuffer, config)
         };
-
+        dbg!();
         let (image_views, depth_images, framebuffers) = {
             let image_views: Vec<<B as Backend>::ImageView> = {
                 backbuffer
@@ -147,7 +174,6 @@ impl<B: Backend> BaseSwapchain<B> {
                     })
                     .collect::<Result<Vec<_>, &str>>()?
             };
-
             let depth_images = image_views
                 .iter()
                 .map(|_| DepthImage::new(&state._adapter, &state.device, extent))
@@ -192,9 +218,19 @@ impl<B: Backend> BaseSwapchain<B> {
 impl<B: Backend> CommonSwapchain<B> {
     pub fn reset_inner(&mut self, state: &mut HalStateV2<B>) -> Result<(), &'static str> {
         unsafe {
-            self.base.manually_drop(&state.device);
-            let base = BaseSwapchain::new(state, &self.render_pass, self.swapchain_config.clone())?;
-        }
+            for fence in self.img_fences.iter() {
+                unsafe {
+                    state.device
+                        .wait_for_fence(fence, core::u64::MAX)
+                        .map_err(|_| "Failed to wait on the fence!")?;
+                };
+            }
+
+            let mut swapchain = &mut self.base;
+            let old = swapchain.pop_old_swapchain(&state.device);
+            self.base = BaseSwapchain::new(state, &self.render_pass, self.swapchain_config.clone(), Some(old))?;
+            info!("New extent: {:?}", self.base.extent)
+        };
         Ok(())
     }
 
@@ -368,7 +404,7 @@ impl<B: Backend> CommonSwapchain<B> {
 
         let render_pass = Self::create_render_pass(&state.device, swapchain_config.format)?;
 
-        let base = BaseSwapchain::new(state, &render_pass, swapchain_config.clone())?;
+        let base = BaseSwapchain::new(state, &render_pass, swapchain_config.clone(), None)?;
         let (image_available_semaphores, render_finished_semaphores, swapchain_img_fences) = {
             let mut image_available_semaphores: Vec<<B as Backend>::Semaphore> = vec![];
             let mut render_finished_semaphores: Vec<<B as Backend>::Semaphore> = vec![];
@@ -451,7 +487,10 @@ impl<B: Backend> CommonSwapchain<B> {
                 .base
                 .swapchain
                 .acquire_image(core::u64::MAX, Some(image_available), None)
-                .map_err(|_| "Couldn't acquire an image from the swapchain!")?;
+                .map_err(|e| {
+                    error!("{:?}", e);
+                    "Couldn't acquire an image from the swapchain!"
+                })?;
             let a = image_index.0.clone();
             (image_index, a as usize)
         };

@@ -2,7 +2,6 @@ use std::mem::size_of;
 
 use glm::{Mat4, Vec3};
 use nalgebra::Matrix4;
-
 use winit::event::{ElementState, Event, KeyboardInput, VirtualKeyCode, WindowEvent};
 
 pub type Vertex2D = [f32; 2];
@@ -67,6 +66,12 @@ impl Camera {
         const MOVE_DELTA: f32 = 0.1;
 
         match e {
+            Event::WindowEvent {
+                event: WindowEvent::Resized(z),
+                ..
+            } => {
+                self.projection = glm::perspective((z.width as f32) / (z.height as f32), glm::radians(&glm::vec1(45.)).x, 0.1, 1000.)
+            }
             Event::WindowEvent {
                 event:
                     WindowEvent::KeyboardInput {
