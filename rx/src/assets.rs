@@ -58,25 +58,28 @@ impl AssetsStorage {
             {
                 let mesh_len = flatten_mesh_vec.len() * size_of::<f32>();
                 let bundle = &wrapper.storage.mesh_bundle;
-                let range = 0..bundle.requirements().size;
+                let offset = (self.mesh_offset * size_of::<f32>() as i32 * 8);
+                let align = offset % 64;
+                let range = (offset - align) as u64..bundle.requirements().size;
                 let mesh_ptr = bundle.map_mem_range(device, range.clone())?;
                 ptr::copy(
                     flatten_mesh.as_ptr() as *const u8,
-                    mesh_ptr,
+                    mesh_ptr.offset(align as isize),
                     mesh_len,
                 );
                 bundle.flush_mem_range(device, range)?;
                 bundle.unmap(device)?;
             }
             {
-                info!("{:?}", indices);
                 let idx_len = indices.len() * size_of::<u32>();
                 let bundle = &wrapper.storage.idx_bundle;
-                let range = 0..bundle.requirements().size;
+                let offset = (self.idx_offset * size_of::<u32>() as u32);
+                let align = offset % 64;
+                let range = (offset - align) as u64..bundle.requirements().size;
                 let idx_ptr = bundle.map_mem_range(device, range.clone())?;
                 ptr::copy(
                     indices.as_slice().as_ptr() as *const u8,
-                    idx_ptr,
+                    idx_ptr.offset(align as isize),
                     idx_len,
                 );
                 bundle.flush_mem_range(device, range)?;
@@ -89,9 +92,19 @@ impl AssetsStorage {
             };
             self.mesh_offset += (positions.len() / 3) as i32;
             self.idx_offset += indices.len() as u32;
+            info!("mesh_offset{:?}", self.mesh_offset);
+            info!("idx_offset{:?}", self.idx_offset);
             Ok(mesh_ptr)
         }
     }
+}
+
+fn align_to(value: u32, alignment: u32) -> u32 {
+    let diff = value % alignment;
+    if diff == 0 {
+        return value;
+    }
+    return value - diff + alignment
 }
 
 pub struct AssetsLoader {

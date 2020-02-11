@@ -36,6 +36,7 @@ impl<B: Backend> MemoryManager<B> {
     pub unsafe fn new(state: &HalStateV2<B>) -> Result<Self, &'static str> {
         let mem_props = state._adapter.physical_device.memory_properties();
 
+        info!("Limits: {:?}", state._adapter.physical_device.limits());
         let mesh_storage = BufBundle::new(
             state.device_ref(),
             &mem_props,

@@ -30,7 +30,7 @@ pub struct Renderer {
     loader: AssetsLoader,
     _cam: Camera,
     cube_mesh_ptr: MeshPtr,
-//    tetra_mesh_ptr: MeshPtr,
+    tetra_mesh_ptr: MeshPtr,
 
 }
 
@@ -41,11 +41,13 @@ impl Renderer {
         let loader = AssetsLoader::new("/home/otkachov/projects/cg/gfx-pg/assets")?;
         let mut storage = AssetsStorage::new()?;
 
-        let cube_mesh = loader.load_obj("tetrahedron")?;
-        let cube_mesh_ptr = storage.load_mesh(&api, cube_mesh)?;
+
 //
-//        let tetra_mesh = loader.load_obj("tetrahedron")?;
-//        let tetra_mesh_ptr = storage.load_mesh(&api, tetra_mesh)?;
+        let tetra_mesh = loader.load_obj("tetrahedron")?;
+        let tetra_mesh_ptr = storage.load_mesh(&api, tetra_mesh)?;
+
+        let cube_mesh = loader.load_obj("cube")?;
+        let cube_mesh_ptr = storage.load_mesh(&api, cube_mesh)?;
 
         Ok(Self {
             api,
@@ -53,7 +55,7 @@ impl Renderer {
             loader,
             _cam: Default::default(),
             cube_mesh_ptr: cube_mesh_ptr,
-//            tetra_mesh_ptr: tetra_mesh_ptr
+            tetra_mesh_ptr: tetra_mesh_ptr
         })
     }
 
