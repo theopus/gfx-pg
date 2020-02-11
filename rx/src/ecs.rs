@@ -1,21 +1,20 @@
 use std::time::Duration;
 
+#[allow(unused_imports)]
+use log::{debug, error, info, trace, warn};
 use specs::{Dispatcher, World, WorldExt};
 use winit::event::Event;
 
 use crate::run::Layer;
-#[allow(unused_imports)]
-use log::{debug, error, info, trace, warn};
 
 pub struct EcsLayer<'a> {
     world: specs::World,
     dispatcher: specs::Dispatcher<'a, 'a>,
-    lag: Duration,
-    //TMP
-    acum: u32
+    lag: Duration
 }
 
-const DURATION_PER_UPD: Duration = Duration::from_nanos(16600000);
+const UPD_60_PER_SEC_NANOS: u64 = 16600000;
+const DURATION_PER_UPD: Duration = Duration::from_nanos(UPD_60_PER_SEC_NANOS);
 
 impl<'a> Layer for EcsLayer<'a> {
     fn on_update(&mut self, events: &Vec<Event<()>>, elapsed: Duration) {
@@ -23,12 +22,6 @@ impl<'a> Layer for EcsLayer<'a> {
         while self.lag >= DURATION_PER_UPD {
             self.dispatcher.dispatch(&self.world);
             self.lag -= DURATION_PER_UPD;
-            //TMP
-            self.acum += 1;
-            if self.acum >= 60 {
-                info!("60 upds");
-                self.acum = 0;
-            }
         }
     }
 }
@@ -58,8 +51,7 @@ impl<'a> EcsLayer<'a> {
         Self {
             world,
             dispatcher,
-            lag: Duration::new(0, 0),
-            acum: 0,
+            lag: Duration::new(0, 0)
         }
     }
 }

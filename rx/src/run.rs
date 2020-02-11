@@ -1,4 +1,4 @@
-use std::time::{Instant, Duration};
+use std::time::{Duration, Instant};
 
 #[allow(unused_imports)]
 use log::{debug, error, info, trace, warn};
@@ -35,6 +35,7 @@ impl Engine {
             events_loop,
             window,
         } = self.winit_state;
+
 
         let mut layers = self.layers;
         let mut renderer = self.renderer;
@@ -100,10 +101,7 @@ impl Engine {
         }
     }
 
-    pub fn push_layer<L>(&mut self, layer: L)
-    where
-        L: Layer + 'static,
-    {
+    pub fn push_layer<L>(&mut self, layer: L) where L: Layer + 'static {
         self.layers.push(Box::new(layer));
     }
 
