@@ -32,7 +32,7 @@ fn main() {
     let mut eng = rx::run::Engine::default();
 
     let render_sys = systems::RenderSubmitSystem::new(eng.renderer().queue());
-    let input_sys = systems::InputTestSystem;
+    let input_sys = systems::InputTestSystem { should_affect: false };
     let transform_sys = systems::TransformationSystem;
 
     let mut ecs_layer = rx::ecs::layer::EcsLayer::new(move |mut world: World, mut dispatcher: DispatcherBuilder<'static, 'static>| {

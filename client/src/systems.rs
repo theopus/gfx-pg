@@ -8,27 +8,56 @@ use rx::events::MyEvent;
 use rx::glm;
 use rx::render::DrawCmd;
 use rx::specs::{Join, Read, ReadStorage, System, WriteStorage};
+use rx::winit::event::{ElementState, KeyboardInput, VirtualKeyCode};
 
-pub struct InputTestSystem;
+pub struct InputTestSystem {
+    pub should_affect: bool
+}
+
 
 impl<'a> System<'a> for InputTestSystem {
     type SystemData = (
         Read<'a, WinitEvents>,
+        Read<'a, ActiveCamera>,
+        WriteStorage<'a, TargetCamera>,
     );
 
     fn run(&mut self, data: Self::SystemData) {
-        let mut events = data.0;
+        let (events, active, mut camera) = data;
         let events = &events.0;
-        
-        for event in events {
+        let cam = camera.get_mut(active.0.unwrap()).unwrap();
 
+        let mut accum_delta = (0.0, 0.0);
+        for event in events {
             match event {
                 MyEvent::MouseMotion {
                     delta
-                } => info!("{:?}", delta),
+                } => {
+                    if self.-should_affect {
+                        accum_delta.0 += delta.0;
+                        accum_delta.1 += delta.1;
+                    }
+                },
+                MyEvent::KeyboardInput {
+                    input: KeyboardInput {
+                        state,
+                        virtual_keycode: Some(VirtualKeyCode::Tab),
+                        ..
+                    },
+                    ..
+                } => match state {
+                    ElementState::Pressed => self.should_affect = true,
+                    ElementState::Released => self.should_affect = false,
+                },
                 _ => ()
             };
         }
+
+        cam.pitch += accum_delta.1 as f32;
+        if accum_delta.1 != 0.0 {
+            info!("cam pitch {:?}",cam.pitch)
+        }
+
     }
 }
 

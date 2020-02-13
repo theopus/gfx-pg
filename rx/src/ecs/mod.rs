@@ -6,9 +6,9 @@ use glm::{
 #[allow(unused_imports)]
 use log::{debug, error, info, trace, warn};
 use specs::{Component, Entity, VecStorage};
+use winit::event::Event;
 
 use crate::assets::MeshPtr;
-use winit::event::Event;
 use crate::events::MyEvent;
 
 pub mod layer;
@@ -89,7 +89,7 @@ pub struct TargetCamera {
     //angle around y
     yaw: f32,
     //angle around x
-    pitch: f32,
+    pub pitch: f32,
 }
 
 impl Default for TargetCamera {
