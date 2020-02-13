@@ -1,5 +1,6 @@
 use std::hash::Hasher;
 use std::ops::Deref;
+use std::sync::mpsc::{channel, Receiver, Sender};
 
 use arrayvec::ArrayVec;
 use back;
@@ -23,7 +24,7 @@ use crate::hal::buffer::IndexBufferView;
 use crate::hal::IndexType;
 use crate::utils::{Camera, cast_slice};
 
-pub type DrawCmd = (u32, glm::Mat4);
+pub type DrawCmd = (MeshPtr, glm::Mat4);
 
 pub struct Renderer {
     api: ApiWrapper<back::Backend>,
@@ -32,9 +33,9 @@ pub struct Renderer {
     pub(crate)  _cam: Camera,
     cube_mesh_ptr: MeshPtr,
     tetra_mesh_ptr: MeshPtr,
-
-    resize_flag: Option<PhysicalSize<u32>>
-
+    resize_flag: Option<PhysicalSize<u32>>,
+    sender: Sender<DrawCmd>,
+    receiver: Receiver<DrawCmd>,
 }
 
 impl Renderer {
@@ -43,7 +44,7 @@ impl Renderer {
 
         let loader = AssetsLoader::new("/home/otkachov/projects/cg/gfx-pg/assets")?;
         let mut storage = AssetsStorage::new()?;
-
+        let (send, recv) = channel();
 
 //
         let tetra_mesh = loader.load_obj("tetrahedron")?;
@@ -59,12 +60,18 @@ impl Renderer {
             _cam: Default::default(),
             cube_mesh_ptr: cube_mesh_ptr,
             tetra_mesh_ptr: tetra_mesh_ptr,
-            resize_flag: None
+            resize_flag: None,
+            sender: send,
+            receiver: recv
         })
     }
 
     pub fn reset_swapchain(&mut self, size: PhysicalSize<u32>) {
         self.resize_flag = Some(size)
+    }
+
+    pub fn queue(&self) -> Sender<DrawCmd> {
+        self.sender.clone()
     }
 
     pub fn render(&mut self) {

@@ -9,6 +9,7 @@ use winit::window::{Window, WindowId};
 use crate::glm::e;
 use crate::render::Renderer;
 use crate::window::WinitState;
+use crate::events::{map_event, MyEvent};
 
 pub struct Engine {
     winit_state: WinitState,
@@ -30,6 +31,13 @@ impl Default for Engine {
 }
 
 impl Engine {
+    pub fn renderer(&self) -> &Renderer {
+        &self.renderer
+    }
+    pub fn renderer_mut(&mut self) -> &mut Renderer {
+        &mut self.renderer
+    }
+
     pub fn run(mut self) {
         let WinitState {
             events_loop,
@@ -39,7 +47,7 @@ impl Engine {
 
         let mut layers = self.layers;
         let mut renderer = self.renderer;
-        let mut events = Vec::with_capacity(300);
+        let mut events: Vec<MyEvent> = Vec::new();
         let mut last = Instant::now();
 
         info!("Start!");
@@ -78,13 +86,13 @@ impl Engine {
                     renderer._cam.update(&o_event);
                     renderer.reset_swapchain(phys_size);
 
-                    let owned = Self::map_event(o_event);
+                    let owned = map_event(o_event);
                     if let Some(e) = owned {
                         Self::on_event(&mut events, e);
                     }
                 }
                 _ => {
-                    let owned = Self::map_event(o_event);
+                    let owned = map_event(o_event);
                     if let Some(e) = owned {
                         Self::on_event(&mut events, e);
                     }
@@ -95,73 +103,31 @@ impl Engine {
     }
 
 
-    fn on_update(layers: &mut Vec<Box<dyn Layer>>, events: &Vec<Event<()>>, elapsed: Duration) {
+    fn on_update(layers: &mut Vec<Box<dyn Layer>>, events: &mut Vec<MyEvent>, elapsed: Duration) {
         for layer in layers.iter_mut() {
             layer.on_update(events, elapsed);
         }
+        events.clear()
     }
 
     pub fn push_layer<L>(&mut self, layer: L) where L: Layer + 'static {
         self.layers.push(Box::new(layer));
     }
 
-
-    //TODO: find out adequate solution
-    fn map_event<'a, 'b>(src: Event<'a, ()>) -> Option<Event<'b, ()>> {
-        match src {
-            Event::WindowEvent {
-                window_id,
-                event,
-                ..
-            } => {
-                match event {
-                    WindowEvent::Resized(_) => Engine::map_window_event(window_id, event),
-                    WindowEvent::KeyboardInput { .. } => Engine::map_window_event(window_id, event),
-                    _ => None
-                }
-            },
-            Event::DeviceEvent {
-                device_id,
-                event
-            } => {
-                match event {
-//                    DeviceEvent::MouseMotion { .. } => Engine::map_device_event(device_id, event),
-                    _ => None
-                }
-            }
-            _ => None
-        }
-    }
-
-
-    fn map_window_event<'a, 'b>(window_id: WindowId, event: WindowEvent) -> Option<Event<'b, ()>> {
-        Some(Event::WindowEvent {
-            window_id,
-            event: event.to_static().unwrap(),
-        })
-    }
-
-    fn map_device_event<'a, 'b>(device_id: DeviceId, event: DeviceEvent) -> Option<Event<'b, ()>> {
-        Some(Event::DeviceEvent {
-            device_id,
-            event: event.clone(),
-        })
-    }
-
-    fn on_event<'a>(vec: &mut Vec<Event<'a, ()>>, event: Event<'a, ()>) {
+    fn on_event(vec: &mut Vec<MyEvent>, event: MyEvent) {
         vec.push(event);
     }
 }
 
 pub trait Layer {
-    fn on_update(&mut self, events: &Vec<Event<()>>, elapsed: Duration);
+    fn on_update(&mut self, events: &Vec<MyEvent>, elapsed: Duration);
 }
 
 impl<F> Layer for F
 where
-    F: FnMut(&Vec<Event<()>>, Duration),
+    F: FnMut(&Vec<MyEvent>, Duration),
 {
-    fn on_update(&mut self, events: &Vec<Event<()>>, elapsed: Duration) {
+    fn on_update(&mut self, events: &Vec<MyEvent>, elapsed: Duration) {
         self(events, elapsed)
     }
 }

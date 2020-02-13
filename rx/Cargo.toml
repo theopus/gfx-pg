@@ -16,7 +16,7 @@ image = "0.22.4"
 tobj = "0.1.8"
 nalgebra = "0.18.0"
 nalgebra-glm = "0.4.0"
-specs = { version = "0.15.0" }
+specs = { version = "0.15.0", features = ["specs-derive"] }
 specs-derive = "0.4.0"
 
 [dependencies.gfx-backend-vulkan]

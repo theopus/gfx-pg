@@ -9,7 +9,6 @@ pub extern crate gfx_backend_vulkan as back;
 pub extern crate gfx_hal as hal;
 pub extern crate nalgebra_glm as glm;
 pub extern crate specs;
-pub extern crate specs_derive;
 pub extern crate winit;
 
 pub mod window;
@@ -20,4 +19,5 @@ pub mod run;
 pub mod ecs;
 pub mod render;
 pub mod assets;
+pub mod events;
 
