@@ -6,10 +6,12 @@ use winit::event::{DeviceEvent, DeviceId, Event, WindowEvent};
 use winit::event_loop::{ControlFlow, EventLoop, EventLoopWindowTarget};
 use winit::window::{Window, WindowId};
 
+use crate::assets::{AssetsLoader, AssetsStorage};
+use crate::events::{map_event, MyEvent};
 use crate::glm::e;
 use crate::render::Renderer;
 use crate::window::WinitState;
-use crate::events::{map_event, MyEvent};
+use crate::graphics::wrapper::ApiWrapper;
 
 pub struct Engine {
     winit_state: WinitState,
@@ -36,6 +38,9 @@ impl Engine {
     }
     pub fn renderer_mut(&mut self) -> &mut Renderer {
         &mut self.renderer
+    }
+    pub fn loader(&mut self) -> (&mut ApiWrapper<back::Backend>, &mut AssetsLoader, &mut AssetsStorage) {
+        (&mut self.renderer.api, &mut self.renderer.loader, &mut self.renderer.storage)
     }
 
     pub fn run(mut self) {

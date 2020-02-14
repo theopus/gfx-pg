@@ -8,10 +8,12 @@ use winit::event::Event;
 use crate::ecs::WinitEvents;
 use crate::events::MyEvent;
 use crate::run::Layer;
+use std::convert::identity;
 
 pub struct EcsLayer<'a> {
     world: specs::World,
-    dispatcher: specs::Dispatcher<'a, 'a>,
+    rated_dispatcher: specs::Dispatcher<'a, 'a>,
+    constant_dispatcher: specs::Dispatcher<'a, 'a>,
     lag: Duration
 }
 
@@ -29,29 +31,30 @@ impl<'a> Layer for EcsLayer<'a> {
         }
 
         while self.lag >= DURATION_PER_UPD {
-            self.dispatcher.dispatch(&self.world);
-            {
-                let mut events_resource = self.world.write_resource::<WinitEvents>();
-                events_resource.0.clear();
-            }
+            self.rated_dispatcher.dispatch(&self.world);
+            let mut events_resource = self.world.write_resource::<WinitEvents>();
+            events_resource.0.clear();
             self.lag -= DURATION_PER_UPD;
         }
+        self.constant_dispatcher.dispatch(&self.world)
     }
 }
 
+
+pub type EcsInitTuple<'a> = (World, DispatcherBuilder<'a, 'a>, DispatcherBuilder<'a, 'a>);
+
 pub trait EcsInit<'a> {
-    fn init(mut self, world: World, dispatcher: DispatcherBuilder<'a, 'a>) -> (World, DispatcherBuilder<'a, 'a>);
+    fn init(mut self, tuple: EcsInitTuple<'a>) -> EcsInitTuple<'a>;
 }
-//lmao bruh
-impl<'a, F> EcsInit<'a> for F where F: FnOnce(World, DispatcherBuilder<'a, 'a>) -> (World, DispatcherBuilder<'a, 'a>) {
-    fn init(mut self, world: World, dispatcher: DispatcherBuilder<'a, 'a>) -> (World, DispatcherBuilder<'a, 'a>) {
-        self(world, dispatcher)
+impl<'a, F> EcsInit<'a> for F where F: FnOnce(EcsInitTuple<'a>) -> EcsInitTuple<'a> {
+    fn init(mut self, tuple: EcsInitTuple<'a>) -> EcsInitTuple<'a> {
+        self(tuple)
     }
 }
 
 impl<'a> Default for EcsLayer<'a> {
     fn default() -> Self {
-        EcsLayer::new(|w, d| (w, d))
+        EcsLayer::new(identity)
     }
 }
 
@@ -59,11 +62,13 @@ impl<'a> Default for EcsLayer<'a> {
 impl<'a> EcsLayer<'a> {
     pub fn new<I>(mut i: I) -> Self where I: EcsInit<'a> {
         let mut world: specs::World = specs::WorldExt::new();
-        let mut dispatcher = specs::DispatcherBuilder::new();
-        let (world, dispatcher) = i.init(world, dispatcher);
+        let mut rated_dispatcher = specs::DispatcherBuilder::new();
+        let mut constant_dispatcher = specs::DispatcherBuilder::new();
+        let (world, rated_dispatcher, constant_dispatcher) = i.init((world, rated_dispatcher, constant_dispatcher));
         Self {
             world,
-            dispatcher: dispatcher.build(),
+            rated_dispatcher: rated_dispatcher.build(),
+            constant_dispatcher: constant_dispatcher.build(),
             lag: Duration::new(0, 0)
         }
     }

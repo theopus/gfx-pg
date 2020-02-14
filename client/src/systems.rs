@@ -33,7 +33,7 @@ impl<'a> System<'a> for InputTestSystem {
                 MyEvent::MouseMotion {
                     delta
                 } => {
-                    if self.-should_affect {
+                    if self.should_affect {
                         accum_delta.0 += delta.0;
                         accum_delta.1 += delta.1;
                     }
@@ -53,10 +53,8 @@ impl<'a> System<'a> for InputTestSystem {
             };
         }
 
-        cam.pitch += accum_delta.1 as f32;
-        if accum_delta.1 != 0.0 {
-            info!("cam pitch {:?}",cam.pitch)
-        }
+        cam.yaw += 0.4 * accum_delta.0 as f32;
+        cam.pitch -= 0.4 * accum_delta.1 as f32;
 
     }
 }
@@ -104,13 +102,13 @@ impl<'a> System<'a> for TransformationSystem {
             active_camera,
             camera_target,
             camera,
-            pos,
             rot,
+            pos,
             mut tsm
         ) = data;
 
         let target_pos = pos.get(camera_target.0.unwrap()).unwrap();
-        let target_rot = pos.get(camera_target.0.unwrap()).unwrap();
+        let target_rot = rot.get(camera_target.0.unwrap()).unwrap();
         let cam = camera.get(active_camera.0.unwrap()).unwrap();
 
         let vp = cam.target_at(

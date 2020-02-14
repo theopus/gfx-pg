@@ -87,7 +87,7 @@ pub struct TargetCamera {
     offset_y: f32,
     distance: f32,
     //angle around y
-    yaw: f32,
+    pub yaw: f32,
     //angle around x
     pub pitch: f32,
 }
@@ -97,10 +97,10 @@ impl Default for TargetCamera {
         let aspect_ratio = 6. / 4.;
 
         Self {
-            projection: glm::perspective(aspect_ratio, glm::radians(&glm::vec1(45.)).x, 0.1, 1000.),
-            fov: 45.,
+            projection: glm::perspective(aspect_ratio, glm::radians(&glm::vec1(60.)).x, 0.1, 1000.),
+            fov: 60.,
             offset_y: 0.,
-            distance: 20.,
+            distance: 10.,
             yaw: 0.,
             pitch: 0.,
         }
@@ -129,9 +129,9 @@ impl TargetCamera {
         );
 
         let cam_pos: Vec3 = glm::vec3(
-            x - offset_x,
-            y + vert.x + self.offset_y,
-            z - offset_z,
+            -(x - offset_x),
+            -(y + vert.x + self.offset_y),
+            -(z - offset_z),
         );
         let cam_rot: Vec3 = glm::vec3(
             self.pitch,
@@ -143,7 +143,7 @@ impl TargetCamera {
 
     pub fn get_view(pos: &Vec3, rot: &Vec3) -> Mat4 {
         let mut mtx: Mat4 = glm::identity();
-        mtx = glm::translate(&mtx, &glm::vec3(pos.x, pos.y, pos.z)); // camera translate
+         // camera translate
         //camera rot
         mtx = glm::rotate(
             &mtx,
@@ -160,6 +160,7 @@ impl TargetCamera {
             glm::radians(&glm::vec1(rot.z)).x,
             &glm::vec3(0., 0., 1.),
         );
-        glm::inverse(&mtx)
+        mtx = glm::translate(&mtx, &glm::vec3(pos.x, pos.y, pos.z));
+        mtx
     }
 }

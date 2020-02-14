@@ -8,12 +8,13 @@ use std::sync::mpsc::Sender;
 use log::{debug, error, info, trace, warn};
 
 use rx;
-use rx::ecs::layer::EcsInit;
+use rx::assets::{AssetsLoader, AssetsStorage};
+use rx::ecs::{Render, Transformation, WinitEvents};
+use rx::ecs::layer::{EcsInit, EcsInitTuple};
 use rx::render::DrawCmd;
-use rx::specs::{Dispatcher, System, World, ReadStorage, WriteStorage, DispatcherBuilder};
+use rx::specs::{Dispatcher, DispatcherBuilder, ReadStorage, System, World, WriteStorage};
 use rx::specs::Builder;
 use rx::specs::WorldExt;
-use rx::ecs::{Transformation, Render, WinitEvents};
 
 mod systems;
 
@@ -31,11 +32,17 @@ fn main() {
 
     let mut eng = rx::run::Engine::default();
 
+    let mesh_ptr = {
+        let (api, loader, storage) = eng.loader();
+        let obj = loader.load_obj("ico-sphere").expect("");
+        storage.load_mesh(api, obj).expect("")
+    };
+
     let render_sys = systems::RenderSubmitSystem::new(eng.renderer().queue());
     let input_sys = systems::InputTestSystem { should_affect: false };
     let transform_sys = systems::TransformationSystem;
 
-    let mut ecs_layer = rx::ecs::layer::EcsLayer::new(move |mut world: World, mut dispatcher: DispatcherBuilder<'static, 'static>| {
+    let mut ecs_layer = rx::ecs::layer::EcsLayer::new(move |(mut world, mut r_dispatcher, mut c_dispatcher): EcsInitTuple<'static>| {
         use rx::ecs::{
             TargetCamera,
             Position,
@@ -43,6 +50,7 @@ fn main() {
             ActiveCamera,
             CameraTarget,
         };
+
 
         world.register::<Render>();
         world.register::<Rotation>();
@@ -54,6 +62,35 @@ fn main() {
             .with(Rotation::default())
             .with(Position::default())
             .with(Transformation::default())
+            .with(Render {
+                mesh: mesh_ptr.clone()
+            })
+            .build();
+
+        let entity2 = world.create_entity()
+            .with(Rotation::default())
+            .with(Position {
+                x: -5.,
+                y: 0.,
+                z: 0.
+            })
+            .with(Transformation::default())
+            .with(Render {
+                mesh: mesh_ptr.clone()
+            })
+            .build();
+
+        let entity3 = world.create_entity()
+            .with(Rotation::default())
+            .with(Position {
+                x: 5.,
+                y: 0.,
+                z: 0.
+            })
+            .with(Transformation::default())
+            .with(Render {
+                mesh: mesh_ptr.clone()
+            })
             .build();
 
         let cam_entity = world.create_entity()
@@ -65,11 +102,12 @@ fn main() {
         world.insert(CameraTarget(Some(entity)));
         world.insert(WinitEvents::default());
 
-        dispatcher = dispatcher
+        r_dispatcher = r_dispatcher
             .with(input_sys, "in_tst_sys", &[])
-            .with(transform_sys, "tsm_sys", &[])
+            .with(transform_sys, "tsm_sys", &[]);
+        c_dispatcher = c_dispatcher
             .with_thread_local(render_sys);
-        return (world, dispatcher);
+        return (world, r_dispatcher, c_dispatcher);
     });
 
 

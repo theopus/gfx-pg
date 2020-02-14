@@ -27,12 +27,12 @@ use crate::utils::{Camera, cast_slice};
 pub type DrawCmd = (MeshPtr, glm::Mat4);
 
 pub struct Renderer {
-    api: ApiWrapper<back::Backend>,
-    storage: AssetsStorage,
-    loader: AssetsLoader,
+    pub(crate)api: ApiWrapper<back::Backend>,
+    pub(crate)storage: AssetsStorage,
+    pub(crate)loader: AssetsLoader,
     pub(crate)  _cam: Camera,
-    cube_mesh_ptr: MeshPtr,
-    tetra_mesh_ptr: MeshPtr,
+    //    cube_mesh_ptr: MeshPtr,
+//    tetra_mesh_ptr: MeshPtr,
     resize_flag: Option<PhysicalSize<u32>>,
     sender: Sender<DrawCmd>,
     receiver: Receiver<DrawCmd>,
@@ -47,19 +47,19 @@ impl Renderer {
         let (send, recv) = channel();
 
 //
-        let tetra_mesh = loader.load_obj("tetrahedron")?;
-        let tetra_mesh_ptr = storage.load_mesh(&api, tetra_mesh)?;
-
-        let cube_mesh = loader.load_obj("cube")?;
-        let cube_mesh_ptr = storage.load_mesh(&api, cube_mesh)?;
+//        let tetra_mesh = loader.load_obj("tetrahedron")?;
+//        let tetra_mesh_ptr = storage.load_mesh(&api, tetra_mesh)?;
+//
+//        let cube_mesh = loader.load_obj("cube")?;
+//        let cube_mesh_ptr = storage.load_mesh(&api, cube_mesh)?;
 
         Ok(Self {
             api,
             storage,
             loader,
             _cam: Default::default(),
-            cube_mesh_ptr: cube_mesh_ptr,
-            tetra_mesh_ptr: tetra_mesh_ptr,
+//            cube_mesh_ptr: cube_mesh_ptr,
+//            tetra_mesh_ptr: tetra_mesh_ptr,
             resize_flag: None,
             sender: send,
             receiver: recv
@@ -157,18 +157,20 @@ impl Renderer {
                     command::SubpassContents::Inline,
                 );
                 use hal::pso::ShaderStageFlags;
-                buffer.push_graphics_constants(
-                    &pipeline.pipeline_layout,
-                    ShaderStageFlags::VERTEX | ShaderStageFlags::FRAGMENT,
-                    0,
-                    cast_slice::<f32, u32>(&self._cam.view_projection().as_slice())
-                        .expect("this cast never fails for same-aligned same-size data"),
-                );
-                buffer.draw_indexed(
-                    self.cube_mesh_ptr.indices.clone(),
-                    self.cube_mesh_ptr.base_vertex,
-                    0..1,
-                );
+                for (ptr, cmd) in self.receiver.try_iter() {
+                    buffer.push_graphics_constants(
+                        &pipeline.pipeline_layout,
+                        ShaderStageFlags::VERTEX | ShaderStageFlags::FRAGMENT,
+                        0,
+                        cast_slice::<f32, u32>(&cmd.as_slice())
+                            .expect("this cast never fails for same-aligned same-size data"),
+                    );
+                    buffer.draw_indexed(
+                        ptr.indices.clone(),
+                        ptr.base_vertex,
+                        0..1,
+                    );
+                }
                 buffer.end_render_pass();
                 buffer.finish();
             }

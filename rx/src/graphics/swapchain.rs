@@ -336,8 +336,8 @@ impl<B: Backend> CommonSwapchain<B> {
                 use hal::window::PresentMode;
                 [
                     PresentMode::MAILBOX,
-                    PresentMode::IMMEDIATE,
                     PresentMode::FIFO,
+                    PresentMode::IMMEDIATE,
                     PresentMode::RELAXED,
                 ]
                 .iter()
