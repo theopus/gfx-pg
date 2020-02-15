@@ -1,18 +1,15 @@
 use core::ptr;
 use std::mem::ManuallyDrop;
 
-use arrayvec::ArrayVec;
 use hal::{
     adapter::{Gpu, PhysicalDevice},
-    queue::{QueueFamily, QueueGroup},
-    window::Surface,
-    Backend, Instance,
+    Backend,
+    Instance,
+    queue::{QueueFamily, QueueGroup}, window::Surface,
 };
 #[allow(unused_imports)]
 use log::{debug, error, info, trace, warn};
 use winit::window::Window;
-
-use crate::graphics::api::DepthImage;
 
 pub struct HalStateV2<B: Backend> {
     pub(crate) device: ManuallyDrop<B::Device>,
@@ -36,9 +33,9 @@ impl<B: Backend> HalStateV2<B> {
     }
 
     pub fn new(
-        window: &Window,
+        _window: &Window,
         instance: <B as Backend>::Instance,
-        mut surface: B::Surface,
+        surface: B::Surface,
     ) -> Result<(Self, QueueGroup<B>), &'static str> {
         let adapter = instance
             .enumerate_adapters()
@@ -51,7 +48,7 @@ impl<B: Backend> HalStateV2<B> {
             .ok_or("Couldn't find a graphical Adapter!")?;
         info!("{:?}", adapter);
         //device stuff
-        let (mut device, mut queue_group) = {
+        let (device, queue_group) = {
             let queue_family = adapter
                 .queue_families
                 .iter()

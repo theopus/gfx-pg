@@ -12,7 +12,6 @@ pub extern crate specs;
 pub extern crate winit;
 
 pub mod window;
-mod local;
 mod utils;
 mod graphics;
 pub mod run;

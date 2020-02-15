@@ -2,16 +2,14 @@ use std::time::{Duration, Instant};
 
 #[allow(unused_imports)]
 use log::{debug, error, info, trace, warn};
-use winit::event::{DeviceEvent, DeviceId, Event, WindowEvent};
-use winit::event_loop::{ControlFlow, EventLoop, EventLoopWindowTarget};
-use winit::window::{Window, WindowId};
+use winit::event::{Event, WindowEvent};
+use winit::event_loop::{ControlFlow, EventLoopWindowTarget};
 
 use crate::assets::{AssetsLoader, AssetsStorage};
 use crate::events::{map_event, MyEvent};
-use crate::glm::e;
+use crate::graphics::wrapper::ApiWrapper;
 use crate::render::Renderer;
 use crate::window::WinitState;
-use crate::graphics::wrapper::ApiWrapper;
 
 pub struct Engine {
     winit_state: WinitState,
@@ -43,7 +41,7 @@ impl Engine {
         (&mut self.renderer.api, &mut self.renderer.loader, &mut self.renderer.storage)
     }
 
-    pub fn run(mut self) {
+    pub fn run(self) {
         let WinitState {
             events_loop,
             window,
@@ -88,7 +86,6 @@ impl Engine {
                     event: WindowEvent::Resized(phys_size),
                     ..
                 } => {
-                    renderer._cam.update(&o_event);
                     renderer.reset_swapchain(phys_size);
 
                     let owned = map_event(o_event);
@@ -101,7 +98,7 @@ impl Engine {
                     if let Some(e) = owned {
                         Self::on_event(&mut events, e);
                     }
-                },
+                }
             }
         };
         events_loop.run(run_loop);
@@ -129,8 +126,8 @@ pub trait Layer {
 }
 
 impl<F> Layer for F
-where
-    F: FnMut(&Vec<MyEvent>, Duration),
+    where
+        F: FnMut(&Vec<MyEvent>, Duration),
 {
     fn on_update(&mut self, events: &Vec<MyEvent>, elapsed: Duration) {
         self(events, elapsed)

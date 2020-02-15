@@ -1,14 +1,12 @@
 use core::ptr;
 use std::collections::HashMap;
 use std::fs::File;
-use std::io::{BufReader, Error, Seek};
+use std::io::BufReader;
 use std::mem::size_of;
 use std::ops::{Deref, Range};
 use std::path::PathBuf;
 
-use hal::adapter::Adapter;
 use hal::Backend;
-use hal::device::Device;
 use image::RgbaImage;
 #[allow(unused_imports)]
 use log::{debug, error, info, trace, warn};
@@ -59,7 +57,7 @@ impl AssetsStorage {
                 let mesh_len = flatten_mesh_vec.len() * size_of::<f32>();
                 let bundle = &wrapper.storage.mesh_bundle;
                 //hardcoded for vertex 8 (3 + 2 + 3)
-                let offset = (self.mesh_offset * size_of::<f32>() as i32 * 8);
+                let offset = self.mesh_offset * size_of::<f32>() as i32 * 8;
                 let align = offset % 64;
                 let range = (offset - align) as u64..bundle.requirements().size;
                 let mesh_ptr = bundle.map_mem_range(device, range.clone())?;
@@ -74,7 +72,7 @@ impl AssetsStorage {
             {
                 let idx_len = indices.len() * size_of::<u32>();
                 let bundle = &wrapper.storage.idx_bundle;
-                let offset = (self.idx_offset * size_of::<u32>() as u32);
+                let offset = self.idx_offset * size_of::<u32>() as u32;
                 let align = offset % 64;
                 let range = (offset - align) as u64..bundle.requirements().size;
                 let idx_ptr = bundle.map_mem_range(device, range.clone())?;
@@ -100,13 +98,13 @@ impl AssetsStorage {
     }
 }
 
-fn align_to(value: u32, alignment: u32) -> u32 {
-    let diff = value % alignment;
-    if diff == 0 {
-        return value;
-    }
-    return value - diff + alignment
-}
+//fn align_to(value: u32, alignment: u32) -> u32 {
+//    let diff = value % alignment;
+//    if diff == 0 {
+//        return value;
+//    }
+//    return value - diff + alignment
+//}
 
 pub struct AssetsLoader {
     dir: PathBuf,
@@ -155,7 +153,7 @@ impl AssetsLoader {
 
     pub fn load_obj(&self, name: &'static str) -> Result<Mesh, &'static str> {
         let (mut buffer, file_name) = self.open_file(name, Self::MODEL_DIR, "obj")?;
-        let (mut models, materials) = tobj::load_obj_buf(&mut buffer, |p| -> tobj::MTLLoadResult {
+        let (mut models, _) = tobj::load_obj_buf(&mut buffer, |_| -> tobj::MTLLoadResult {
             Ok((Vec::new(), HashMap::new()))
         }).map_err(|e| {
             error!("{:?}", e);

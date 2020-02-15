@@ -1,5 +1,4 @@
 use core::iter;
-use std::borrow::Borrow;
 use std::mem::ManuallyDrop;
 use std::ops::{Deref, Range};
 
@@ -11,7 +10,6 @@ use log::{debug, error, info, trace, warn};
 
 use crate::graphics::state::HalStateV2;
 use crate::graphics::swapchain::DeviceDrop;
-use crate::graphics::wrapper::ApiWrapper;
 
 pub struct MemoryManager<B: Backend> {
     memory_properties: adapter::MemoryProperties,

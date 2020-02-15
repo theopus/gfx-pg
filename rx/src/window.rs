@@ -38,7 +38,7 @@ impl Default for WinitState {
                 height: 600,
             },
         )
-        .expect("Could not create a window!")
+            .expect("Could not create a window!")
     }
 }
 

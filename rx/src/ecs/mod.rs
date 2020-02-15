@@ -6,7 +6,6 @@ use glm::{
 #[allow(unused_imports)]
 use log::{debug, error, info, trace, warn};
 use specs::{Component, Entity, VecStorage};
-use winit::event::Event;
 
 use crate::assets::MeshPtr;
 use crate::events::MyEvent;
@@ -17,14 +16,14 @@ pub mod layer;
 #[storage(VecStorage)]
 pub struct Transformation {
     pub mvp: Mat4,
-    pub model: Mat4
+    pub model: Mat4,
 }
 
-impl Default for  Transformation {
+impl Default for Transformation {
     fn default() -> Self {
         Self {
             mvp: glm::identity(),
-            model: glm::identity()
+            model: glm::identity(),
         }
     }
 }
@@ -37,8 +36,10 @@ pub struct Render {
 
 #[derive(Default, Debug)]
 pub struct WinitEvents(pub Vec<MyEvent>);
+
 #[derive(Default)]
 pub struct CameraTarget(pub Option<Entity>);
+
 #[derive(Default)]
 pub struct ActiveCamera(pub Option<Entity>);
 
@@ -113,8 +114,8 @@ impl TargetCamera {
         self.projection = glm::perspective(aspect_ratio, glm::radians(&glm::vec1(self.fov)).x, 0.1, 1000.);
     }
 
-    pub fn target_at(&self, position: &Vec3, rotation: &Vec3) -> Mat4 {
-        let (mut x, mut y, mut z) = (position.x, position.y, position.z);
+    pub fn target_at(&self, position: &Vec3, _rotation: &Vec3) -> Mat4 {
+        let (x, y, z) = (position.x, position.y, position.z);
         let theta = radians(&glm::vec1(self.yaw));
         let pitch_rad = radians(&glm::vec1(self.pitch));
 
@@ -143,7 +144,7 @@ impl TargetCamera {
 
     pub fn get_view(pos: &Vec3, rot: &Vec3) -> Mat4 {
         let mut mtx: Mat4 = glm::identity();
-         // camera translate
+        // camera translate
         //camera rot
         mtx = glm::rotate(
             &mtx,

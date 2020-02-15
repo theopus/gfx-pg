@@ -1,18 +1,13 @@
 extern crate env_logger;
 extern crate log;
 
-use std::fs;
-use std::sync::mpsc::Sender;
 
 #[allow(unused_imports)]
 use log::{debug, error, info, trace, warn};
 
 use rx;
-use rx::assets::{AssetsLoader, AssetsStorage};
 use rx::ecs::{Render, Transformation, WinitEvents};
-use rx::ecs::layer::{EcsInit, EcsInitTuple};
-use rx::render::DrawCmd;
-use rx::specs::{Dispatcher, DispatcherBuilder, ReadStorage, System, World, WriteStorage};
+use rx::ecs::layer::{EcsInitTuple};
 use rx::specs::Builder;
 use rx::specs::WorldExt;
 
@@ -42,7 +37,7 @@ fn main() {
     let input_sys = systems::InputTestSystem { should_affect: false };
     let transform_sys = systems::TransformationSystem;
 
-    let mut ecs_layer = rx::ecs::layer::EcsLayer::new(move |(mut world, mut r_dispatcher, mut c_dispatcher): EcsInitTuple<'static>| {
+    let ecs_layer = rx::ecs::layer::EcsLayer::new(move |(mut world, mut r_dispatcher, mut c_dispatcher): EcsInitTuple<'static>| {
         use rx::ecs::{
             TargetCamera,
             Position,
@@ -67,7 +62,7 @@ fn main() {
             })
             .build();
 
-        let entity2 = world.create_entity()
+        world.create_entity()
             .with(Rotation::default())
             .with(Position {
                 x: -5.,
@@ -80,7 +75,7 @@ fn main() {
             })
             .build();
 
-        let entity3 = world.create_entity()
+        world.create_entity()
             .with(Rotation::default())
             .with(Position {
                 x: 5.,

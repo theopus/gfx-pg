@@ -1,31 +1,19 @@
-use std::hash::Hasher;
 use std::mem::ManuallyDrop;
 
 use arrayvec::ArrayVec;
 use hal::{
-    adapter::{Adapter, Gpu, PhysicalDevice},
     Backend,
-    buffer::*,
-    command,
-    command::*,
-    command::CommandBuffer,
     device::Device,
     format::{ChannelType, Swizzle},
     image::{Extent, SubresourceRange, ViewKind},
-    IndexType,
-    Instance,
-    Limits,
-    memory::*,
-    MemoryTypeId,
-    pass::Subpass,
     pool::CommandPool,
-    pso::*, queue::*, queue::QueueType::Graphics, window::*, window::Surface,
+    pso::*, queue::*, window::*, window::Surface,
 };
 use hal::pass::{SubpassDependency, SubpassRef};
 #[allow(unused_imports)]
 use log::{debug, error, info, trace, warn};
 
-use crate::graphics::api::DepthImage;
+use crate::graphics::hal_utils::DepthImage;
 use crate::graphics::state::HalStateV2;
 
 pub trait DeviceDrop<B: Backend> {
@@ -49,52 +37,48 @@ pub struct CommonSwapchain<B: Backend> {
 
 impl<B: Backend> DeviceDrop<B> for CommonSwapchain<B> {
     unsafe fn manually_drop(&mut self, device: &<B as Backend>::Device) {
-        unsafe {
-            for fence in self.img_fences.drain(..) {
-                device.destroy_fence(fence)
-            }
-            for sp in self.render_finished_semaphores.drain(..) {
-                device.destroy_semaphore(sp)
-            }
-            for sp in self.image_available_semaphores.drain(..) {
-                device.destroy_semaphore(sp)
-            }
-            for buff in self.command_buffers.drain(..) {
-                self.command_pool.free(vec![buff])
-            }
-            self.base.manually_drop(device);
-            use std::ptr::read;
-            device.destroy_command_pool(ManuallyDrop::into_inner(read(&mut self.command_pool)));
-            ManuallyDrop::drop(&mut self.queue_group);
-            device.destroy_render_pass(ManuallyDrop::into_inner(read(&mut self.render_pass)));
+        for fence in self.img_fences.drain(..) {
+            device.destroy_fence(fence)
         }
+        for sp in self.render_finished_semaphores.drain(..) {
+            device.destroy_semaphore(sp)
+        }
+        for sp in self.image_available_semaphores.drain(..) {
+            device.destroy_semaphore(sp)
+        }
+        for buff in self.command_buffers.drain(..) {
+            self.command_pool.free(vec![buff])
+        }
+        self.base.manually_drop(device);
+        use std::ptr::read;
+        device.destroy_command_pool(ManuallyDrop::into_inner(read(&mut self.command_pool)));
+        ManuallyDrop::drop(&mut self.queue_group);
+        device.destroy_render_pass(ManuallyDrop::into_inner(read(&mut self.render_pass)));
     }
 }
 
 pub struct BaseSwapchain<B: Backend> {
     img_count: usize,
     framebuffers: Vec<B::Framebuffer>,
-    image_views: Vec<(B::ImageView)>,
-    depth_images: Vec<(DepthImage<B>)>,
+    image_views: Vec<B::ImageView>,
+    depth_images: Vec<DepthImage<B>>,
     swapchain: ManuallyDrop<B::Swapchain>,
     extent: Extent2D,
 }
 
 impl<B: Backend> DeviceDrop<B> for BaseSwapchain<B> {
     unsafe fn manually_drop(&mut self, device: &<B as Backend>::Device) {
-        unsafe {
-            for fb in self.framebuffers.drain(..) {
-                device.destroy_framebuffer(fb);
-            }
-            for iv in self.image_views.drain(..) {
-                device.destroy_image_view(iv);
-            }
-            for di in self.depth_images.drain(..) {
-                di.manually_drop(device);
-            }
-            use std::ptr::read;
-            device.destroy_swapchain(ManuallyDrop::into_inner(read(&mut self.swapchain)));
+        for fb in self.framebuffers.drain(..) {
+            device.destroy_framebuffer(fb);
         }
+        for iv in self.image_views.drain(..) {
+            device.destroy_image_view(iv);
+        }
+        for di in self.depth_images.drain(..) {
+            di.manually_drop(device);
+        }
+        use std::ptr::read;
+        device.destroy_swapchain(ManuallyDrop::into_inner(read(&mut self.swapchain)));
     }
 }
 
@@ -119,7 +103,7 @@ impl<B: Backend> BaseSwapchain<B> {
         state: &mut HalStateV2<B>,
         render_pass: &B::RenderPass,
         config: SwapchainConfig,
-        old_chain: Option<B::Swapchain>
+        old_chain: Option<B::Swapchain>,
     ) -> Result<Self, &'static str> {
         let (swapchain, extent, backbuffer, config) = {
             let SurfaceCapabilities { current_extent, .. } =
@@ -217,20 +201,18 @@ impl<B: Backend> BaseSwapchain<B> {
 
 impl<B: Backend> CommonSwapchain<B> {
     pub fn reset_inner(&mut self, state: &mut HalStateV2<B>) -> Result<(), &'static str> {
-        unsafe {
-            for fence in self.img_fences.iter() {
-                unsafe {
-                    state.device
-                        .wait_for_fence(fence, core::u64::MAX)
-                        .map_err(|_| "Failed to wait on the fence!")?;
-                };
-            }
+        for fence in self.img_fences.iter() {
+            unsafe {
+                state.device
+                    .wait_for_fence(fence, core::u64::MAX)
+                    .map_err(|_| "Failed to wait on the fence!")?;
+            };
+        }
 
-            let mut swapchain = &mut self.base;
-            let old = swapchain.pop_old_swapchain(&state.device);
-            self.base = BaseSwapchain::new(state, &self.render_pass, self.swapchain_config.clone(), Some(old))?;
-            info!("New extent: {:?}", self.base.extent)
-        };
+        let swapchain = &mut self.base;
+        let old = swapchain.pop_old_swapchain(&state.device);
+        self.base = BaseSwapchain::new(state, &self.render_pass, self.swapchain_config.clone(), Some(old))?;
+        info!("New extent: {:?}", self.base.extent);
         Ok(())
     }
 
@@ -265,15 +247,16 @@ impl<B: Backend> CommonSwapchain<B> {
         };
         //pre frag stage check
         use hal::image::Access;
+        use hal::memory::Dependencies;
         let in_dependency = SubpassDependency {
             passes: SubpassRef::External..SubpassRef::Pass(0),
             stages: PipelineStage::COLOR_ATTACHMENT_OUTPUT
                 ..PipelineStage::COLOR_ATTACHMENT_OUTPUT | PipelineStage::EARLY_FRAGMENT_TESTS,
             accesses: Access::empty()
                 ..(Access::COLOR_ATTACHMENT_READ
-                    | Access::COLOR_ATTACHMENT_WRITE
-                    | Access::DEPTH_STENCIL_ATTACHMENT_READ
-                    | Access::DEPTH_STENCIL_ATTACHMENT_WRITE),
+                | Access::COLOR_ATTACHMENT_WRITE
+                | Access::DEPTH_STENCIL_ATTACHMENT_READ
+                | Access::DEPTH_STENCIL_ATTACHMENT_WRITE),
             flags: Dependencies::empty(),
         };
         let out_dependency = SubpassDependency {
@@ -333,32 +316,30 @@ impl<B: Backend> CommonSwapchain<B> {
             info!("formats {:?}", formats);
 
             let present_mode = {
-                use hal::window::PresentMode;
                 [
                     PresentMode::MAILBOX,
                     PresentMode::FIFO,
                     PresentMode::IMMEDIATE,
                     PresentMode::RELAXED,
                 ]
-                .iter()
-                .cloned()
-                .find(|pm| present_modes.contains(*pm))
-                .ok_or("No PresentMode valuesmut specified!")?
+                    .iter()
+                    .cloned()
+                    .find(|pm| present_modes.contains(*pm))
+                    .ok_or("No PresentMode valuesmut specified!")?
             };
 
             info!("Selected present mode: {:?}", present_mode);
             let composite_alpha_mode = {
-                use hal::window::CompositeAlphaMode;
                 [
                     CompositeAlphaMode::OPAQUE,
                     CompositeAlphaMode::INHERIT,
                     CompositeAlphaMode::PREMULTIPLIED,
                     CompositeAlphaMode::POSTMULTIPLIED,
                 ]
-                .iter()
-                .cloned()
-                .find(|ca| composite_alpha_modes.contains(*ca))
-                .ok_or("No CompositeAlpha values specified!")?
+                    .iter()
+                    .cloned()
+                    .find(|ca| composite_alpha_modes.contains(*ca))
+                    .ok_or("No CompositeAlpha values specified!")?
             };
 
             info!("Selected composite alpha mode: {:?}", composite_alpha_mode);
@@ -482,7 +463,7 @@ impl<B: Backend> CommonSwapchain<B> {
     > {
         let image_available = &self.image_available_semaphores[self.current_frame];
 
-        let (i_u32, i_usize) = unsafe {
+        let (_i_u32, i_usize) = unsafe {
             let image_index = self
                 .base
                 .swapchain
@@ -523,7 +504,7 @@ impl<B: Backend> CommonSwapchain<B> {
             image_available,
             hal::pso::PipelineStage::COLOR_ATTACHMENT_OUTPUT,
         )]
-        .into();
+            .into();
         let signal_semaphores: ArrayVec<[_; 1]> = [render_finished].into();
         let present_wait_semaphores: ArrayVec<[_; 1]> = [render_finished].into();
         let submission = Submission {
@@ -538,7 +519,7 @@ impl<B: Backend> CommonSwapchain<B> {
                 .swapchain
                 .present(the_command_queue, frame as u32, present_wait_semaphores)
                 .map_err(|_| "Failed to present into the swapchain!")
-        };
+        }?;
         Ok(())
     }
 }

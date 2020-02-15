@@ -1,4 +1,3 @@
-pub mod api;
 pub mod draw;
 pub mod hal_utils;
 pub mod memory;

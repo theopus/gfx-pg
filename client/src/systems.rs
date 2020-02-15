@@ -19,11 +19,17 @@ impl<'a> System<'a> for InputTestSystem {
     type SystemData = (
         Read<'a, WinitEvents>,
         Read<'a, ActiveCamera>,
+//        Write<'a, CameraTarget>,
         WriteStorage<'a, TargetCamera>,
     );
 
     fn run(&mut self, data: Self::SystemData) {
-        let (events, active, mut camera) = data;
+        let (
+            events,
+            active,
+//            mut camera_target,
+            mut camera
+        ) = data;
         let events = &events.0;
         let cam = camera.get_mut(active.0.unwrap()).unwrap();
 
@@ -37,7 +43,7 @@ impl<'a> System<'a> for InputTestSystem {
                         accum_delta.0 += delta.0;
                         accum_delta.1 += delta.1;
                     }
-                },
+                }
                 MyEvent::KeyboardInput {
                     input: KeyboardInput {
                         state,
@@ -49,13 +55,13 @@ impl<'a> System<'a> for InputTestSystem {
                     ElementState::Pressed => self.should_affect = true,
                     ElementState::Released => self.should_affect = false,
                 },
+                MyEvent::Resized(w, h) => cam.update_aspect(*w as f32 / *h as f32),
                 _ => ()
             };
         }
 
         cam.yaw += 0.4 * accum_delta.0 as f32;
         cam.pitch -= 0.4 * accum_delta.1 as f32;
-
     }
 }
 
@@ -80,7 +86,8 @@ impl<'a> System<'a> for RenderSubmitSystem {
 
     fn run(&mut self, (transformation, mut render): Self::SystemData) {
         for (transformation, render) in (&transformation, &mut render).join() {
-            self.sender.send((render.mesh.clone(), transformation.mvp));
+            self.sender.send((render.mesh.clone(), transformation.mvp))
+                .expect("not able to submit");
         }
     }
 }

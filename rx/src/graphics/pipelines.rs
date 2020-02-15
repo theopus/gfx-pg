@@ -4,11 +4,10 @@ use hal::{
     Backend,
     device::Device,
     pso::{
-        AttributeDesc, BakedStates, BlendDesc, BlendOp, BlendState, ColorBlendDesc, ColorMask,
-        Comparison, DepthStencilDesc, DepthTest, DescriptorPool, DescriptorSetLayoutBinding,
-        Element, EntryPoint, Face, Factor, FrontFace, GraphicsPipelineDesc, GraphicsShaderSet,
+        AttributeDesc, BlendDesc, BlendOp, BlendState, ColorBlendDesc, ColorMask,
+        Comparison, DepthStencilDesc, DepthTest, Element, EntryPoint, Face, Factor, FrontFace, GraphicsPipelineDesc, GraphicsShaderSet,
         InputAssemblerDesc, LogicOp, PipelineCreationFlags, Primitive, Rasterizer,
-        ShaderStageFlags, Specialization, VertexBufferDesc, Viewport,
+        ShaderStageFlags, Specialization, VertexBufferDesc,
     },
     window::Extent2D,
 };
@@ -17,11 +16,10 @@ use hal::pso::{BasePipeline, PolygonMode, VertexInputRate};
 #[allow(unused_imports)]
 use log::{debug, error, info, trace, warn};
 
-use crate::graphics::api::{FRAGMENT_SOURCE, VERTEX_SOURCE};
 use crate::graphics::swapchain::DeviceDrop;
 
 pub struct PipelineV0<B: Backend> {
-//    pub(crate)descriptor_set: ManuallyDrop<B::DescriptorSet>,
+    //    pub(crate)descriptor_set: ManuallyDrop<B::DescriptorSet>,
 //    descriptor_pool: ManuallyDrop<B::DescriptorPool>,
 //    descriptor_set_layouts: Vec<B::DescriptorSetLayout>,
     pub(crate)pipeline_layout: ManuallyDrop<B::PipelineLayout>,
@@ -30,8 +28,7 @@ pub struct PipelineV0<B: Backend> {
 
 impl<B: Backend> DeviceDrop<B> for PipelineV0<B> {
     unsafe fn manually_drop(&mut self, device: &<B as Backend>::Device) {
-        unsafe {
-            use std::ptr::read;
+        use std::ptr::read;
 //            self.descriptor_pool
 //                .free_sets(Some(ManuallyDrop::into_inner(read(
 //                    &mut self.descriptor_set,
@@ -42,19 +39,24 @@ impl<B: Backend> DeviceDrop<B> for PipelineV0<B> {
 //            for dsl in self.descriptor_set_layouts.drain(..) {
 //                device.destroy_descriptor_set_layout(dsl);
 //            }
-            device
-                .destroy_pipeline_layout(ManuallyDrop::into_inner(read(&mut self.pipeline_layout)));
-            device.destroy_graphics_pipeline(ManuallyDrop::into_inner(read(
-                &mut self.graphics_pipeline,
-            )));
-        }
+        device
+            .destroy_pipeline_layout(ManuallyDrop::into_inner(read(&mut self.pipeline_layout)));
+        device.destroy_graphics_pipeline(ManuallyDrop::into_inner(read(
+            &mut self.graphics_pipeline,
+        )));
     }
 }
+
+
+pub const VERTEX_SOURCE: &'static str = include_str!("../../../shaders/one.vert");
+
+pub const FRAGMENT_SOURCE: &'static str = include_str!("../../../shaders/one.frag");
+
 
 impl<B: Backend> PipelineV0<B> {
     pub fn new(
         device: &B::Device,
-        extent: Extent2D,
+        _extent: Extent2D,
         render_pass: &<B as Backend>::RenderPass,
     ) -> Result<Self, &'static str> {
         let vertex_compile_artifact = shader::compile(
@@ -99,7 +101,7 @@ impl<B: Backend> PipelineV0<B> {
             geometry: None,
             fragment: Some(fs_entry),
         };
-        let mut vertex_buffers: Vec<VertexBufferDesc> = vec![VertexBufferDesc {
+        let vertex_buffers: Vec<VertexBufferDesc> = vec![VertexBufferDesc {
             binding: 0,
             stride: (size_of::<f32>() * (3 + 2 + 3)) as u32,
             rate: VertexInputRate::Vertex,
@@ -111,7 +113,7 @@ impl<B: Backend> PipelineV0<B> {
 //            stride: (size_of::<f32>() * 16) as u32,
 //            rate: VertexInputRate::Instance(1),
 //        });
-        let mut attributes: Vec<AttributeDesc> = vec![
+        let attributes: Vec<AttributeDesc> = vec![
             AttributeDesc {
                 location: 0,
                 binding: 0,
@@ -244,7 +246,7 @@ impl<B: Backend> PipelineV0<B> {
 //        };
 
         //            (ShaderStageFlags::FRAGMENT, 0..4),
-        let mut descriptor_set_layouts: Vec<<B as Backend>::DescriptorSetLayout> = vec![];
+        let descriptor_set_layouts: Vec<<B as Backend>::DescriptorSetLayout> = vec![];
         let push_constants = vec![(ShaderStageFlags::VERTEX | ShaderStageFlags::FRAGMENT, 0..64)];
         let layout = unsafe {
             device
@@ -293,7 +295,6 @@ mod shader {
     use log::error;
     use shaderc::CompilationArtifact;
     use shaderc::Compiler;
-    use shaderc::ShaderKind;
 
     pub fn compile(
         source: &str,

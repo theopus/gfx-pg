@@ -1,5 +1,4 @@
 use winit::event::{DeviceEvent, DeviceId, Event, KeyboardInput, WindowEvent};
-use winit::window::WindowId;
 
 #[derive(Debug, Clone)]
 pub enum MyEvent {
@@ -18,7 +17,6 @@ pub enum MyEvent {
 pub fn map_event(src: Event<()>) -> Option<MyEvent> {
     match src {
         Event::WindowEvent {
-            window_id,
             event,
             ..
         } => {
@@ -36,8 +34,8 @@ pub fn map_event(src: Event<()>) -> Option<MyEvent> {
             }
         }
         Event::DeviceEvent {
-            device_id,
-            event
+            event,
+            ..
         } => {
             match event {
                 DeviceEvent::MouseMotion {
