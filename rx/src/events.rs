@@ -1,4 +1,4 @@
-use winit::event::{DeviceEvent, DeviceId, Event, KeyboardInput, WindowEvent};
+use winit::event::{DeviceEvent, DeviceId, ElementState, Event, KeyboardInput, MouseButton, WindowEvent};
 
 #[derive(Debug, Clone)]
 pub enum MyEvent {
@@ -10,6 +10,11 @@ pub enum MyEvent {
     },
     MouseMotion {
         delta: (f64, f64),
+    },
+    MouseInput {
+        device_id: DeviceId,
+        state: ElementState,
+        button: MouseButton,
     },
 }
 
@@ -29,6 +34,16 @@ pub fn map_event(src: Event<()>) -> Option<MyEvent> {
                     device_id,
                     input,
                     is_synthetic,
+                }),
+                WindowEvent::MouseInput {
+                    device_id,
+                    state,
+                    button,
+                    ..
+                } => Some(MyEvent::MouseInput {
+                    device_id,
+                    state,
+                    button,
                 }),
                 _ => None
             }

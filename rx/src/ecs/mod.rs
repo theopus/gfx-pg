@@ -101,9 +101,9 @@ impl Default for TargetCamera {
             projection: glm::perspective(aspect_ratio, glm::radians(&glm::vec1(60.)).x, 0.1, 1000.),
             fov: 60.,
             offset_y: 0.,
-            distance: 10.,
-            yaw: 0.,
-            pitch: 0.,
+            distance: 100.,
+            yaw: 180.,
+            pitch: 180.,
         }
     }
 }
@@ -144,7 +144,6 @@ impl TargetCamera {
 
     pub fn get_view(pos: &Vec3, rot: &Vec3) -> Mat4 {
         let mut mtx: Mat4 = glm::identity();
-        // camera translate
         //camera rot
         mtx = glm::rotate(
             &mtx,
@@ -161,6 +160,7 @@ impl TargetCamera {
             glm::radians(&glm::vec1(rot.z)).x,
             &glm::vec3(0., 0., 1.),
         );
+        // camera translate
         mtx = glm::translate(&mtx, &glm::vec3(pos.x, pos.y, pos.z));
         mtx
     }

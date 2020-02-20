@@ -7,8 +7,8 @@ use rx::ecs::{ActiveCamera, CameraTarget, Position, Render, Rotation, TargetCame
 use rx::events::MyEvent;
 use rx::glm;
 use rx::render::DrawCmd;
-use rx::specs::{Join, Read, ReadStorage, System, WriteStorage};
-use rx::winit::event::{ElementState, KeyboardInput, VirtualKeyCode};
+use rx::specs::{Join, Read, ReadStorage, System, Write, WriteStorage};
+use rx::winit::event::{ElementState, KeyboardInput, MouseButton, VirtualKeyCode};
 
 pub struct InputTestSystem {
     pub should_affect: bool
@@ -19,6 +19,8 @@ impl<'a> System<'a> for InputTestSystem {
     type SystemData = (
         Read<'a, WinitEvents>,
         Read<'a, ActiveCamera>,
+        Read<'a, CameraTarget>,
+        WriteStorage<'a, Position>,
 //        Write<'a, CameraTarget>,
         WriteStorage<'a, TargetCamera>,
     );
@@ -27,11 +29,14 @@ impl<'a> System<'a> for InputTestSystem {
         let (
             events,
             active,
-//            mut camera_target,
+            target,
+            mut position,
             mut camera
         ) = data;
+
         let events = &events.0;
         let cam = camera.get_mut(active.0.unwrap()).unwrap();
+        let pos = position.get_mut(target.0.unwrap()).unwrap();
 
         let mut accum_delta = (0.0, 0.0);
         for event in events {
@@ -44,17 +49,30 @@ impl<'a> System<'a> for InputTestSystem {
                         accum_delta.1 += delta.1;
                     }
                 }
-                MyEvent::KeyboardInput {
-                    input: KeyboardInput {
-                        state,
-                        virtual_keycode: Some(VirtualKeyCode::Tab),
-                        ..
-                    },
+                MyEvent::MouseInput {
+                    state,
+                    button: MouseButton::Left,
                     ..
                 } => match state {
                     ElementState::Pressed => self.should_affect = true,
                     ElementState::Released => self.should_affect = false,
                 },
+                MyEvent::KeyboardInput {
+                    input: KeyboardInput {
+                        state: ElementState::Pressed,
+                        virtual_keycode: Some(VirtualKeyCode::Space),
+                        ..
+                    },
+                    ..
+                } => pos.y += 1.,
+                MyEvent::KeyboardInput {
+                    input: KeyboardInput {
+                        state: ElementState::Pressed,
+                        virtual_keycode: Some(VirtualKeyCode::C),
+                        ..
+                    },
+                    ..
+                } => pos.y -= 1.,
                 MyEvent::Resized(w, h) => cam.update_aspect(*w as f32 / *h as f32),
                 _ => ()
             };

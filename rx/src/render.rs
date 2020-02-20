@@ -207,20 +207,3 @@ impl ApiWrapper<back::Backend> {
         ApiWrapper::new(window, instance, surface)
     }
 }
-
-//fn do_the_render(
-//    hal_state: &mut HalState<back::Backend>,
-//    cam: &Camera,
-//) -> Result<(), &'static str> {
-//    let mtx = glm::translate(&glm::identity(), &glm::vec3(0., 0., -30.));
-//    hal_state.draw_quad_frame(
-//        crate::utils::Quad {
-//            x: -0.5 as f32,
-//            y: -0.5 as f32,
-//            w: 1 as f32,
-//            h: 1 as f32,
-//        },
-//        cam,
-//        &mtx,
-//    )
-//}

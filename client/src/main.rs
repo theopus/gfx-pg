@@ -12,6 +12,7 @@ use rx::specs::Builder;
 use rx::specs::WorldExt;
 
 mod systems;
+mod map;
 
 
 
@@ -31,6 +32,13 @@ fn main() {
         let (api, loader, storage) = eng.loader();
         let obj = loader.load_obj("ico-sphere").expect("");
         storage.load_mesh(api, obj).expect("")
+    };
+
+    let map_mesh_ptr = {
+        let (api, loader, storage) = eng.loader();
+        let mesh = map::generate2d();
+        info!("mesh {:?}", mesh);
+        storage.load_mesh(api, mesh).expect("")
     };
 
     let render_sys = systems::RenderSubmitSystem::new(eng.renderer().queue());
@@ -65,28 +73,28 @@ fn main() {
         world.create_entity()
             .with(Rotation::default())
             .with(Position {
-                x: -5.,
-                y: 0.,
+                x: 0.,
+                y: -10.,
                 z: 0.
             })
             .with(Transformation::default())
             .with(Render {
-                mesh: mesh_ptr.clone()
+                mesh: map_mesh_ptr.clone()
             })
             .build();
 
-        world.create_entity()
-            .with(Rotation::default())
-            .with(Position {
-                x: 5.,
-                y: 0.,
-                z: 0.
-            })
-            .with(Transformation::default())
-            .with(Render {
-                mesh: mesh_ptr.clone()
-            })
-            .build();
+//        world.create_entity()
+//            .with(Rotation::default())
+//            .with(Position {
+//                x: 5.,
+//                y: 0.,
+//                z: 0.
+//            })
+//            .with(Transformation::default())
+//            .with(Render {
+//                mesh: mesh_ptr.clone()
+//            })
+//            .build();
 
         let cam_entity = world.create_entity()
             .with(TargetCamera::default())

@@ -176,6 +176,7 @@ impl AssetsLoader {
     }
 }
 
+#[derive(Debug)]
 pub struct Mesh {
     pub positions: Vec<f32>,
     pub uvs: Vec<f32>,
