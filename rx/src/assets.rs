@@ -25,6 +25,12 @@ pub struct MeshPtr {
     pub(crate)base_vertex: i32,
 }
 
+impl PartialEq<Self> for MeshPtr {
+    fn eq(&self, other: &MeshPtr) -> bool {
+        self.base_vertex == other.base_vertex
+    }
+}
+
 
 impl AssetsStorage {
     pub fn new() -> Result<Self, &'static str> {

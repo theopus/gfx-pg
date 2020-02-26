@@ -22,7 +22,7 @@ pub trait DeviceDrop<B: Backend> {
 
 pub struct CommonSwapchain<B: Backend> {
     current_frame: usize,
-    img_count: usize,
+    pub(crate) img_count: usize,
     img_fences: Vec<B::Fence>,
     render_finished_semaphores: Vec<B::Semaphore>,
     image_available_semaphores: Vec<B::Semaphore>,

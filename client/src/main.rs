@@ -7,7 +7,7 @@ use log::{debug, error, info, trace, warn};
 
 use rx;
 use rx::ecs::{Render, Transformation, WinitEvents};
-use rx::ecs::layer::{EcsInitTuple};
+use rx::ecs::layer::EcsInitTuple;
 use rx::specs::Builder;
 use rx::specs::WorldExt;
 
@@ -28,9 +28,15 @@ fn main() {
 
     let mut eng = rx::run::Engine::default();
 
-    let mesh_ptr = {
+    let ico_mesh = {
         let (api, loader, storage) = eng.loader();
         let obj = loader.load_obj("ico-sphere").expect("");
+        storage.load_mesh(api, obj).expect("")
+    };
+
+    let tetrahedron_mesh = {
+        let (api, loader, storage) = eng.loader();
+        let obj = loader.load_obj("tetrahedron").expect("");
         storage.load_mesh(api, obj).expect("")
     };
 
@@ -42,7 +48,7 @@ fn main() {
     };
 
     let render_sys = systems::RenderSubmitSystem::new(eng.renderer().queue());
-    let input_sys = systems::InputTestSystem { should_affect: false };
+    let input_sys = systems::InputTestSystem::default();
     let transform_sys = systems::TransformationSystem;
 
     let ecs_layer = rx::ecs::layer::EcsLayer::new(move |(mut world, mut r_dispatcher, mut c_dispatcher): EcsInitTuple<'static>| {
@@ -66,35 +72,31 @@ fn main() {
             .with(Position::default())
             .with(Transformation::default())
             .with(Render {
-                mesh: mesh_ptr.clone()
+                mesh: ico_mesh.clone()
             })
             .build();
 
-        world.create_entity()
-            .with(Rotation::default())
-            .with(Position {
-                x: 0.,
-                y: -10.,
-                z: 0.
-            })
-            .with(Transformation::default())
+
+        for e in 1..20 {
+            let _ = world.create_entity()
+                .with(Rotation::default())
+                .with(Position {
+                    x: e as f32 * 10.,
+                    y: 0.0,
+                    z: 0.0,
+                })
+                .with(Transformation::default())
             .with(Render {
-                mesh: map_mesh_ptr.clone()
+                mesh: {
+                    if e % 2 == 0 {
+                        ico_mesh.clone()
+                    } else {
+                        tetrahedron_mesh.clone()
+                    }
+                }
             })
             .build();
-
-//        world.create_entity()
-//            .with(Rotation::default())
-//            .with(Position {
-//                x: 5.,
-//                y: 0.,
-//                z: 0.
-//            })
-//            .with(Transformation::default())
-//            .with(Render {
-//                mesh: mesh_ptr.clone()
-//            })
-//            .build();
+        }
 
         let cam_entity = world.create_entity()
             .with(TargetCamera::default())

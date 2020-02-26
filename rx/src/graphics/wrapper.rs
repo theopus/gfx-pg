@@ -34,12 +34,13 @@ impl<B: Backend> ApiWrapper<B> {
             &B::Framebuffer,
             &B::RenderPass,
             &MemoryManager<B>,
-            &PipelineV0<B>
+            &PipelineV0<B>,
+            &HalStateV2<B>
         ),
         &str,
     > {
         let (o, r, t, y) = self.swapchain.next_frame(&self.hal_state.device)?;
-        Ok((o, r, t, y, &self.storage, &self.pipeline))
+        Ok((o, r, t, y, &self.storage, &self.pipeline, &self.hal_state))
     }
     pub fn present_buffer(&mut self, present: usize) -> Result<(), &str> {
         self.swapchain.present_buffer(present)
@@ -51,8 +52,8 @@ impl<B: Backend> ApiWrapper<B> {
     pub fn new(window: &Window, instance: B::Instance, surface: B::Surface) -> Result<Self, &str> {
         let (mut hal_state, queue_group) = HalStateV2::new(window, instance, surface)?;
 
-        let storage = unsafe { MemoryManager::new(&hal_state) }?;
         let swapchain = CommonSwapchain::new(&mut hal_state, queue_group)?;
+        let storage = unsafe { MemoryManager::new(&hal_state, swapchain.img_count as u32) }?;
 
         let pipeline = PipelineV0::new(
             hal_state.device_ref(),

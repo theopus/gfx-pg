@@ -86,7 +86,7 @@ pub struct TargetCamera {
     fov: f32,
     //
     offset_y: f32,
-    distance: f32,
+    pub distance: f32,
     //angle around y
     pub yaw: f32,
     //angle around x

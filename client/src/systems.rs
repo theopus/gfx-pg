@@ -10,8 +10,10 @@ use rx::render::DrawCmd;
 use rx::specs::{Join, Read, ReadStorage, System, Write, WriteStorage};
 use rx::winit::event::{ElementState, KeyboardInput, MouseButton, VirtualKeyCode};
 
+#[derive(Default)]
 pub struct InputTestSystem {
-    pub should_affect: bool
+    pub should_affect_angle: bool,
+    pub should_affect_distance: bool,
 }
 
 
@@ -39,14 +41,18 @@ impl<'a> System<'a> for InputTestSystem {
         let pos = position.get_mut(target.0.unwrap()).unwrap();
 
         let mut accum_delta = (0.0, 0.0);
+        let mut accum_dist = 0_f32;
         for event in events {
             match event {
                 MyEvent::MouseMotion {
                     delta
                 } => {
-                    if self.should_affect {
+                    if self.should_affect_angle {
                         accum_delta.0 += delta.0;
                         accum_delta.1 += delta.1;
+                    }
+                    if self.should_affect_distance {
+                        accum_dist += delta.1 as f32;
                     }
                 }
                 MyEvent::MouseInput {
@@ -54,8 +60,16 @@ impl<'a> System<'a> for InputTestSystem {
                     button: MouseButton::Left,
                     ..
                 } => match state {
-                    ElementState::Pressed => self.should_affect = true,
-                    ElementState::Released => self.should_affect = false,
+                    ElementState::Pressed => self.should_affect_angle = true,
+                    ElementState::Released => self.should_affect_angle = false,
+                },
+                MyEvent::MouseInput {
+                    state,
+                    button: MouseButton::Right,
+                    ..
+                } => match state {
+                    ElementState::Pressed => self.should_affect_distance = true,
+                    ElementState::Released => self.should_affect_distance = false,
                 },
                 MyEvent::KeyboardInput {
                     input: KeyboardInput {
@@ -78,6 +92,8 @@ impl<'a> System<'a> for InputTestSystem {
             };
         }
 
+
+        cam.distance += 0.4 * accum_dist;
         cam.yaw += 0.4 * accum_delta.0 as f32;
         cam.pitch -= 0.4 * accum_delta.1 as f32;
     }

@@ -15,7 +15,9 @@ pub struct MemoryManager<B: Backend> {
     memory_properties: adapter::MemoryProperties,
     pub(crate)mesh_bundle: BufBundle<B>,
     pub(crate)idx_bundle: BufBundle<B>,
-    instanced_bundle: BufBundle<B>,
+    pub(crate)instanced_bundle: BufBundle<B>,
+    instanced_mem: usize,
+    instanced_par_count: usize,
 }
 
 impl<B: Backend> DeviceDrop<B> for MemoryManager<B> {
@@ -31,7 +33,7 @@ const IDX_MEMORY_SIZE: usize = 1_000_000;
 const INSTANCE_MEMORY_SIZE: usize = (64 + 4) * 40_000;
 
 impl<B: Backend> MemoryManager<B> {
-    pub unsafe fn new(state: &HalStateV2<B>) -> Result<Self, &'static str> {
+    pub unsafe fn new(state: &HalStateV2<B>, images_cnt: u32) -> Result<Self, &'static str> {
         let mem_props = state._adapter.physical_device.memory_properties();
 
         info!("Limits: {:?}", state._adapter.physical_device.limits());
@@ -50,11 +52,12 @@ impl<B: Backend> MemoryManager<B> {
             buffer::Usage::INDEX,
             memory::Properties::CPU_VISIBLE,
         )?;
+        let insatnced_mem = INSTANCE_MEMORY_SIZE * images_cnt as usize;
 
         let insatnced_storage = BufBundle::new(
             state.device_ref(),
             &mem_props,
-            INSTANCE_MEMORY_SIZE,
+            insatnced_mem,
             buffer::Usage::VERTEX,
             memory::Properties::CPU_VISIBLE,
         )?;
@@ -64,7 +67,14 @@ impl<B: Backend> MemoryManager<B> {
             mesh_bundle: mesh_storage,
             idx_bundle: idx_storage,
             instanced_bundle: insatnced_storage,
+            instanced_mem: insatnced_mem,
+            instanced_par_count: images_cnt as usize
         })
+    }
+
+    pub fn instanced_offset(&self, index: usize) -> Range<usize> {
+        let offset = (self.instanced_mem / self.instanced_par_count) * index;
+        offset..offset + self.instanced_mem / self.instanced_par_count
     }
 }
 

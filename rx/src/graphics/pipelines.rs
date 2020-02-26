@@ -17,6 +17,7 @@ use hal::pso::{BasePipeline, PolygonMode, VertexInputRate};
 use log::{debug, error, info, trace, warn};
 
 use crate::graphics::swapchain::DeviceDrop;
+use crate::hal::pso::State;
 
 pub struct PipelineV0<B: Backend> {
     //    pub(crate)descriptor_set: ManuallyDrop<B::DescriptorSet>,
@@ -101,19 +102,19 @@ impl<B: Backend> PipelineV0<B> {
             geometry: None,
             fragment: Some(fs_entry),
         };
-        let vertex_buffers: Vec<VertexBufferDesc> = vec![VertexBufferDesc {
+        let mut vertex_buffers: Vec<VertexBufferDesc> = vec![VertexBufferDesc {
             binding: 0,
             stride: (size_of::<f32>() * (3 + 2 + 3)) as u32,
             rate: VertexInputRate::Vertex,
         }];
 
         //instanced
-//        vertex_buffers.push(VertexBufferDesc {
-//            binding: 1,
-//            stride: (size_of::<f32>() * 16) as u32,
-//            rate: VertexInputRate::Instance(1),
-//        });
-        let attributes: Vec<AttributeDesc> = vec![
+        vertex_buffers.push(VertexBufferDesc {
+            binding: 1,
+            stride: (size_of::<f32>() * 16) as u32,
+            rate: VertexInputRate::Instance(1),
+        });
+        let mut attributes: Vec<AttributeDesc> = vec![
             AttributeDesc {
                 location: 0,
                 binding: 0,
@@ -140,25 +141,27 @@ impl<B: Backend> PipelineV0<B> {
             },
         ];
 
-//        //instanced1
-//        for i in 0..4 {
-//            attributes.push(AttributeDesc {
-//                location: 3 + i,
-//                binding: 1,
-//                element: Element {
-//                    format: hal::format::Format::Rgba32Sfloat,
-//                    offset: (size_of::<f32>() * 4) as u32 * i,
-//                },
-//            });
-//        }
+        //instanced1
+        for i in 0..4 {
+            attributes.push(AttributeDesc {
+                location: 3 + i,
+                binding: 1,
+                element: Element {
+                    format: hal::format::Format::Rgba32Sfloat,
+                    offset: (size_of::<f32>() * 4) as u32 * i,
+                },
+            });
+        }
 
         let input_assembler_desc = InputAssemblerDesc {
+//            primitive: Primitive::TriangleList,
             primitive: Primitive::TriangleList,
             with_adjacency: false,
             restart_index: None,
         };
 
         let rasterizer = Rasterizer {
+//            polygon_mode: PolygonMode::Line(State::Static(1.)),
             polygon_mode: PolygonMode::Fill,
             cull_face: Face::NONE,
             front_face: FrontFace::Clockwise,
