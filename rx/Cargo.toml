@@ -16,6 +16,8 @@ image = "0.22.4"
 tobj = "0.1.8"
 nalgebra = "0.18.0"
 nalgebra-glm = "0.4.0"
+ncollide3d = "0.20"
+nphysics3d = "0.12"
 specs = { version = "0.15.0", features = ["specs-derive"] }
 specs-derive = "0.4.0"
 itertools = "0.8.0"

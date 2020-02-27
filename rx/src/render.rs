@@ -25,7 +25,8 @@ use crate::utils::cast_slice;
 pub type DrawCmd = (MeshPtr, glm::Mat4, glm::Mat4);
 
 pub enum RenderCommand {
-    PushView(glm::Mat4)
+    PushView(glm::Mat4),
+    PushLight(glm::Vec3)
 }
 
 pub struct Renderer {

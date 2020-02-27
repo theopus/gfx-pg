@@ -2,10 +2,17 @@ use std::sync::mpsc::Sender;
 
 #[allow(unused_imports)]
 use log::{debug, error, info, trace, warn};
+use np3d::force_generator::DefaultForceGeneratorSet;
+use np3d::joint::DefaultJointConstraintSet;
+use np3d::object::{DefaultBodySet, DefaultColliderSet};
+use np3d::world::{DefaultGeometricalWorld, DefaultMechanicalWorld};
 
 use rx::ecs::{ActiveCamera, CameraTarget, Position, Render, Rotation, TargetCamera, Transformation, WinitEvents};
 use rx::events::MyEvent;
 use rx::glm;
+use rx::na::Vector3;
+use rx::np3d;
+use rx::np3d::world::{GeometricalWorld, MechanicalWorld};
 use rx::render::{DrawCmd, RenderCommand};
 use rx::specs::{Join, Read, ReadStorage, System, Write, WriteStorage};
 use rx::winit::event::{ElementState, KeyboardInput, MouseButton, VirtualKeyCode};
@@ -184,5 +191,41 @@ impl<'a> System<'a> for TransformationSystem {
             };
             tsm.mvp = &vp * tsm.model
         }
+    }
+}
+
+pub struct PhysicsSystem {
+    mechanical_world: DefaultMechanicalWorld<f32>,
+    geometrical_world: DefaultGeometricalWorld<f32>,
+    bodies: DefaultBodySet<f32>,
+    collidrs: DefaultColliderSet<f32>,
+    joint_constraints: DefaultJointConstraintSet<f32>,
+    force_genertors: DefaultForceGeneratorSet<f32>,
+}
+
+impl PhysicsSystem {
+    fn new() -> Self {
+        let mut mechanical_world = DefaultMechanicalWorld::new(Vector3::new(0.0, -9.81, 0.0));
+        let mut geometrical_world = DefaultGeometricalWorld::new();
+        let mut bodies = DefaultBodySet::new();
+        let mut colliders = DefaultColliderSet::new();
+        let mut joint_constraints = DefaultJointConstraintSet::new();
+        let mut force_generators = DefaultForceGeneratorSet::new();
+        Self {
+            mechanical_world,
+            geometrical_world,
+            bodies,
+            collidrs,
+            joint_constraints,
+            force_genertors,
+        }
+    }
+}
+
+impl<'a> System<'a> for PhysicsSystem {
+    type SystemData = ();
+
+    fn run(&mut self, data: Self::SystemData) {
+//        self.bodies.
     }
 }
