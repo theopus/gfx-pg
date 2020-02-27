@@ -35,6 +35,7 @@ impl<'a> Layer for EcsLayer<'a> {
             events_resource.0.clear();
             self.lag -= DURATION_PER_UPD;
         }
+        info!("upd")
         self.constant_dispatcher.dispatch(&self.world)
     }
 }

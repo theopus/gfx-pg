@@ -37,7 +37,7 @@ impl Renderer {
     pub fn new(window: &winit::window::Window) -> Result<Self, &str> {
         let api = ApiWrapper::typed(window)?;
 
-        let loader = AssetsLoader::new("/home/otkachov/projects/cg/gfx-pg/assets")?;
+        let loader = AssetsLoader::new("assets")?;
         let storage = AssetsStorage::new()?;
         let (send, recv) = channel();
 
@@ -155,14 +155,26 @@ impl Renderer {
                     let mut instances_offset: u32 = 0;
                     let mut data_offset = 0;
 
-                    for (ptr, list) in &self.receiver.try_iter().into_iter().group_by(|ptr| ptr.0.clone()) {
+                    let v = self.receiver.try_iter()
+                        .into_iter()
+                        .sorted_by(|(l_ptr, _), (r_ptr, _)| {
+                            l_ptr.base_vertex.partial_cmp(&r_ptr.base_vertex).unwrap()
+                        })
+                        .collect::<Vec<DrawCmd>>();
+
+                    for (ptr, list) in &v.into_iter().group_by(|ptr| ptr.0.clone()) {
                         let mut current_count = 0;
 
-
                         let data: Vec<_> = list.flat_map(|(_, mvp)| {
-                            current_count +=1;
+                            current_count += 1;
                             mvp.as_slice().to_owned()
                         }).collect::<Vec<f32>>();
+
+                        info!("{:?}", ptr);
+                        info!("{:?}", current_count);
+                        if current_count != 10 {
+                            unimplemented!();
+                        }
 
 
                         let data_len = data.len() * 4;
@@ -175,8 +187,6 @@ impl Renderer {
                         );
 
                         data_offset += data_len as isize;
-
-
 
 
                         buffer.draw_indexed(

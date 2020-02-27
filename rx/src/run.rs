@@ -71,16 +71,16 @@ impl Engine {
                     info!("On close handle")
                     /*On close*/
                 }
+                Event::RedrawRequested(_) => {
+                    /*Render*/
+                    renderer.render();
+                }
                 Event::MainEventsCleared => {
                     let current = Instant::now();
                     let elapsed = current - last;
                     Self::on_update(&mut layers, &mut events, elapsed);
                     window.request_redraw();
                     last = current
-                }
-                Event::RedrawRequested(_) => {
-                    /*Render*/
-                    renderer.render();
                 }
                 Event::WindowEvent {
                     event: WindowEvent::Resized(phys_size),

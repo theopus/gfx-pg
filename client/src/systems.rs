@@ -118,7 +118,10 @@ impl<'a> System<'a> for RenderSubmitSystem {
         WriteStorage<'a, Render>
     );
 
+
+
     fn run(&mut self, (transformation, mut render): Self::SystemData) {
+        info!("run");
         for (transformation, render) in (&transformation, &mut render).join() {
             self.sender.send((render.mesh.clone(), transformation.mvp))
                 .expect("not able to submit");
