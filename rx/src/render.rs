@@ -22,15 +22,23 @@ use crate::hal::buffer::IndexBufferView;
 use crate::hal::IndexType;
 use crate::utils::cast_slice;
 
-pub type DrawCmd = (MeshPtr, glm::Mat4);
+pub type DrawCmd = (MeshPtr, glm::Mat4, glm::Mat4);
+
+pub enum RenderCommand {
+    PushView(glm::Mat4)
+}
 
 pub struct Renderer {
     pub(crate)api: ApiWrapper<back::Backend>,
     pub(crate)storage: AssetsStorage,
     pub(crate)loader: AssetsLoader,
     resize_flag: Option<PhysicalSize<u32>>,
+
     sender: Sender<DrawCmd>,
     receiver: Receiver<DrawCmd>,
+
+    cmd_s: Sender<RenderCommand>,
+    cmd_r: Receiver<RenderCommand>,
 }
 
 impl Renderer {
@@ -40,6 +48,7 @@ impl Renderer {
         let loader = AssetsLoader::new("assets")?;
         let storage = AssetsStorage::new()?;
         let (send, recv) = channel();
+        let (r_send, r_recv) = channel();
 
 
         Ok(Self {
@@ -49,6 +58,8 @@ impl Renderer {
             resize_flag: None,
             sender: send,
             receiver: recv,
+            cmd_s: r_send,
+            cmd_r: r_recv
         })
     }
 
@@ -56,8 +67,8 @@ impl Renderer {
         self.resize_flag = Some(size)
     }
 
-    pub fn queue(&self) -> Sender<DrawCmd> {
-        self.sender.clone()
+    pub fn queue(&self) -> (Sender<DrawCmd>, Sender<RenderCommand>) {
+        (self.sender.clone(), self.cmd_s.clone())
     }
 
     pub fn render(&mut self) {
@@ -147,6 +158,22 @@ impl Renderer {
                     );
 
 
+                    for cmd in self.cmd_r.try_iter() {
+                        match cmd {
+                            RenderCommand::PushView(mtx) => {
+                                use hal::pso::ShaderStageFlags;
+                                buffer.push_graphics_constants(
+                                    &pipeline.pipeline_layout,
+                                    ShaderStageFlags::VERTEX | ShaderStageFlags::FRAGMENT,
+                                    0,
+                                    cast_slice::<f32, u32>(&mtx.as_slice())
+                                        .expect("this cast never fails for same-aligned same-size data"),
+                                );
+                            },
+                            _ => ()
+                        }
+                    }
+
                     let instanced_ptr = storage.instanced_bundle.map_mem_range(
                         &state.device,
                         instanced_offset.start as u64..instanced_offset.end as u64,
@@ -154,28 +181,24 @@ impl Renderer {
 
                     let mut instances_offset: u32 = 0;
                     let mut data_offset = 0;
-
-                    let v = self.receiver.try_iter()
+                    let grouped_queue = self.receiver
+                        .try_iter()
                         .into_iter()
-                        .sorted_by(|(l_ptr, _), (r_ptr, _)| {
+                        .sorted_by(|(l_ptr, ..), (r_ptr, ..)| {
                             l_ptr.base_vertex.partial_cmp(&r_ptr.base_vertex).unwrap()
                         })
-                        .collect::<Vec<DrawCmd>>();
+                        .group_by(|ptr| ptr.0.clone());
 
-                    for (ptr, list) in &v.into_iter().group_by(|ptr| ptr.0.clone()) {
+                    for (ptr, list) in &grouped_queue {
+
                         let mut current_count = 0;
 
-                        let data: Vec<_> = list.flat_map(|(_, mvp)| {
+                        let data: Vec<_> = list.flat_map(|(_, mvp, model)| {
                             current_count += 1;
-                            mvp.as_slice().to_owned()
+                            let mut base = mvp.as_slice().to_owned();
+                            base.append(&mut model.as_slice().to_owned());
+                            base
                         }).collect::<Vec<f32>>();
-
-                        info!("{:?}", ptr);
-                        info!("{:?}", current_count);
-                        if current_count != 10 {
-                            unimplemented!();
-                        }
-
 
                         let data_len = data.len() * 4;
 
@@ -195,31 +218,13 @@ impl Renderer {
                             instances_offset..instances_offset + current_count,
                         );
                         instances_offset += current_count
-                    }
+                    };
 
                     storage.instanced_bundle.flush_mem_range(
                         &state.device,
                         instanced_offset.start as u64..instanced_offset.end as u64,
                     );
                     storage.instanced_bundle.unmap(&state.device);
-
-//                    unimplemented!();
-
-//                    for (ptr, cmd) in self.receiver.try_iter() {
-//                        use hal::pso::ShaderStageFlags;
-//                        buffer.push_graphics_constants(
-//                            &pipeline.pipeline_layout,
-//                            ShaderStageFlags::VERTEX | ShaderStageFlags::FRAGMENT,
-//                            0,
-//                            cast_slice::<f32, u32>(&cmd.as_slice())
-//                                .expect("this cast never fails for same-aligned same-size data"),
-//                        );
-//                        buffer.draw_indexed(
-//                            ptr.indices.clone(),
-//                            ptr.base_vertex,
-//                            0..1,
-//                        );
-//                    }
                     buffer.end_render_pass();
                     buffer.finish();
                 }

@@ -111,7 +111,7 @@ impl<B: Backend> PipelineV0<B> {
         //instanced
         vertex_buffers.push(VertexBufferDesc {
             binding: 1,
-            stride: (size_of::<f32>() * 16) as u32,
+            stride: (size_of::<f32>() * 16 * 2) as u32,
             rate: VertexInputRate::Instance(1),
         });
         let mut attributes: Vec<AttributeDesc> = vec![
@@ -142,7 +142,7 @@ impl<B: Backend> PipelineV0<B> {
         ];
 
         //instanced1
-        for i in 0..4 {
+        for i in 0..8 {
             attributes.push(AttributeDesc {
                 location: 3 + i,
                 binding: 1,

@@ -6,7 +6,7 @@ use log::{debug, error, info, trace, warn};
 use rx::ecs::{ActiveCamera, CameraTarget, Position, Render, Rotation, TargetCamera, Transformation, WinitEvents};
 use rx::events::MyEvent;
 use rx::glm;
-use rx::render::DrawCmd;
+use rx::render::{DrawCmd, RenderCommand};
 use rx::specs::{Join, Read, ReadStorage, System, Write, WriteStorage};
 use rx::winit::event::{ElementState, KeyboardInput, MouseButton, VirtualKeyCode};
 
@@ -101,29 +101,35 @@ impl<'a> System<'a> for InputTestSystem {
 
 
 pub struct RenderSubmitSystem {
-    sender: Sender<DrawCmd>
+    send_draw: Sender<DrawCmd>,
+    send_render: Sender<RenderCommand>
 }
 
 impl RenderSubmitSystem {
-    pub fn new(send: Sender<DrawCmd>) -> Self {
+    pub fn new(send_draw: Sender<DrawCmd>, send_render: Sender<RenderCommand>) -> Self {
         Self {
-            sender: send
+            send_draw,
+            send_render
         }
     }
 }
 
 impl<'a> System<'a> for RenderSubmitSystem {
     type SystemData = (
+        Read<'a, ActiveCamera>,
+        ReadStorage<'a, TargetCamera>,
         ReadStorage<'a, Transformation>,
         WriteStorage<'a, Render>
     );
 
 
 
-    fn run(&mut self, (transformation, mut render): Self::SystemData) {
-        info!("run");
+    fn run(&mut self, (active, camera, transformation, mut render): Self::SystemData) {
+        let cam = camera.get(active.0.unwrap()).unwrap();
+        self.send_render.send(RenderCommand::PushView(cam.view.clone()));
+
         for (transformation, render) in (&transformation, &mut render).join() {
-            self.sender.send((render.mesh.clone(), transformation.mvp))
+            self.send_draw.send((render.mesh.clone(), transformation.mvp, transformation.model))
                 .expect("not able to submit");
         }
     }
@@ -135,7 +141,7 @@ impl<'a> System<'a> for TransformationSystem {
     type SystemData = (
         Read<'a, ActiveCamera>,
         Read<'a, CameraTarget>,
-        ReadStorage<'a, TargetCamera>,
+        WriteStorage<'a, TargetCamera>,
         ReadStorage<'a, Rotation>,
         ReadStorage<'a, Position>,
         WriteStorage<'a, Transformation>,
@@ -145,7 +151,7 @@ impl<'a> System<'a> for TransformationSystem {
         let (
             active_camera,
             camera_target,
-            camera,
+            mut camera,
             rot,
             pos,
             mut tsm
@@ -153,7 +159,7 @@ impl<'a> System<'a> for TransformationSystem {
 
         let target_pos = pos.get(camera_target.0.unwrap()).unwrap();
         let target_rot = rot.get(camera_target.0.unwrap()).unwrap();
-        let cam = camera.get(active_camera.0.unwrap()).unwrap();
+        let cam = camera.get_mut(active_camera.0.unwrap()).unwrap();
 
         let vp = cam.target_at(
             &glm::vec3(

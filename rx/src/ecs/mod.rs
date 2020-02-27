@@ -83,6 +83,7 @@ impl Default for Position {
 #[storage(VecStorage)]
 pub struct TargetCamera {
     projection: Mat4,
+    pub view: Mat4,
     fov: f32,
     //
     offset_y: f32,
@@ -99,6 +100,7 @@ impl Default for TargetCamera {
 
         Self {
             projection: glm::perspective(aspect_ratio, glm::radians(&glm::vec1(60.)).x, 0.1, 1000.),
+            view: glm::identity(),
             fov: 60.,
             offset_y: 0.,
             distance: 100.,
@@ -114,7 +116,7 @@ impl TargetCamera {
         self.projection = glm::perspective(aspect_ratio, glm::radians(&glm::vec1(self.fov)).x, 0.1, 1000.);
     }
 
-    pub fn target_at(&self, position: &Vec3, _rotation: &Vec3) -> Mat4 {
+    pub fn target_at(&mut self, position: &Vec3, _rotation: &Vec3) -> Mat4 {
         let (x, y, z) = (position.x, position.y, position.z);
         let theta = radians(&glm::vec1(self.yaw));
         let pitch_rad = radians(&glm::vec1(self.pitch));
@@ -139,7 +141,8 @@ impl TargetCamera {
             180_f32 - self.yaw,
             0_f32,
         );
-        &self.projection * Self::get_view(&cam_pos, &cam_rot)
+        self.view = Self::get_view(&cam_pos, &cam_rot);
+        &self.projection  * self.view.clone()
     }
 
     pub fn get_view(pos: &Vec3, rot: &Vec3) -> Mat4 {

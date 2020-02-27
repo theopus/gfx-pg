@@ -43,11 +43,11 @@ fn main() {
     let map_mesh_ptr = {
         let (api, loader, storage) = eng.loader();
         let mesh = map::generate2d();
-        info!("mesh {:?}", mesh);
         storage.load_mesh(api, mesh).expect("")
     };
+    let (draw, redner) = eng.renderer().queue();
 
-    let render_sys = systems::RenderSubmitSystem::new(eng.renderer().queue());
+    let render_sys = systems::RenderSubmitSystem::new(draw, redner);
     let input_sys = systems::InputTestSystem::default();
     let transform_sys = systems::TransformationSystem;
 
@@ -81,7 +81,7 @@ fn main() {
             let _ = world.create_entity()
                 .with(Rotation::default())
                 .with(Position {
-                    x: e as f32 * 10.,
+                    x: e as f32 * 10. *  {if e % 2 == 0 { -1. } else { 1. } },
                     y: 0.0,
                     z: 0.0,
                 })
@@ -116,15 +116,7 @@ fn main() {
     });
 
 
-    {
-        use rx::ecs::TargetCamera;
-        use rx::glm;
-        let cam = TargetCamera::default();
 
-        cam.target_at(&glm::vec3(0., 0., 0.), &glm::vec3(0., 0., 0.))
-    };
-
-//    unimplemented!();
     eng.push_layer(ecs_layer);
     eng.run();
 }

@@ -53,6 +53,10 @@ impl Engine {
         let mut events: Vec<MyEvent> = Vec::new();
         let mut last = Instant::now();
 
+
+        //[BUG#windows]: winit
+        let mut draw_req = 0;
+
         info!("Start!");
         let run_loop = move |o_event: Event<()>, _: &EventLoopWindowTarget<()>, control_flow: &mut ControlFlow| {
             //Always poll
@@ -73,6 +77,11 @@ impl Engine {
                 }
                 Event::RedrawRequested(_) => {
                     /*Render*/
+                    //[BUG#windows]: winit
+                    {
+                        assert!(draw_req == 1, "Draw requests: {:?}", draw_req);
+                        draw_req -= 1;
+                    }
                     renderer.render();
                 }
                 Event::MainEventsCleared => {
@@ -80,6 +89,8 @@ impl Engine {
                     let elapsed = current - last;
                     Self::on_update(&mut layers, &mut events, elapsed);
                     window.request_redraw();
+                    //[BUG#windows]: winit
+                    draw_req += 1;
                     last = current
                 }
                 Event::WindowEvent {
