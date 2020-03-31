@@ -9,7 +9,6 @@ pub extern crate gfx_backend_vulkan as back;
 pub extern crate gfx_hal as hal;
 pub extern crate nalgebra_glm as glm;
 pub extern crate nalgebra as na;
-pub extern crate nphysics3d as np3d;
 pub extern crate specs;
 pub extern crate winit;
 

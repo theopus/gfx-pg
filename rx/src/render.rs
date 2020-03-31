@@ -125,17 +125,18 @@ impl Renderer {
 
                     buffer.begin_primary(command::CommandBufferFlags::empty());
                     let instanced_offset = storage.instanced_offset(frame);
+                    buffer.set_viewports(0, &[viewport]);
+                    buffer.set_scissors(0, &[render_area]);
+
+
+
+                    buffer.bind_graphics_pipeline(&pipeline.graphics_pipeline);
+
 
                     let buffers: ArrayVec<[_; 2]> = [
                         (storage.mesh_bundle.buffer.deref(), 0),
                         (storage.instanced_bundle.buffer.deref(), instanced_offset.start as u64)
                     ].into();
-                    buffer.set_viewports(0, &[viewport]);
-                    buffer.set_scissors(0, &[render_area]);
-
-                    buffer.bind_graphics_pipeline(&pipeline.graphics_pipeline);
-
-
                     buffer.bind_vertex_buffers(0, buffers);
                     buffer.bind_index_buffer(IndexBufferView {
                         buffer: &storage.idx_bundle.buffer,
@@ -149,15 +150,6 @@ impl Renderer {
 //                    Some(pipeline.descriptor_set.deref()),
 //                    &[],
 //                );
-
-                    buffer.begin_render_pass(
-                        &render_pass,
-                        &fb,
-                        render_area,
-                        CLEAR.iter(),
-                        command::SubpassContents::Inline,
-                    );
-
 
                     for cmd in self.cmd_r.try_iter() {
                         match cmd {
@@ -174,6 +166,15 @@ impl Renderer {
                             _ => ()
                         }
                     }
+
+                    buffer.begin_render_pass(
+                        &render_pass,
+                        &fb,
+                        render_area,
+                        CLEAR.iter(),
+                        command::SubpassContents::Inline,
+                    );
+
 
                     let instanced_ptr = storage.instanced_bundle.map_mem_range(
                         &state.device,
@@ -226,6 +227,7 @@ impl Renderer {
                         instanced_offset.start as u64..instanced_offset.end as u64,
                     );
                     storage.instanced_bundle.unmap(&state.device);
+                    //
                     buffer.end_render_pass();
                     buffer.finish();
                 }

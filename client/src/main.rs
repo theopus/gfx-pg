@@ -75,7 +75,19 @@ fn main() {
                 mesh: ico_mesh.clone()
             })
             .build();
+        world.create_entity()
+            .with(Rotation::default())
+            .with(Position {
+                x: -30.,
+                y: -5.,
+                z: -60.
+            })
 
+            .with(Transformation::default())
+            .with(Render {
+                mesh: map_mesh_ptr.clone()
+            })
+            .build();
 
         for e in 1..20 {
             let _ = world.create_entity()
