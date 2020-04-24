@@ -5,6 +5,8 @@ use crate::graphics::memory::MemoryManager;
 use crate::graphics::pipelines::PipelineV0;
 use crate::graphics::state::HalStateV2;
 use crate::graphics::swapchain::{CommonSwapchain, DeviceDrop};
+use crate::hal::adapter::Adapter;
+use winit::dpi::PhysicalSize;
 
 pub struct ApiWrapper<B: Backend> {
     pub(crate) hal_state: HalStateV2<B>,
@@ -45,12 +47,12 @@ impl<B: Backend> ApiWrapper<B> {
     pub fn present_buffer(&mut self, present: usize) -> Result<(), &str> {
         self.swapchain.present_buffer(present)
     }
-    pub fn reset_swapchain(&mut self) -> Result<(), &str> {
-        self.swapchain.reset_inner(&mut self.hal_state)
+    pub fn reset_swapchain(&mut self, size: PhysicalSize<u32>) -> Result<(), &str> {
+        self.swapchain.reset_inner(&mut self.hal_state, size)
     }
 
-    pub fn new(window: &Window, instance: B::Instance, surface: B::Surface) -> Result<Self, &str> {
-        let (mut hal_state, queue_group) = HalStateV2::new(window, instance, surface)?;
+    pub fn new(window: &Window, instance: Option<B::Instance>, surface: B::Surface, adapters: Vec<Adapter<B>>) -> Result<Self, &'static str> {
+        let (mut hal_state, queue_group) = HalStateV2::new(window, instance, surface, adapters)?;
 
         let swapchain = CommonSwapchain::new(&mut hal_state, queue_group)?;
         let storage = unsafe { MemoryManager::new(&hal_state, swapchain.img_count as u32) }?;

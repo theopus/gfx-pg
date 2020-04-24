@@ -3,7 +3,8 @@ use std::mem::ManuallyDrop;
 use std::ops::{Deref, Range};
 
 use hal::{
-    adapter, adapter::PhysicalDevice, Backend, buffer, device::Device, memory, MemoryTypeId,
+    adapter, adapter::PhysicalDevice, Backend, buffer, device::Device, memory, memory::Segment,
+    MemoryTypeId
 };
 #[allow(unused_imports)]
 use log::{debug, error, info, trace, warn};
@@ -132,7 +133,7 @@ impl<B: Backend> BufBundle<B> {
         range: Range<u64>,
     ) -> Result<*mut u8, &'static str> {
         device
-            .map_memory(&self.memory, range)
+            .map_memory(&self.memory, to_seg(&range))
             .map_err(|_| "Failed to acquire a memory writer!")
     }
 
@@ -142,7 +143,11 @@ impl<B: Backend> BufBundle<B> {
         range: Range<u64>,
     ) -> Result<(), &'static str> {
         device
-            .flush_mapped_memory_ranges(iter::once((self.memory.deref(), range)))
+            .flush_mapped_memory_ranges(iter::once((self.memory.deref(), Segment {
+                //flush seg doesn't matter?!
+                offset: 0,
+                size: Some(0)
+            })))
             .map_err(|_| "Failed to flush memory!")
     }
 
@@ -168,4 +173,12 @@ fn get_mem_id<B>(
         })
         .map(|(id, _)| MemoryTypeId(id))
         .ok_or("Couldn't find a memory type to support the buffer!")?)
+}
+
+
+pub fn to_seg(range: &Range<u64>) -> Segment {
+    Segment {
+        offset: range.start,
+        size: Some((range.end) + (range.start)),
+    }
 }

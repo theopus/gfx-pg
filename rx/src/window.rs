@@ -9,7 +9,8 @@ use winit::{
 #[derive(Debug)]
 pub struct WinitState {
     pub events_loop: EventLoop<()>,
-    pub window: Window,
+    pub window: Option<Window>,
+    pub window_builder: Option<WindowBuilder>
 }
 
 impl WinitState {
@@ -18,11 +19,11 @@ impl WinitState {
 
         let output = WindowBuilder::new()
             .with_title(title)
-            .with_inner_size(size)
-            .build(&events_loop);
-        output.map(|window| Self {
+            .with_inner_size(size);
+        Ok(Self {
             events_loop,
-            window,
+            window: None,
+            window_builder: Some(output)
         })
     }
 }
@@ -67,7 +68,7 @@ impl UserInput {
                 event: WindowEvent::CursorMoved { position, .. },
                 ..
             } => {
-                output.new_mouse_position = Some((position.x, position.y));
+                output.new_mouse_position = Some((position.x as i32, position.y as i32));
             }
             _ => (),
         };

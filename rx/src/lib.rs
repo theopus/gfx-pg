@@ -10,11 +10,12 @@ pub extern crate gfx_hal as hal;
 pub extern crate nalgebra_glm as glm;
 pub extern crate nalgebra as na;
 pub extern crate specs;
+pub extern crate shaderc;
 pub extern crate winit;
 
 pub mod window;
 mod utils;
-mod graphics;
+pub mod graphics;
 pub mod run;
 pub mod ecs;
 pub mod render;

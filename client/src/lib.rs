@@ -5,7 +5,7 @@ extern crate log;
 #[allow(unused_imports)]
 use log::{debug, error, info, trace, warn};
 
-use rx;
+pub use rx;
 use rx::ecs::{Render, Transformation, WinitEvents};
 use rx::ecs::layer::EcsInitTuple;
 use rx::specs::Builder;
@@ -16,7 +16,7 @@ mod map;
 
 
 
-fn main() {
+pub fn start() {
     env_logger::from_env(env_logger::Env::default().default_filter_or(
         "\
          info,\

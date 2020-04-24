@@ -9,12 +9,13 @@ use hal::{
     pool::CommandPool,
     pso::*, queue::*, window::*, window::Surface,
 };
-use hal::pass::{SubpassDependency, SubpassRef};
+use hal::pass::{SubpassDependency, SubpassId};
 #[allow(unused_imports)]
 use log::{debug, error, info, trace, warn};
 
 use crate::graphics::hal_utils::DepthImage;
 use crate::graphics::state::HalStateV2;
+use winit::dpi::PhysicalSize;
 
 pub trait DeviceDrop<B: Backend> {
     unsafe fn manually_drop(&mut self, device: &B::Device);
@@ -108,13 +109,7 @@ impl<B: Backend> BaseSwapchain<B> {
         let (swapchain, extent, backbuffer, config) = {
             let SurfaceCapabilities { current_extent, .. } =
                 state._surface.capabilities(&state._adapter.physical_device);
-            let extent = match current_extent {
-                None => Extent2D {
-                    width: 600,
-                    height: 400,
-                },
-                Some(e) => e,
-            };
+            let extent = config.extent;
             let swapchain_config = SwapchainConfig { extent, ..config };
             info!("Swapchain config: {:?}", swapchain_config);
             let (swapchain, backbuffer) = if let Some(old) = old_chain {
@@ -200,7 +195,7 @@ impl<B: Backend> BaseSwapchain<B> {
 }
 
 impl<B: Backend> CommonSwapchain<B> {
-    pub fn reset_inner(&mut self, state: &mut HalStateV2<B>) -> Result<(), &'static str> {
+    pub fn reset_inner(&mut self, state: &mut HalStateV2<B>, size: PhysicalSize<u32>) -> Result<(), &'static str> {
         for fence in self.img_fences.iter() {
             unsafe {
                 state.device
@@ -210,6 +205,10 @@ impl<B: Backend> CommonSwapchain<B> {
         }
 
         let swapchain = &mut self.base;
+        self.swapchain_config.extent = Extent2D {
+            width: size.width as u32,
+            height: size.height as u32
+        };
         let old = swapchain.pop_old_swapchain(&state.device);
         self.base = BaseSwapchain::new(state, &self.render_pass, self.swapchain_config.clone(), Some(old))?;
         info!("New extent: {:?}", self.base.extent);
@@ -249,7 +248,7 @@ impl<B: Backend> CommonSwapchain<B> {
         use hal::image::Access;
         use hal::memory::Dependencies;
         let in_dependency = SubpassDependency {
-            passes: SubpassRef::External..SubpassRef::Pass(0),
+            passes: None..Some(0),
             stages: PipelineStage::COLOR_ATTACHMENT_OUTPUT
                 ..PipelineStage::COLOR_ATTACHMENT_OUTPUT | PipelineStage::EARLY_FRAGMENT_TESTS,
             accesses: Access::empty()
@@ -260,7 +259,7 @@ impl<B: Backend> CommonSwapchain<B> {
             flags: Dependencies::empty(),
         };
         let out_dependency = SubpassDependency {
-            passes: SubpassRef::Pass(0)..SubpassRef::External,
+            passes: Some(0)..None,
             stages: PipelineStage::COLOR_ATTACHMENT_OUTPUT | PipelineStage::EARLY_FRAGMENT_TESTS
                 ..PipelineStage::COLOR_ATTACHMENT_OUTPUT,
             accesses: (Access::COLOR_ATTACHMENT_READ

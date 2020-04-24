@@ -18,9 +18,10 @@ use winit::dpi::PhysicalSize;
 use crate::assets::{AssetsLoader, AssetsStorage, MeshPtr};
 use crate::glm::Mat4;
 use crate::graphics::wrapper::ApiWrapper;
-use crate::hal::buffer::IndexBufferView;
+use crate::hal::buffer::{IndexBufferView, SubRange};
 use crate::hal::IndexType;
 use crate::utils::cast_slice;
+use crate::window::WinitState;
 
 pub type DrawCmd = (MeshPtr, glm::Mat4, glm::Mat4);
 
@@ -43,7 +44,7 @@ pub struct Renderer {
 }
 
 impl Renderer {
-    pub fn new(window: &winit::window::Window) -> Result<Self, &str> {
+    pub fn new(window: &mut WinitState) -> Result<Self, &str> {
         let api = ApiWrapper::typed(window)?;
 
         let loader = AssetsLoader::new("assets")?;
@@ -77,7 +78,7 @@ impl Renderer {
             None => (),
             Some(size) => {
                 info!("Req size: {:?}", size);
-                self.api.reset_swapchain()
+                self.api.reset_swapchain(size)
                     .expect("cannot recreate swapchain");
                 self.resize_flag = None;
             }
@@ -134,13 +135,19 @@ impl Renderer {
 
 
                     let buffers: ArrayVec<[_; 2]> = [
-                        (storage.mesh_bundle.buffer.deref(), 0),
-                        (storage.instanced_bundle.buffer.deref(), instanced_offset.start as u64)
+                        (storage.mesh_bundle.buffer.deref(), SubRange {
+                            offset: 0,
+                            size: None
+                        }),
+                        (storage.instanced_bundle.buffer.deref(), SubRange {
+                            offset: instanced_offset.start as u64,
+                            size: None
+                        })
                     ].into();
                     buffer.bind_vertex_buffers(0, buffers);
                     buffer.bind_index_buffer(IndexBufferView {
                         buffer: &storage.idx_bundle.buffer,
-                        offset: 0,
+                        range: SubRange::default(),
                         index_type: IndexType::U32,
                     });
 
@@ -155,13 +162,13 @@ impl Renderer {
                         match cmd {
                             RenderCommand::PushView(mtx) => {
                                 use hal::pso::ShaderStageFlags;
-                                buffer.push_graphics_constants(
-                                    &pipeline.pipeline_layout,
-                                    ShaderStageFlags::VERTEX | ShaderStageFlags::FRAGMENT,
-                                    0,
-                                    cast_slice::<f32, u32>(&mtx.as_slice())
-                                        .expect("this cast never fails for same-aligned same-size data"),
-                                );
+//                                buffer.push_graphics_constants(
+//                                    &pipeline.pipeline_layout,
+//                                    ShaderStageFlags::VERTEX | ShaderStageFlags::FRAGMENT,
+//                                    0,
+//                                    cast_slice::<f32, u32>(&mtx.as_slice())
+//                                        .expect("this cast never fails for same-aligned same-size data"),
+//                                );
                             },
                             _ => ()
                         }
@@ -243,30 +250,65 @@ impl Renderer {
 
 #[cfg(not(feature = "gl"))]
 impl ApiWrapper<back::Backend> {
-    pub fn typed(window: &winit::window::Window) -> Result<Self, &str> {
+    pub fn typed(st: &mut WinitState) -> Result<Self, &str> {
+        let wb = st.window_builder.take().unwrap();
+        let window = wb.build(&st.events_loop).unwrap();
         let instance =
             back::Instance::create("gfx-rs quad", 1).expect("Failed to create an instance!");
         info!("{:?}", instance);
         let surface = unsafe {
             instance
-                .create_surface(window)
+                .create_surface(&window)
                 .expect("Failed to create a surface!")
         };
         info!("{:?}", surface);
-        ApiWrapper::new(window, instance, surface)
+        let adapters = instance.enumerate_adapters();
+
+        let wrap = ApiWrapper::new(&window, Some(instance), surface, adapters);
+        st.window = Some(window);
+        wrap
     }
 }
 
 #[cfg(feature = "gl")]
 impl ApiWrapper<back::Backend> {
-    pub fn typed(window: &winit::window::Window) -> Result<Self, &str> {
-        let builder =
-            back::config_context(back::glutin::ContextBuilder::new(), ColorFormat::SELF, None)
-                .with_vsync(true);
-        builder.build_kek();
-        let surface = back::Surface::from_context(context);
-        info!("{:?}", instance);
+    pub fn typed(st: &mut WinitState) -> Result<Self, &str> {
+        #[cfg(not(target_arch = "wasm32"))]
+            let (window, surface) = {
+            let builder =
+                back::config_context(back::glutin::ContextBuilder::new(), hal::format::Format::Rgba8Srgb, None)
+                    .with_vsync(false);
+            let wb = st.window_builder.take();
+            let windowed_context = builder.build_windowed(wb.unwrap(), &st.events_loop).unwrap();
+            let (context, window) = unsafe {
+                windowed_context
+                    .make_current()
+                    .expect("Unable to make context current")
+                    .split()
+            };
+            let surface = back::Surface::from_context(context);
+            (window, surface)
+        };
+        #[cfg(target_arch = "wasm32")]
+        let (window, surface) = {
+            extern crate web_sys;
+            let wb = st.window_builder.take();
+            let window = wb.build(&st.events_loop).unwrap();
+            web_sys::window()
+                .unwrap()
+                .document()
+                .unwrap()
+                .body()
+                .unwrap()
+                .append_child(&winit::platform::web::WindowExtWebSys::canvas(&window));
+            let surface = back::Surface::from_raw_handle(&window);
+            (window, surface)
+        };
         info!("{:?}", surface);
-        ApiWrapper::new(window, instance, surface)
+        let adapters = surface.enumerate_adapters();
+
+        let wrap = ApiWrapper::new(&window, None, surface, adapters);
+        st.window = Some(window);
+        wrap
     }
 }

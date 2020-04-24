@@ -27,7 +27,7 @@ pub fn map_event(src: Event<()>) -> Option<MyEvent> {
         } => {
             match event {
                 WindowEvent::Resized(sz) =>
-                    Some(MyEvent::Resized(sz.width, sz.height)),
+                    Some(MyEvent::Resized(sz.width as u32, sz.height as u32)),
                 WindowEvent::KeyboardInput {
                     device_id, input, is_synthetic
                 } => Some(MyEvent::KeyboardInput {

@@ -19,9 +19,8 @@ pub struct Engine {
 
 impl Default for Engine {
     fn default() -> Self {
-        let winit_state: WinitState = Default::default();
-        let window = &winit_state.window;
-        let renderer = Renderer::new(window).unwrap();
+        let mut winit_state: WinitState = Default::default();
+        let renderer = Renderer::new(&mut winit_state).unwrap();
         Self {
             winit_state,
             layers: Default::default(),
@@ -42,10 +41,17 @@ impl Engine {
     }
 
     pub fn run(self) {
-        let WinitState {
+        let (
             events_loop,
-            window,
-        } = self.winit_state;
+            window
+        ) = {
+            let WinitState {
+                events_loop,
+                window,
+                ..
+            } = self.winit_state;
+            (events_loop, window.unwrap())
+        };
 
 
         let mut layers = self.layers;
@@ -97,6 +103,8 @@ impl Engine {
                     event: WindowEvent::Resized(phys_size),
                     ..
                 } => {
+                    info!("{:?}", phys_size);
+
                     renderer.reset_swapchain(phys_size);
 
                     let owned = map_event(o_event);

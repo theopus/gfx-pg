@@ -1,3 +1,4 @@
+use std::io::Cursor;
 use std::mem::{ManuallyDrop, size_of};
 
 use hal::{
@@ -17,6 +18,7 @@ use hal::pso::{BasePipeline, PolygonMode, VertexInputRate};
 use log::{debug, error, info, trace, warn};
 
 use crate::graphics::swapchain::DeviceDrop;
+use crate::hal::pso;
 use crate::hal::pso::State;
 
 pub struct PipelineV0<B: Backend> {
@@ -83,6 +85,19 @@ impl<B: Backend> PipelineV0<B> {
                 .create_shader_module(fragment_compile_artifact.as_binary())
                 .map_err(|_| "Couldn't make the fragment module")?
         };
+//
+//        let vertex_shader_module = {
+//            let spirv = pso::read_spirv(Cursor::new(&include_bytes!("../../../assets/vertex.spr")[..]))
+//                .unwrap();
+//            unsafe { device.create_shader_module(&spirv) }.unwrap()
+//        };
+//        let fragment_shader_module = {
+//            let spirv =
+//                pso::read_spirv(Cursor::new(&include_bytes!("../../../assets/frag.spr")[..]))
+//                    .unwrap();
+//            unsafe { device.create_shader_module(&spirv) }.unwrap()
+//        };
+
         let (vs_entry, fs_entry): (EntryPoint<B>, EntryPoint<B>) = (
             EntryPoint {
                 entry: "main",
@@ -168,6 +183,7 @@ impl<B: Backend> PipelineV0<B> {
             depth_clamping: false,
             depth_bias: None,
             conservative: false,
+            line_width: State::Dynamic
         };
 
         let depth_stencil = DepthStencilDesc {
@@ -294,7 +310,7 @@ impl<B: Backend> PipelineV0<B> {
     }
 }
 
-mod shader {
+pub mod shader {
     use log::error;
     use shaderc::CompilationArtifact;
     use shaderc::Compiler;

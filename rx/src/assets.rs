@@ -65,7 +65,7 @@ impl AssetsStorage {
                 //hardcoded for vertex 8 (3 + 2 + 3)
                 let offset = self.mesh_offset * size_of::<f32>() as i32 * 8;
                 let align = offset % 64;
-                let range = (offset - align) as u64..bundle.requirements().size;
+                let range = (offset - align) as u64..((offset - align) + mesh_len as i32) as u64;
                 let mesh_ptr = bundle.map_mem_range(device, range.clone())?;
                 ptr::copy(
                     flatten_mesh.as_ptr() as *const u8,
@@ -80,7 +80,7 @@ impl AssetsStorage {
                 let bundle = &wrapper.storage.idx_bundle;
                 let offset = self.idx_offset * size_of::<u32>() as u32;
                 let align = offset % 64;
-                let range = (offset - align) as u64..bundle.requirements().size;
+                let range = (offset - align) as u64..((offset - align) + idx_len as u32) as u64;
                 let idx_ptr = bundle.map_mem_range(device, range.clone())?;
                 ptr::copy(
                     indices.as_slice().as_ptr() as *const u8,

@@ -11,11 +11,13 @@ use hal::{
 use log::{debug, error, info, trace, warn};
 use winit::window::Window;
 
+use crate::hal::adapter::Adapter;
+
 pub struct HalStateV2<B: Backend> {
     pub(crate) device: ManuallyDrop<B::Device>,
     pub(crate) _adapter: hal::adapter::Adapter<B>,
     pub(crate) _surface: ManuallyDrop<B::Surface>,
-    pub(crate) _instance: ManuallyDrop<B::Instance>,
+    pub(crate) _instance: Option<ManuallyDrop<B::Instance>>,
 }
 
 impl<B: Backend> HalStateV2<B> {
@@ -28,17 +30,14 @@ impl<B: Backend> HalStateV2<B> {
     pub fn surface_ref(&mut self) -> &mut B::Surface {
         &mut self._surface
     }
-    pub fn instance_ref(&self) -> &B::Instance {
-        &self._instance
-    }
 
     pub fn new(
         _window: &Window,
-        instance: <B as Backend>::Instance,
+        instance: Option<<B as Backend>::Instance>,
         surface: B::Surface,
+        adapters: Vec<Adapter<B>>,
     ) -> Result<(Self, QueueGroup<B>), &'static str> {
-        let adapter = instance
-            .enumerate_adapters()
+        let adapter = adapters
             .into_iter()
             .find(|a| {
                 a.queue_families.iter().any(|qf| {
@@ -73,12 +72,16 @@ impl<B: Backend> HalStateV2<B> {
             }?;
             (device, queue_group)
         };
+
         Ok((
             HalStateV2 {
                 device: ManuallyDrop::new(device),
                 _adapter: adapter,
                 _surface: ManuallyDrop::new(surface),
-                _instance: ManuallyDrop::new(instance),
+                _instance: match instance {
+                    None => None,
+                    Some(i) => Some(ManuallyDrop::new(i)),
+                },
             },
             queue_group,
         ))
@@ -90,11 +93,12 @@ impl<B: Backend> Drop for HalStateV2<B> {
         unsafe {
             ManuallyDrop::drop(&mut self.device);
 
-            let surface_ptr = ptr::read(&self._surface);
-            self._instance
-                .destroy_surface(ManuallyDrop::into_inner(surface_ptr));
-
-            ManuallyDrop::drop(&mut self._instance);
+//            let surface_ptr = ptr::read(&self._surface);
+//            if self._instance.is_some() {
+//                self._instance.as_mut()
+//                    .destroy_surface(ManuallyDrop::into_inner(surface_ptr));
+//                ManuallyDrop::drop(&mut self._instance.unwrap());
+//            }
         }
     }
 }
