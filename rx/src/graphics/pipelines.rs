@@ -176,7 +176,7 @@ impl<B: Backend> PipelineV0<B> {
         };
 
         let rasterizer = Rasterizer {
-//            polygon_mode: PolygonMode::Line(State::Static(1.)),
+//            polygon_mode: PolygonMode::Line,
             polygon_mode: PolygonMode::Fill,
             cull_face: Face::NONE,
             front_face: FrontFace::Clockwise,

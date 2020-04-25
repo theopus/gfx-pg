@@ -6,6 +6,7 @@ use log::{debug, error, info, trace, warn};
 use rx::ecs::{ActiveCamera, CameraTarget, Position, Render, Rotation, TargetCamera, Transformation, WinitEvents};
 use rx::events::MyEvent;
 use rx::glm;
+use rx::glm::{Vec2, Vec3};
 use rx::na::Vector3;
 use rx::render::{DrawCmd, RenderCommand};
 use rx::specs::{Join, Read, ReadStorage, System, Write, WriteStorage};
@@ -15,9 +16,37 @@ use rx::winit::event::{ElementState, KeyboardInput, MouseButton, VirtualKeyCode}
 pub struct InputTestSystem {
     pub should_affect_angle: bool,
     pub should_affect_distance: bool,
-    pub speed: f32
+    pub speed: f32,
+    pub vert: f32,
+    pub hor: f32,
+    pad: MovePad
 }
 
+
+#[derive(Default, Debug)]
+struct MovePad {
+    pub up: bool,
+    pub down: bool,
+    pub right: bool,
+    pub left: bool,
+}
+
+impl MovePad {
+    pub fn is_active(&self) -> bool {
+        self.up || self.down || self.right || self.left
+    }
+
+    pub fn as_vec2(&self) -> Vec2 {
+        let y: f32 = if !(self.up ^ self.down) { 0. } else { if self.up { 1. } else { -1. } };
+        let x: f32 = if !(self.right ^ self.left) { 0. } else { if self.right { 1. } else { -1. } };
+
+        if !(y == 0. && x == 0.) {
+            glm::normalize(&glm::vec2(y, x))
+        } else {
+            glm::vec2(y, x)
+        }
+    }
+}
 
 impl<'a> System<'a> for InputTestSystem {
     type SystemData = (
@@ -92,20 +121,56 @@ impl<'a> System<'a> for InputTestSystem {
                 } => pos.y -= 1.,
                 MyEvent::KeyboardInput {
                     input: KeyboardInput {
-                        state: ElementState::Pressed,
+                        state,
                         virtual_keycode: Some(VirtualKeyCode::W),
                         ..
                     },
                     ..
-                } => self.speed = 2.,
+                } => {
+                    self.pad.up = match state {
+                        ElementState::Pressed => true,
+                        ElementState::Released => false,
+                    }
+                },
                 MyEvent::KeyboardInput {
                     input: KeyboardInput {
-                        state: ElementState::Released,
-                        virtual_keycode: Some(VirtualKeyCode::W),
+                        state,
+                        virtual_keycode: Some(VirtualKeyCode::S),
                         ..
                     },
                     ..
-                } => self.speed = 0.,
+                } => {
+                    self.pad.down = match state {
+                        ElementState::Pressed => true,
+                        ElementState::Released => false,
+                    }
+                },
+                MyEvent::KeyboardInput {
+                    input: KeyboardInput {
+                        state,
+                        virtual_keycode: Some(VirtualKeyCode::A),
+                        ..
+                    },
+                    ..
+                } => {
+                    self.pad.left = match state {
+                        ElementState::Pressed => true,
+                        ElementState::Released => false,
+                    }
+                },
+                MyEvent::KeyboardInput {
+                    input: KeyboardInput {
+                        state,
+                        virtual_keycode: Some(VirtualKeyCode::D),
+                        ..
+                    },
+                    ..
+                } => {
+                    self.pad.right = match state {
+                        ElementState::Pressed => true,
+                        ElementState::Released => false,
+                    }
+                },
                 MyEvent::Resized(w, h) => cam.update_aspect(*w as f32 / *h as f32),
                 _ => ()
             };
@@ -117,28 +182,36 @@ impl<'a> System<'a> for InputTestSystem {
         cam.pitch -= 0.4 * accum_delta.1 as f32;
 
 
-        let rad = glm::radians(&glm::vec1(cam.yaw - 180.));
-        let pos_x = self.speed * glm::sin(&rad).x;
-        let pos_z = self.speed * glm::cos(&rad).x;
+        let mut degree = cam.yaw - 180.;
 
-        pos.x += pos_x;
-        pos.z += pos_z;
+        let mut d_vec: Vec2 = self.pad.as_vec2();
+        if self.pad.is_active() {
+            info!("{:?}", self.pad);
+            info!("{:?}", d_vec);
+            self.speed = 1.5;
+        };
 
-        if self.speed < 0. { self.speed = 0. };
+
+        let mut d_vec: Vec2 = glm::rotate_vec2(&d_vec, glm::radians(&glm::vec1(degree)).x);
+        let move_vec = self.speed * d_vec;
+
+
+        pos.x += move_vec.y;
+        pos.z += move_vec.x;
     }
 }
 
 
 pub struct RenderSubmitSystem {
     send_draw: Sender<DrawCmd>,
-    send_render: Sender<RenderCommand>
+    send_render: Sender<RenderCommand>,
 }
 
 impl RenderSubmitSystem {
     pub fn new(send_draw: Sender<DrawCmd>, send_render: Sender<RenderCommand>) -> Self {
         Self {
             send_draw,
-            send_render
+            send_render,
         }
     }
 }
@@ -150,7 +223,6 @@ impl<'a> System<'a> for RenderSubmitSystem {
         ReadStorage<'a, Transformation>,
         WriteStorage<'a, Render>
     );
-
 
 
     fn run(&mut self, (active, camera, transformation, mut render): Self::SystemData) {

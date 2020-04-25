@@ -78,9 +78,9 @@ pub fn start() {
         world.create_entity()
             .with(Rotation::default())
             .with(Position {
-                x: -30.,
+                x: -100.,
                 y: -5.,
-                z: -60.
+                z: -100.
             })
 
             .with(Transformation::default())

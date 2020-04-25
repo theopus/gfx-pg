@@ -105,7 +105,7 @@ impl Default for TargetCamera {
             offset_y: 0.,
             distance: 100.,
             yaw: 180.,
-            pitch: 180.,
+            pitch: 115.,
         }
     }
 }
