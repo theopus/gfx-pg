@@ -43,12 +43,39 @@ pub struct CameraTarget(pub Option<Entity>);
 #[derive(Default)]
 pub struct ActiveCamera(pub Option<Entity>);
 
+pub struct ViewProjection{
+    pub view: glm::Mat4,
+    pub proj: glm::Mat4
+}
+
+impl Default for ViewProjection {
+    fn default() -> Self {
+        Self{
+            view: glm::identity(),
+            proj: glm::identity(),
+        }
+    }
+}
+
 #[derive(Component, Debug)]
 #[storage(VecStorage)]
 pub struct Rotation {
     pub x: f32,
     pub y: f32,
     pub z: f32,
+}
+#[derive(Component, Debug)]
+#[storage(VecStorage)]
+pub struct Velocity {
+    pub v: Vec3,
+}
+
+impl Default for Velocity {
+    fn default() -> Self {
+        Self {
+            v: glm::vec3(0.,0.,0.)
+        }
+    }
 }
 
 impl Default for Rotation {
@@ -69,6 +96,7 @@ pub struct Position {
     pub z: f32,
 }
 
+
 impl Default for Position {
     fn default() -> Self {
         Self {
@@ -82,7 +110,7 @@ impl Default for Position {
 #[derive(Component, Debug)]
 #[storage(VecStorage)]
 pub struct TargetCamera {
-    projection: Mat4,
+    pub projection: Mat4,
     pub view: Mat4,
     fov: f32,
     //

@@ -25,9 +25,17 @@ use crate::window::WinitState;
 
 pub type DrawCmd = (MeshPtr, glm::Mat4, glm::Mat4);
 
+
+
 pub enum RenderCommand {
     PushView(glm::Mat4),
-    PushLight(glm::Vec3)
+    PushLight(glm::Vec3),
+    PushState,
+    Draw,
+}
+
+pub trait Pipeline {
+    fn process(&mut self);
 }
 
 pub struct Renderer {
@@ -41,6 +49,8 @@ pub struct Renderer {
 
     cmd_s: Sender<RenderCommand>,
     cmd_r: Receiver<RenderCommand>,
+
+    pipelines: Vec<Box<dyn Pipeline>>
 }
 
 impl Renderer {
@@ -61,7 +71,8 @@ impl Renderer {
             sender: send,
             receiver: recv,
             cmd_s: r_send,
-            cmd_r: r_recv
+            cmd_r: r_recv,
+            pipelines: vec![]
         })
     }
 
@@ -88,6 +99,11 @@ impl Renderer {
         let next_frame = self.api.next_frame();
         match next_frame {
             Ok(fr) => {
+                for pipe in self.pipelines.iter_mut() {
+
+                }
+
+
                 let (
                     frame,
                     buffer,
@@ -293,7 +309,7 @@ impl ApiWrapper<back::Backend> {
         let (window, surface) = {
             extern crate web_sys;
             let wb = st.window_builder.take();
-            let window = wb.build(&st.events_loop).unwrap();
+            let window = wb.unwrap().build(&st.events_loop).unwrap();
             web_sys::window()
                 .unwrap()
                 .document()

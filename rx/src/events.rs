@@ -1,3 +1,4 @@
+use winit::dpi::PhysicalPosition;
 use winit::event::{DeviceEvent, DeviceId, ElementState, Event, KeyboardInput, MouseButton, WindowEvent};
 
 #[derive(Debug, Clone)]
@@ -16,6 +17,10 @@ pub enum MyEvent {
         state: ElementState,
         button: MouseButton,
     },
+    CursorMoved {
+        device_id: DeviceId,
+        position: PhysicalPosition<f64>,
+    }
 }
 
 //TODO: find out adequate solution
@@ -44,6 +49,12 @@ pub fn map_event(src: Event<()>) -> Option<MyEvent> {
                     device_id,
                     state,
                     button,
+                }),
+                WindowEvent::CursorMoved {
+                    device_id, position, ..
+                } => Some(MyEvent::CursorMoved {
+                    device_id,
+                    position
                 }),
                 _ => None
             }

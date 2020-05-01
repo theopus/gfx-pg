@@ -62,41 +62,47 @@ impl<B: Backend> PipelineV0<B> {
         _extent: Extent2D,
         render_pass: &<B as Backend>::RenderPass,
     ) -> Result<Self, &'static str> {
-        let vertex_compile_artifact = shader::compile(
-            VERTEX_SOURCE,
-            shaderc::ShaderKind::Vertex,
-            "vertex.vert",
-            "main",
-        )?;
-        let fragment_compile_artifact = shader::compile(
-            FRAGMENT_SOURCE,
-            shaderc::ShaderKind::Fragment,
-            "fragment.frag",
-            "main",
-        )?;
 
-        let vertex_shader_module = unsafe {
-            device
-                .create_shader_module(vertex_compile_artifact.as_binary())
-                .map_err(|_| "Couldn't make the vertex module")?
+        #[cfg(not(target_arch = "wasm32"))]
+        let (vertex_shader_module, fragment_shader_module) = {
+            let vertex_compile_artifact = shader::compile(
+                VERTEX_SOURCE,
+                shaderc::ShaderKind::Vertex,
+                "vertex.vert",
+                "main",
+            )?;
+            let fragment_compile_artifact = shader::compile(
+                FRAGMENT_SOURCE,
+                shaderc::ShaderKind::Fragment,
+                "fragment.frag",
+                "main",
+            )?;
+            (unsafe {
+                device
+                    .create_shader_module(vertex_compile_artifact.as_binary())
+                    .map_err(|_| "Couldn't make the vertex module")?
+            },
+             unsafe {
+                 device
+                     .create_shader_module(fragment_compile_artifact.as_binary())
+                     .map_err(|_| "Couldn't make the fragment module")?
+             })
         };
-        let fragment_shader_module = unsafe {
-            device
-                .create_shader_module(fragment_compile_artifact.as_binary())
-                .map_err(|_| "Couldn't make the fragment module")?
+
+        #[cfg(target_arch = "wasm32")]
+            let (vertex_shader_module, fragment_shader_module) = {
+            ({
+                 let spirv = pso::read_spirv(Cursor::new(&include_bytes!("../../../assets/map")[..]))
+                     .unwrap();
+                 unsafe { device.create_shader_module(&spirv) }.unwrap()
+             },
+             {
+                 let spirv =
+                     pso::read_spirv(Cursor::new(&include_bytes!("../../../assets/map")[..]))
+                         .unwrap();
+                 unsafe { device.create_shader_module(&spirv) }.unwrap()
+             })
         };
-//
-//        let vertex_shader_module = {
-//            let spirv = pso::read_spirv(Cursor::new(&include_bytes!("../../../assets/vertex.spr")[..]))
-//                .unwrap();
-//            unsafe { device.create_shader_module(&spirv) }.unwrap()
-//        };
-//        let fragment_shader_module = {
-//            let spirv =
-//                pso::read_spirv(Cursor::new(&include_bytes!("../../../assets/frag.spr")[..]))
-//                    .unwrap();
-//            unsafe { device.create_shader_module(&spirv) }.unwrap()
-//        };
 
         let (vs_entry, fs_entry): (EntryPoint<B>, EntryPoint<B>) = (
             EntryPoint {
@@ -183,7 +189,7 @@ impl<B: Backend> PipelineV0<B> {
             depth_clamping: false,
             depth_bias: None,
             conservative: false,
-            line_width: State::Dynamic
+            line_width: State::Dynamic,
         };
 
         let depth_stencil = DepthStencilDesc {
@@ -310,6 +316,7 @@ impl<B: Backend> PipelineV0<B> {
     }
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 pub mod shader {
     use log::error;
     use shaderc::CompilationArtifact;

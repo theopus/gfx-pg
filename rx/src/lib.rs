@@ -10,6 +10,7 @@ pub extern crate gfx_hal as hal;
 pub extern crate nalgebra_glm as glm;
 pub extern crate nalgebra as na;
 pub extern crate specs;
+#[cfg(not(target_arch = "wasm32"))]
 pub extern crate shaderc;
 pub extern crate winit;
 

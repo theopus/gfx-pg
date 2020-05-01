@@ -6,10 +6,12 @@ extern crate log;
 use log::{debug, error, info, trace, warn};
 
 pub use rx;
-use rx::ecs::{Render, Transformation, WinitEvents};
+use rx::ecs::{Render, Transformation, Velocity, WinitEvents, ViewProjection};
 use rx::ecs::layer::EcsInitTuple;
 use rx::specs::Builder;
 use rx::specs::WorldExt;
+
+use crate::systems::test::Follower;
 
 mod systems;
 mod map;
@@ -47,9 +49,11 @@ pub fn start() {
     };
     let (draw, redner) = eng.renderer().queue();
 
-    let render_sys = systems::RenderSubmitSystem::new(draw, redner);
-    let input_sys = systems::InputTestSystem::default();
-    let transform_sys = systems::TransformationSystem;
+    let render_sys = systems::generic::RenderSubmitSystem::new(draw, redner);
+    let input_sys = systems::test::InputTestSystem::default();
+    let move_sys = systems::test::MoveSystem;
+    let mouse_sys = systems::test::MoveClickSystem::default();
+    let transform_sys = systems::generic::TransformationSystem;
 
     let ecs_layer = rx::ecs::layer::EcsLayer::new(move |(mut world, mut r_dispatcher, mut c_dispatcher): EcsInitTuple<'static>| {
         use rx::ecs::{
@@ -64,12 +68,15 @@ pub fn start() {
         world.register::<Render>();
         world.register::<Rotation>();
         world.register::<Position>();
+        world.register::<Velocity>();
         world.register::<Transformation>();
         world.register::<TargetCamera>();
+        world.register::<Follower>();
 
-        let entity = world.create_entity()
+        let player = world.create_entity()
             .with(Rotation::default())
             .with(Position::default())
+            .with(Velocity::default())
             .with(Transformation::default())
             .with(Render {
                 mesh: ico_mesh.clone()
@@ -107,6 +114,10 @@ pub fn start() {
                     }
                 }
             })
+                .with(Follower {
+                    lead: player
+                })
+                .with(Velocity::default())
             .build();
         }
 
@@ -116,11 +127,16 @@ pub fn start() {
 
 
         world.insert(ActiveCamera(Some(cam_entity)));
-        world.insert(CameraTarget(Some(entity)));
+        world.insert(CameraTarget(Some(player)));
         world.insert(WinitEvents::default());
+        world.insert(ViewProjection::default());
 
         r_dispatcher = r_dispatcher
+            .with(systems::test::FollowingSystem, "follow_sys", &[])
+            //
             .with(input_sys, "in_tst_sys", &[])
+            .with(move_sys, "move_sys", &[])
+            .with(mouse_sys, "mouse_sys", &[])
             .with(transform_sys, "tsm_sys", &[]);
         c_dispatcher = c_dispatcher
             .with_thread_local(render_sys);
