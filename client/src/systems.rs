@@ -37,10 +37,12 @@ pub mod test {
                     MyEvent::CursorMoved { position, .. } => {
                         self.x = position.x as f32;
                         self.y = position.y as f32;
+//                        info!("Mouse x:{}, y:{}", self.x, self.y);
                     },
                     MyEvent::Resized(w, h) => {
                         self.w = *w;
                         self.h = *h;
+                        info!("Resized w:{}, h:{}", self.w, self.h);
                     },
                     _ => {}
                 }
@@ -61,8 +63,6 @@ pub mod test {
             let mut ray_wor = &i_view * ray_eye;
             let mut ray_wor = glm::vec4_to_vec3(&ray_wor);
             let ray_wor = glm::normalize(&ray_wor);
-
-            info!("{:?}", ray_wor);
 
 //            float x = (2.0f * mouse_x) / width - 1.0f;
 //            float y = 1.0f - (2.0f * mouse_y) / height;

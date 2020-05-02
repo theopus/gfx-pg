@@ -12,10 +12,9 @@ metal = ["gfx-backend-metal"]
 dx12 = ["gfx-backend-dx12"]
 vulkan = ["gfx-backend-vulkan"]
 gl = ["gfx-backend-gl", "gfx-backend-gl/glutin"]
-wgl = ["gfx-backend-gl"]
+wgl = ["gfx-backend-gl-web"]
 
 [dependencies]
-winit = { version = "0.21.0", features = ["web-sys"] }
 log = "0.4.0"
 gfx-hal = "0.5"
 gfx-backend-gl = {version = "0.5", optional = true }
@@ -27,12 +26,10 @@ nalgebra = "0.18.0"
 nalgebra-glm = "0.4.0"
 #[PHYS]#ncollide3d = "0.20"
 #nphysics3d = "0.12"
-specs = { version = "0.15.0", features = ["specs-derive"] }
+specs = { version = "0.15.0", default-features=false, features = ["specs-derive", "wasm-bindgen"] }
 specs-derive = "0.4.0"
 itertools = "0.8.0"
 
-[target.'cfg(not(target_arch = "wasm32"))'.dependencies.shaderc]
-version = "0.6.1"
 
 [dependencies.gfx-backend-vulkan]
 version = "0.5"
@@ -54,3 +51,17 @@ optional = true
 [target.'cfg(target_arch = "wasm32")'.dependencies.web-sys]
 version = "0.3.6"
 features = [ "console", "Document", "Element", "HtmlElement", "Node", "Window" ]
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+shaderc = "0.6.1"
+winit = { version = "0.21.0", features = ["web-sys"] }
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+wasm-bindgen = "0.2.55"
+console_error_panic_hook = "0.1.6"
+console_log = "0.1.2"
+winit = { version = "0.22.1", features = ["web-sys"] }
+#last resort measurese ahead
+#commit hash 8103ececa16175c6df7baabb15ca36de55e83bb7
+gfx-hal-web = {package="gfx-hal", path="/home/otkachov/src/gfx/src/hal", version="0.5"}
+gfx-backend-gl-web = {package="gfx-backend-gl", path="/home/otkachov/src/gfx/src/backend/gl", version = "0.5", optional = true }

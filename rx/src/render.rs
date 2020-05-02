@@ -3,13 +3,13 @@ use std::sync::mpsc::{channel, Receiver, Sender};
 
 use arrayvec::ArrayVec;
 use back;
-use gfx_hal::Instance;
 use hal::{
     command,
     command::ClearValue,
     command::CommandBuffer,
     pso::{Rect, Viewport},
 };
+use hal::Instance;
 use itertools::Itertools;
 #[allow(unused_imports)]
 use log::{debug, error, info, trace, warn};
@@ -41,7 +41,7 @@ pub trait Pipeline {
 pub struct Renderer {
     pub(crate)api: ApiWrapper<back::Backend>,
     pub(crate)storage: AssetsStorage,
-    pub(crate)loader: AssetsLoader,
+    pub(crate)loader: Option<AssetsLoader>,
     resize_flag: Option<PhysicalSize<u32>>,
 
     sender: Sender<DrawCmd>,
@@ -56,9 +56,14 @@ pub struct Renderer {
 impl Renderer {
     pub fn new(window: &mut WinitState) -> Result<Self, &str> {
         let api = ApiWrapper::typed(window)?;
-
-        let loader = AssetsLoader::new("assets")?;
+        debug!("Wrapper done.");
+        #[cfg(not(target_arch = "wasm32"))]
+            let loader = Some(AssetsLoader::new("assets")?);
+        #[cfg(target_arch = "wasm32")]
+            let loader = None;
+        debug!("AssetLoader done.");
         let storage = AssetsStorage::new()?;
+        debug!("AssetStorage done.");
         let (send, recv) = channel();
         let (r_send, r_recv) = channel();
 
@@ -66,7 +71,7 @@ impl Renderer {
         Ok(Self {
             api,
             storage,
-            loader,
+            loader: loader,
             resize_flag: None,
             sender: send,
             receiver: recv,
@@ -118,7 +123,7 @@ impl Renderer {
                     const CLEAR: [ClearValue; 2] = [
                         command::ClearValue {
                             color: command::ClearColor {
-                                float32: [0.1, 0.2, 0.3, 1.0],
+                                float32: [0.5, 0.2, 0.3, 1.0],
                             },
                         },
                         command::ClearValue {
@@ -137,7 +142,7 @@ impl Renderer {
                     };
                     let viewport = Viewport {
                         rect: render_area,
-                        depth: (0.0..1.0),
+                        depth: (-1.0..1.0),
                     };
 
                     buffer.begin_primary(command::CommandBufferFlags::empty());
@@ -264,7 +269,7 @@ impl Renderer {
     }
 }
 
-#[cfg(not(feature = "gl"))]
+#[cfg(all(not(feature = "gl"), not(feature = "wgl")))]
 impl ApiWrapper<back::Backend> {
     pub fn typed(st: &mut WinitState) -> Result<Self, &str> {
         let wb = st.window_builder.take().unwrap();
@@ -286,7 +291,7 @@ impl ApiWrapper<back::Backend> {
     }
 }
 
-#[cfg(feature = "gl")]
+#[cfg(any(feature = "gl", feature = "wgl"))]
 impl ApiWrapper<back::Backend> {
     pub fn typed(st: &mut WinitState) -> Result<Self, &str> {
         #[cfg(not(target_arch = "wasm32"))]

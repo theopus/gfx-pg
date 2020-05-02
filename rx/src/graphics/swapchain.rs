@@ -12,10 +12,10 @@ use hal::{
 use hal::pass::{SubpassDependency, SubpassId};
 #[allow(unused_imports)]
 use log::{debug, error, info, trace, warn};
+use winit::dpi::PhysicalSize;
 
 use crate::graphics::hal_utils::DepthImage;
 use crate::graphics::state::HalStateV2;
-use winit::dpi::PhysicalSize;
 
 pub trait DeviceDrop<B: Backend> {
     unsafe fn manually_drop(&mut self, device: &B::Device);
@@ -180,6 +180,7 @@ impl<B: Backend> BaseSwapchain<B> {
                     })
                     .collect::<Result<Vec<_>, &str>>()?
             };
+            info!("Swapchain stuff: {:?}", (&image_views.len(), &framebuffers.len()));
             (image_views, depth_images, framebuffers)
         };
 
@@ -350,11 +351,12 @@ impl<B: Backend> CommonSwapchain<B> {
                     .unwrap_or(formats[0])
             });
             info!("Selected format mode: {:?}", format);
-            let image_count = if present_mode == hal::window::PresentMode::MAILBOX {
+            let mut image_count = if present_mode == hal::window::PresentMode::MAILBOX {
                 (image_count.end() - 1).min(*image_count.start().max(&3))
             } else {
                 (image_count.end() - 1).min(*image_count.start().max(&2))
             };
+            if image_count <= 0 { image_count = 1 };
             info!("Image count: {:?}", image_count);
             let image_layers = 1;
             info!("Image layers: {:?}", image_layers);
@@ -435,7 +437,7 @@ impl<B: Backend> CommonSwapchain<B> {
         };
         Ok(Self {
             current_frame: 0,
-            img_count: base.img_count,
+            img_count: if base.img_count == 0 { 1 } else { base.img_count },
             img_fences: swapchain_img_fences,
             render_finished_semaphores,
             image_available_semaphores,

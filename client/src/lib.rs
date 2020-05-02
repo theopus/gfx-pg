@@ -6,7 +6,7 @@ extern crate log;
 use log::{debug, error, info, trace, warn};
 
 pub use rx;
-use rx::ecs::{Render, Transformation, Velocity, WinitEvents, ViewProjection};
+use rx::ecs::{Render, Transformation, Velocity, ViewProjection, WinitEvents};
 use rx::ecs::layer::EcsInitTuple;
 use rx::specs::Builder;
 use rx::specs::WorldExt;
@@ -19,6 +19,15 @@ mod map;
 
 
 pub fn start() {
+    #[cfg(target_arch = "wasm32")]
+        {
+            console_log::init_with_level(log::Level::Info).unwrap();
+            debug!("Logger done.");
+            std::panic::set_hook(Box::new(console_error_panic_hook::hook));
+            debug!("Panic hook done.");
+        };
+
+    #[cfg(not(target_arch = "wasm32"))]
     env_logger::from_env(env_logger::Env::default().default_filter_or(
         "\
          info,\
@@ -28,19 +37,21 @@ pub fn start() {
     ))
     .init();
 
+    info!("Client started.");
     let mut eng = rx::run::Engine::default();
+    info!("Engine created.");
 
-    let ico_mesh = {
-        let (api, loader, storage) = eng.loader();
-        let obj = loader.load_obj("ico-sphere").expect("");
-        storage.load_mesh(api, obj).expect("")
-    };
-
-    let tetrahedron_mesh = {
-        let (api, loader, storage) = eng.loader();
-        let obj = loader.load_obj("tetrahedron").expect("");
-        storage.load_mesh(api, obj).expect("")
-    };
+//    let ico_mesh = {
+//        let (api, loader, storage) = eng.loader();
+//        let obj = loader.load_obj("ico-sphere").expect("");
+//        storage.load_mesh(api, obj).expect("")
+//    };
+//
+//    let tetrahedron_mesh = {
+//        let (api, loader, storage) = eng.loader();
+//        let obj = loader.load_obj("tetrahedron").expect("");
+//        storage.load_mesh(api, obj).expect("")
+//    };
 
     let map_mesh_ptr = {
         let (api, loader, storage) = eng.loader();
@@ -78,9 +89,9 @@ pub fn start() {
             .with(Position::default())
             .with(Velocity::default())
             .with(Transformation::default())
-            .with(Render {
-                mesh: ico_mesh.clone()
-            })
+//            .with(Render {
+//                mesh: ico_mesh.clone()
+//            })
             .build();
         world.create_entity()
             .with(Rotation::default())
@@ -105,15 +116,15 @@ pub fn start() {
                     z: 0.0,
                 })
                 .with(Transformation::default())
-            .with(Render {
-                mesh: {
-                    if e % 2 == 0 {
-                        ico_mesh.clone()
-                    } else {
-                        tetrahedron_mesh.clone()
-                    }
-                }
-            })
+//            .with(Render {
+//                mesh: {
+//                    if e % 2 == 0 {
+//                        ico_mesh.clone()
+//                    } else {
+//                        tetrahedron_mesh.clone()
+//                    }
+//                }
+//            })
                 .with(Follower {
                     lead: player
                 })
@@ -146,5 +157,5 @@ pub fn start() {
 
 
     eng.push_layer(ecs_layer);
-    eng.run();
+    eng.run().expect("");
 }

@@ -20,6 +20,7 @@ use log::{debug, error, info, trace, warn};
 use crate::graphics::swapchain::DeviceDrop;
 use crate::hal::pso;
 use crate::hal::pso::State;
+use std::ops::Range;
 
 pub struct PipelineV0<B: Backend> {
     //    pub(crate)descriptor_set: ManuallyDrop<B::DescriptorSet>,
@@ -63,46 +64,47 @@ impl<B: Backend> PipelineV0<B> {
         render_pass: &<B as Backend>::RenderPass,
     ) -> Result<Self, &'static str> {
 
-        #[cfg(not(target_arch = "wasm32"))]
-        let (vertex_shader_module, fragment_shader_module) = {
-            let vertex_compile_artifact = shader::compile(
-                VERTEX_SOURCE,
-                shaderc::ShaderKind::Vertex,
-                "vertex.vert",
-                "main",
-            )?;
-            let fragment_compile_artifact = shader::compile(
-                FRAGMENT_SOURCE,
-                shaderc::ShaderKind::Fragment,
-                "fragment.frag",
-                "main",
-            )?;
-            (unsafe {
-                device
-                    .create_shader_module(vertex_compile_artifact.as_binary())
-                    .map_err(|_| "Couldn't make the vertex module")?
-            },
-             unsafe {
-                 device
-                     .create_shader_module(fragment_compile_artifact.as_binary())
-                     .map_err(|_| "Couldn't make the fragment module")?
-             })
-        };
+//        #[cfg(not(target_arch = "wasm32"))]
+//        let (vertex_shader_module, fragment_shader_module) = {
+//            let vertex_compile_artifact = shader::compile(
+//                VERTEX_SOURCE,
+//                shaderc::ShaderKind::Vertex,
+//                "vertex.vert",
+//                "main",
+//            )?;
+//            let fragment_compile_artifact = shader::compile(
+//                FRAGMENT_SOURCE,
+//                shaderc::ShaderKind::Fragment,
+//                "fragment.frag",
+//                "main",
+//            )?;
+//            (unsafe {
+//                device
+//                    .create_shader_module(vertex_compile_artifact.as_binary())
+//                    .map_err(|_| "Couldn't make the vertex module")?
+//            },
+//             unsafe {
+//                 device
+//                     .create_shader_module(fragment_compile_artifact.as_binary())
+//                     .map_err(|_| "Couldn't make the fragment module")?
+//             })
+//        };
 
-        #[cfg(target_arch = "wasm32")]
+//        #[cfg(target_arch = "wasm32")]
             let (vertex_shader_module, fragment_shader_module) = {
             ({
-                 let spirv = pso::read_spirv(Cursor::new(&include_bytes!("../../../assets/map")[..]))
+                 let spirv = pso::read_spirv(Cursor::new(&include_bytes!("../../../assets/one.vert.spv")[..]))
                      .unwrap();
                  unsafe { device.create_shader_module(&spirv) }.unwrap()
              },
              {
                  let spirv =
-                     pso::read_spirv(Cursor::new(&include_bytes!("../../../assets/map")[..]))
+                     pso::read_spirv(Cursor::new(&include_bytes!("../../../assets/one.frag.spv")[..]))
                          .unwrap();
                  unsafe { device.create_shader_module(&spirv) }.unwrap()
              })
         };
+        debug!("Shaders done");
 
         let (vs_entry, fs_entry): (EntryPoint<B>, EntryPoint<B>) = (
             EntryPoint {
@@ -116,6 +118,7 @@ impl<B: Backend> PipelineV0<B> {
                 specialization: Specialization::default(),
             },
         );
+        debug!("Entrypoints done");
         let shaders = GraphicsShaderSet {
             vertex: vs_entry,
             hull: None,
@@ -185,7 +188,7 @@ impl<B: Backend> PipelineV0<B> {
 //            polygon_mode: PolygonMode::Line,
             polygon_mode: PolygonMode::Fill,
             cull_face: Face::NONE,
-            front_face: FrontFace::Clockwise,
+            front_face: FrontFace::CounterClockwise,
             depth_clamping: false,
             depth_bias: None,
             conservative: false,
@@ -272,7 +275,9 @@ impl<B: Backend> PipelineV0<B> {
 
         //            (ShaderStageFlags::FRAGMENT, 0..4),
         let descriptor_set_layouts: Vec<<B as Backend>::DescriptorSetLayout> = vec![];
-        let push_constants = vec![(ShaderStageFlags::VERTEX | ShaderStageFlags::FRAGMENT, 0..64)];
+        let push_constants: Vec<(ShaderStageFlags, Range<u32>)>= vec![
+//            (ShaderStageFlags::VERTEX | ShaderStageFlags::FRAGMENT, 0..64)
+        ];
         let layout = unsafe {
             device
                 .create_pipeline_layout(
@@ -280,6 +285,7 @@ impl<B: Backend> PipelineV0<B> {
                     push_constants)
                 .map_err(|_| "Couldn't create a pipeline layout")?
         };
+        debug!("PipelineLayout done {:?}", layout);
 
         let pipeline_desc = GraphicsPipelineDesc {
             shaders,
@@ -299,11 +305,19 @@ impl<B: Backend> PipelineV0<B> {
             flags: PipelineCreationFlags::empty(),
             parent: BasePipeline::None,
         };
-        let pipeline = unsafe {
+        debug!("GraphicsPipeline before. Desc: {:?}", pipeline_desc);
+        let mut pipeline = unsafe {
             device
                 .create_graphics_pipeline(&pipeline_desc, None)
-                .map_err(|_| "Couldn't create a graphics pipeline!")?
+//                .map_err(|_| {
+//                    const MSG: &'static str = "Couldn't create a graphics pipeline!";
+//                    debug!("{:?}", MSG);
+//                    MSG
+//                })?
         };
+        debug!("GraphicsPipeline done");
+        info!("{:?}", pipeline);
+        let pipeline = pipeline.expect("");
         unsafe { device.destroy_shader_module(vertex_shader_module) };
         unsafe { device.destroy_shader_module(fragment_shader_module) };
         Ok(Self {

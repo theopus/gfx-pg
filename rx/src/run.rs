@@ -1,4 +1,4 @@
-use std::time::{Duration, Instant};
+use std::time::{Duration, Instant, SystemTime};
 
 #[allow(unused_imports)]
 use log::{debug, error, info, trace, warn};
@@ -29,6 +29,78 @@ impl Default for Engine {
     }
 }
 
+struct InstantStopwatch {
+    time: SystemTime
+}
+
+
+impl InstantStopwatch {
+    pub fn new() -> Result<Self, &'static str> {
+        Ok(Self { time: std::time::UNIX_EPOCH })
+    }
+}
+
+
+impl Stopwatch for InstantStopwatch {
+    fn start(&mut self) {
+        self.time = SystemTime::now();
+    }
+
+    fn elapsed(&mut self) -> Duration {
+        let current = SystemTime::now();
+
+        let elapsed = current.duration_since(self.time).expect("");
+        self.time = current;
+        elapsed
+    }
+}
+
+
+#[cfg(target_arch = "wasm32")]
+pub mod websys_timer {
+    use std::time::{Duration, SystemTime, UNIX_EPOCH};
+    use crate::run::Stopwatch;
+
+    pub struct WebSysStopwatch {
+        time: std::time::SystemTime
+    }
+
+    impl WebSysStopwatch {
+        pub fn new() -> Result<Self, &'static str> {
+            Ok(Self { time: std::time::UNIX_EPOCH })
+        }
+    }
+
+    impl Stopwatch for WebSysStopwatch {
+        fn start(&mut self) {
+            let window = web_sys::window().expect("");
+            let performance = window.performance().expect("");
+            self.time = to_system_time(performance.now())
+        }
+
+        fn elapsed(&mut self) -> Duration {
+            let window = web_sys::window().expect("");
+            let performance = window.performance().expect("");
+            let current = to_system_time(performance.now());
+
+            let elapsed = current.duration_since(self.time).expect("");
+            self.time = current;
+            elapsed
+        }
+    }
+
+    fn to_system_time(amt: f64) -> SystemTime {
+        let secs = (amt as u64) / 1_000;
+        let nanos = ((amt as u32) % 1_000) * 1_000_000;
+        UNIX_EPOCH + Duration::new(secs, nanos)
+    }
+}
+
+pub trait Stopwatch {
+    fn start(&mut self);
+    fn elapsed(&mut self) -> Duration;
+}
+
 impl Engine {
     pub fn renderer(&self) -> &Renderer {
         &self.renderer
@@ -36,11 +108,11 @@ impl Engine {
     pub fn renderer_mut(&mut self) -> &mut Renderer {
         &mut self.renderer
     }
-    pub fn loader(&mut self) -> (&mut ApiWrapper<back::Backend>, &mut AssetsLoader, &mut AssetsStorage) {
+    pub fn loader(&mut self) -> (&mut ApiWrapper<back::Backend>, &mut Option<AssetsLoader>, &mut AssetsStorage) {
         (&mut self.renderer.api, &mut self.renderer.loader, &mut self.renderer.storage)
     }
 
-    pub fn run(self) {
+    pub fn run(self) -> Result<(), &'static str> {
         let (
             events_loop,
             window
@@ -57,7 +129,13 @@ impl Engine {
         let mut layers = self.layers;
         let mut renderer = self.renderer;
         let mut events: Vec<MyEvent> = Vec::new();
-        let mut last = Instant::now();
+         Self::on_event(&mut events, MyEvent::Resized(800,600));
+        #[cfg(target_arch = "wasm32")]
+            let mut timer = websys_timer::WebSysStopwatch::new()?;
+        #[cfg(not(target_arch = "wasm32"))]
+            let mut timer = InstantStopwatch::new()?;
+
+        timer.start();
 
 
         //[BUG#windows]: winit
@@ -84,26 +162,26 @@ impl Engine {
                 Event::RedrawRequested(_) => {
                     /*Render*/
                     //[BUG#windows]: winit
-                    {
-                        assert!(draw_req == 1, "Draw requests: {:?}", draw_req);
-                        draw_req -= 1;
-                    }
+//                    {
+//                        assert!(draw_req == 1, "Draw requests: {:?}", draw_req);
+//                        draw_req -= 1;
+//                    }
                     renderer.render();
                 }
                 Event::MainEventsCleared => {
-                    let current = Instant::now();
-                    let elapsed = current - last;
-                    Self::on_update(&mut layers, &mut events, elapsed);
+//                    let current = Instant::now();
+//                    let elapsed = current - last;
+                    Self::on_update(&mut layers, &mut events, timer.elapsed());
                     window.request_redraw();
                     //[BUG#windows]: winit
-                    draw_req += 1;
-                    last = current
+//                    draw_req += 1;
+//                    last = current
                 }
                 Event::WindowEvent {
                     event: WindowEvent::Resized(phys_size),
                     ..
                 } => {
-                    info!("{:?}", phys_size);
+                    warn!("Resized {:?}", phys_size);
 
                     renderer.reset_swapchain(phys_size);
 

@@ -1,7 +1,4 @@
 #version 450
-layout (push_constant) uniform PushConsts {
-  mat4 view;
-} push;
 
 layout (location = 0) in vec3 position;
 layout (location = 1) in vec2 vert_uv;
@@ -20,7 +17,6 @@ const vec3 intensity = vec3(1, 1, 1);
 
 void main() {
   vec4 world_coords = model * vec4(position, 1.0);
-  vec4 camera_coords = push.view * world_coords;
   vec3 surface_normal = normalize((model * vec4(normal, 0.0)).xyz);
   vec3 to_light_vector = normalize(l_position - world_coords.xyz);
   light_intensity = intensity.xyz * max( dot( to_light_vector, surface_normal), 0.2);

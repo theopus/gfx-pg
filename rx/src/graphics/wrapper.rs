@@ -1,5 +1,7 @@
 use hal::{Backend, device::Device};
 use winit::window::Window;
+#[allow(unused_imports)]
+use log::{debug, error, info, trace, warn};
 
 use crate::graphics::memory::MemoryManager;
 use crate::graphics::pipelines::PipelineV0;
@@ -53,15 +55,19 @@ impl<B: Backend> ApiWrapper<B> {
 
     pub fn new(window: &Window, instance: Option<B::Instance>, surface: B::Surface, adapters: Vec<Adapter<B>>) -> Result<Self, &'static str> {
         let (mut hal_state, queue_group) = HalStateV2::new(window, instance, surface, adapters)?;
-
+        debug!("HalState done.");
+        debug!("QueueGroup done.");
         let swapchain = CommonSwapchain::new(&mut hal_state, queue_group)?;
+        debug!("Swapchain done.");
         let storage = unsafe { MemoryManager::new(&hal_state, swapchain.img_count as u32) }?;
+        debug!("Storage done.");
 
         let pipeline = PipelineV0::new(
             hal_state.device_ref(),
             swapchain.current_extent(),
             swapchain.render_pass(),
         )?;
+        debug!("Pipeline done.");
 
         Ok(Self {
             hal_state,
