@@ -1,8 +1,8 @@
 [workspace]
 
 members = [
-#    "client",
-#    "rx",
+    "client",
+    "rx",
     "entrypoint",
     "entrypoint-wasm",
 ]

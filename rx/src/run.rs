@@ -36,15 +36,22 @@ impl Engine {
     pub fn renderer_mut(&mut self) -> &mut Renderer {
         &mut self.renderer
     }
-    pub fn loader(&mut self) -> (&mut ApiWrapper<back::Backend>, &mut AssetsLoader, &mut AssetsStorage) {
-        (&mut self.renderer.api, &mut self.renderer.loader, &mut self.renderer.storage)
+    pub fn loader(
+        &mut self,
+    ) -> (
+        &mut ApiWrapper<back::Backend>,
+        &mut AssetsLoader,
+        &mut AssetsStorage,
+    ) {
+        (
+            &mut self.renderer.api,
+            &mut self.renderer.loader,
+            &mut self.renderer.storage,
+        )
     }
 
     pub fn run(self) {
-        let (
-            events_loop,
-            window
-        ) = {
+        let (events_loop, window) = {
             let WinitState {
                 events_loop,
                 window,
@@ -53,21 +60,26 @@ impl Engine {
             (events_loop, window.unwrap())
         };
 
-
         let mut layers = self.layers;
         let mut renderer = self.renderer;
         let mut events: Vec<MyEvent> = Vec::new();
         let mut last = Instant::now();
 
+        events.push(MyEvent::Resized(800, 600));
+        use winit::dpi::PhysicalSize;
+        renderer.reset_swapchain(PhysicalSize {
+            width: 800,
+            height: 600,
+        });
 
         //[BUG#windows]: winit
         let mut draw_req = 0;
-
         info!("Start!");
-        let run_loop = move |o_event: Event<()>, _: &EventLoopWindowTarget<()>, control_flow: &mut ControlFlow| {
+        let run_loop = move |o_event: Event<()>,
+                             _: &EventLoopWindowTarget<()>,
+                             control_flow: &mut ControlFlow| {
             //Always poll
             *control_flow = ControlFlow::Poll;
-
 
             match o_event {
                 Event::WindowEvent {
@@ -81,22 +93,25 @@ impl Engine {
                     info!("On close handle")
                     /*On close*/
                 }
-                Event::RedrawRequested(_) => {
+                Event::RedrawRequested(w) => {
                     /*Render*/
-                    //[BUG#windows]: winit
-                    {
-                        assert!(draw_req == 1, "Draw requests: {:?}", draw_req);
-                        draw_req -= 1;
-                    }
                     renderer.render();
+                    if draw_req < 0 {
+                        draw_req = 1
+                    } else {
+                        draw_req += 1;
+                    }
                 }
                 Event::MainEventsCleared => {
                     let current = Instant::now();
                     let elapsed = current - last;
                     Self::on_update(&mut layers, &mut events, elapsed);
-                    window.request_redraw();
-                    //[BUG#windows]: winit
-                    draw_req += 1;
+                    if draw_req > 1 {
+                        warn!("Subsequent draw requests: {:?}", draw_req);
+                    } else {
+                        window.request_redraw();
+                    }
+                    draw_req -= 1;
                     last = current
                 }
                 Event::WindowEvent {
@@ -123,7 +138,6 @@ impl Engine {
         events_loop.run(run_loop);
     }
 
-
     fn on_update(layers: &mut Vec<Box<dyn Layer>>, events: &mut Vec<MyEvent>, elapsed: Duration) {
         for layer in layers.iter_mut() {
             layer.on_update(events, elapsed);
@@ -131,7 +145,10 @@ impl Engine {
         events.clear()
     }
 
-    pub fn push_layer<L>(&mut self, layer: L) where L: Layer + 'static {
+    pub fn push_layer<L>(&mut self, layer: L)
+    where
+        L: Layer + 'static,
+    {
         self.layers.push(Box::new(layer));
     }
 
@@ -145,8 +162,8 @@ pub trait Layer {
 }
 
 impl<F> Layer for F
-    where
-        F: FnMut(&Vec<MyEvent>, Duration),
+where
+    F: FnMut(&Vec<MyEvent>, Duration),
 {
     fn on_update(&mut self, events: &Vec<MyEvent>, elapsed: Duration) {
         self(events, elapsed)

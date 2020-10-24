@@ -6,13 +6,14 @@ extern crate log;
 use log::{debug, error, info, trace, warn};
 
 pub use rx;
-use rx::ecs::{Render, Transformation, Velocity, WinitEvents, ViewProjection};
+use rx::ecs::{Render, Transformation, Velocity, WinitEvents, ViewProjection, SelectedEntity};
 use rx::ecs::layer::EcsInitTuple;
 use rx::specs::Builder;
 use rx::specs::WorldExt;
 
 use crate::systems::test::Follower;
 
+mod maths;
 mod systems;
 mod map;
 
@@ -82,12 +83,22 @@ pub fn start() {
                 mesh: ico_mesh.clone()
             })
             .build();
+
+        let selected = world.create_entity()
+            .with(Rotation::default())
+            .with(Position::default())
+            .with(Velocity::default())
+            .with(Transformation::default())
+            .with(Render {
+                mesh: ico_mesh.clone()
+            })
+            .build();
         world.create_entity()
             .with(Rotation::default())
             .with(Position {
-                x: -100.,
-                y: -5.,
-                z: -100.
+                x: 0.,
+                y: -10.,
+                z: 0.
             })
 
             .with(Transformation::default())
@@ -96,7 +107,7 @@ pub fn start() {
             })
             .build();
 
-        for e in 1..20 {
+        for e in 0..0 {
             let _ = world.create_entity()
                 .with(Rotation::default())
                 .with(Position {
@@ -128,6 +139,7 @@ pub fn start() {
 
         world.insert(ActiveCamera(Some(cam_entity)));
         world.insert(CameraTarget(Some(player)));
+        world.insert(SelectedEntity(Some(selected)));
         world.insert(WinitEvents::default());
         world.insert(ViewProjection::default());
 

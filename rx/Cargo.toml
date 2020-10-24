@@ -27,8 +27,8 @@ nalgebra = "0.18.0"
 nalgebra-glm = "0.4.0"
 #[PHYS]#ncollide3d = "0.20"
 #nphysics3d = "0.12"
-specs = { version = "0.15.0", features = ["specs-derive"] }
-specs-derive = "0.4.0"
+specs = { version = "0.16", features = ["specs-derive"] }
+specs-derive = "0.4"
 itertools = "0.8.0"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies.shaderc]

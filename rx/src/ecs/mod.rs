@@ -41,6 +41,9 @@ pub struct WinitEvents(pub Vec<MyEvent>);
 pub struct CameraTarget(pub Option<Entity>);
 
 #[derive(Default)]
+pub struct SelectedEntity(pub Option<Entity>);
+
+#[derive(Default)]
 pub struct ActiveCamera(pub Option<Entity>);
 
 pub struct ViewProjection{
@@ -96,6 +99,12 @@ pub struct Position {
     pub z: f32,
 }
 
+impl Position {
+    pub fn as_vec3(&self) -> glm::Vec3{
+        glm::vec3(self.x, self.y, self.z)
+    }
+}
+
 
 impl Default for Position {
     fn default() -> Self {
@@ -120,6 +129,8 @@ pub struct TargetCamera {
     pub yaw: f32,
     //angle around x
     pub pitch: f32,
+
+    pub cam_pos: glm::Vec3
 }
 
 impl Default for TargetCamera {
@@ -133,7 +144,8 @@ impl Default for TargetCamera {
             offset_y: 0.,
             distance: 100.,
             yaw: 180.,
-            pitch: 115.,
+            pitch: 90.,
+            cam_pos: glm::vec3(0.,0.,0.)
         }
     }
 }
@@ -169,6 +181,7 @@ impl TargetCamera {
             180_f32 - self.yaw,
             0_f32,
         );
+        self.cam_pos = -cam_pos;
         self.view = Self::get_view(&cam_pos, &cam_rot);
         &self.projection  * self.view.clone()
     }

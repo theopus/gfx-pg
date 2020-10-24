@@ -4,16 +4,21 @@ pub mod test {
     #[allow(unused_imports)]
     use log::{debug, error, info, trace, warn};
 
-    use rx::ecs::{ActiveCamera, CameraTarget, Position, Render, Rotation, TargetCamera, Transformation, Velocity, ViewProjection, WinitEvents};
+    use rx::ecs::{
+        ActiveCamera, CameraTarget, Position, Render, Rotation, SelectedEntity, TargetCamera,
+        Transformation, Velocity, ViewProjection, WinitEvents,
+    };
     use rx::events::MyEvent;
     use rx::glm;
     use rx::glm::{Vec2, Vec3};
     use rx::na::Vector3;
     use rx::render::{DrawCmd, RenderCommand};
-    use rx::specs::{Entity, Join, Read, ReadStorage, System, Write, WriteStorage};
-    use rx::specs::Component;
     use rx::specs::storage::VecStorage;
+    use rx::specs::Component;
+    use rx::specs::{Entity, Join, Read, ReadStorage, System, Write, WriteStorage};
     use rx::winit::event::{ElementState, KeyboardInput, MouseButton, VirtualKeyCode};
+
+    use crate::maths;
 
     #[derive(Default)]
     pub struct MoveClickSystem {
@@ -21,78 +26,70 @@ pub mod test {
         y: f32,
         w: u32,
         h: u32,
+
+        pressed: bool,
     }
 
     impl<'a> System<'a> for MoveClickSystem {
         type SystemData = (
             Read<'a, ViewProjection>,
             Read<'a, WinitEvents>,
+            Read<'a, ActiveCamera>,
+            ReadStorage<'a, TargetCamera>,
+            Read<'a, CameraTarget>,
+            WriteStorage<'a, Position>,
+            WriteStorage<'a, Velocity>,
+            Read<'a, SelectedEntity>,
         );
 
         fn run(&mut self, data: Self::SystemData) {
-            let (vp, events) = data;
+            let (vp, events, active_cam, camera, target, mut pos, mut vel, selected) = data;
+
+            let cam = camera.get(active_cam.0.unwrap()).unwrap();
+            let mut posit = pos.get_mut(target.0.unwrap()).unwrap();
+            let mut velos: &mut Velocity = vel.get_mut(target.0.unwrap()).unwrap();
+            let mut sel: &mut Position = pos.get_mut(selected.0.unwrap()).unwrap();
+            let mut sel_vel: &mut Velocity = vel.get_mut(selected.0.unwrap()).unwrap();
 
             for e in &events.0 {
                 match e {
                     MyEvent::CursorMoved { position, .. } => {
                         self.x = position.x as f32;
                         self.y = position.y as f32;
-                    },
+                    }
                     MyEvent::Resized(w, h) => {
                         self.w = *w;
                         self.h = *h;
+                    }
+                    MyEvent::MouseInput {
+                        state,
+                        button: MouseButton::Middle,
+                        ..
+                    } => match state {
+                        ElementState::Pressed => self.pressed = true,
+                        ElementState::Released => self.pressed = false,
                     },
                     _ => {}
                 }
             }
 
-            let i_view = glm::inverse(&vp.view);
-            let i_proj = glm::inverse(&vp.proj);
+            if self.pressed {
+                let vec =
+                    maths::screen2world((self.x, self.y), (self.w, self.h), &vp.view, &vp.proj);
+                let mut intersect = maths::intersection(
+                    &glm::vec3(0., 1., 0.),
+                    &glm::vec3(0., 0., 0.),
+                    &vec,
+                    &cam.cam_pos,
+                )
+                .unwrap();
+                info!("{:?}", &intersect);
 
-            let d_x = (2. * self.x) / self.w as f32 - 1.;
-            let d_y = (2. * self.y) / self.h as f32 - 1.;
-            let d_z = 1.;
-            let ray_ndc = glm::vec3(d_x, d_y, d_z);
-            let ray_clip = glm::vec4(ray_ndc.x, ray_ndc.y, -1., 1.);
-
-            let mut ray_eye: glm::Vec4 = &i_proj * ray_clip;
-            let ray_eye = glm::vec4(ray_eye.x, ray_eye.y, -1.0, 0.0);
-
-            let mut ray_wor = &i_view * ray_eye;
-            let mut ray_wor = glm::vec4_to_vec3(&ray_wor);
-            let ray_wor = glm::normalize(&ray_wor);
-
-            info!("{:?}", ray_wor);
-
-//            float x = (2.0f * mouse_x) / width - 1.0f;
-//            float y = 1.0f - (2.0f * mouse_y) / height;
-//            float z = 1.0f;
-
-//            let mut near = glm::vec4(d_x, d_y, -1., 1.);
-//            let mut far = glm::vec4(d_x, d_y, 1., 1.);
-//
-//            let mut near: glm::Vec4 = &i_vp * near;
-//            let mut far: glm::Vec4 = &i_vp * far;
-//
-//            let mut near: glm::Vec3 = glm::vec3(near.x, near.y, near.z) / near.w;
-//            let mut far: glm::Vec3 = glm::vec3(far.x, far.y, far.z) / far.w;
-//
-//            let dir: glm::Vec3 = glm::normalize(&(far - near));
-//
-//            info!("x: {:?}", d_x);
-//            info!("y: {:?}", d_y);
+                let dir = &intersect - &sel.as_vec3();
+                sel_vel.v = glm::normalize(&dir);
+            }
         }
     }
-
-//    mat4 invMat= inverse(m_glData.getPerspective()*m_glData.getView());
-//    vec4 near = vec4((pos.x - Constants::m_halfScreenWidth) / Constants::m_halfScreenWidth, -1*(pos.y - Constants::m_halfScreenHeight) / Constants::m_halfScreenHeight, -1, 1.0);
-//    vec4 far = vec4((pos.x - Constants::m_halfScreenWidth) / Constants::m_halfScreenWidth, -1*(pos.y - Constants::m_halfScreenHeight) / Constants::m_halfScreenHeight, 1, 1.0);
-//    vec4 nearResult = invMat*near;
-//    vec4 farResult = invMat*far;
-//    nearResult /= nearResult.w;
-//    farResult /= farResult.w;
-//    vec3 dir = vec3(farResult - nearResult );
-//    return normalize(dir);
 
     #[derive(Default)]
     pub struct InputTestSystem {
@@ -103,7 +100,6 @@ pub mod test {
         pub hor: f32,
         pad: MovePad,
     }
-
 
     #[derive(Default, Debug)]
     struct MovePad {
@@ -119,8 +115,24 @@ pub mod test {
         }
 
         pub fn as_vec2(&self) -> Vec2 {
-            let y: f32 = if !(self.up ^ self.down) { 0. } else { if self.up { 1. } else { -1. } };
-            let x: f32 = if !(self.right ^ self.left) { 0. } else { if self.right { 1. } else { -1. } };
+            let y: f32 = if !(self.up ^ self.down) {
+                0.
+            } else {
+                if self.up {
+                    1.
+                } else {
+                    -1.
+                }
+            };
+            let x: f32 = if !(self.right ^ self.left) {
+                0.
+            } else {
+                if self.right {
+                    1.
+                } else {
+                    -1.
+                }
+            };
 
             if !(y == 0. && x == 0.) {
                 glm::normalize(&glm::vec2(y, x))
@@ -136,20 +148,13 @@ pub mod test {
             Read<'a, ActiveCamera>,
             Read<'a, CameraTarget>,
             WriteStorage<'a, Position>,
-//        Write<'a, CameraTarget>,
+            //        Write<'a, CameraTarget>,
             WriteStorage<'a, TargetCamera>,
-            WriteStorage<'a, Velocity>
+            WriteStorage<'a, Velocity>,
         );
 
         fn run(&mut self, data: Self::SystemData) {
-            let (
-                events,
-                active,
-                target,
-                mut position,
-                mut camera,
-                mut velocity,
-            ) = data;
+            let (events, active, target, mut position, mut camera, mut velocity) = data;
 
             let events = &events.0;
             let cam = camera.get_mut(active.0.unwrap()).unwrap();
@@ -159,9 +164,7 @@ pub mod test {
             let mut accum_dist = 0_f32;
             for event in events {
                 match event {
-                    MyEvent::MouseMotion {
-                        delta
-                    } => {
+                    MyEvent::MouseMotion { delta } => {
                         if self.should_affect_angle {
                             accum_delta.0 += delta.0;
                             accum_delta.1 += delta.1;
@@ -188,83 +191,87 @@ pub mod test {
                     },
                     //move
                     MyEvent::KeyboardInput {
-                        input: KeyboardInput {
-                            state: ElementState::Pressed,
-                            virtual_keycode: Some(VirtualKeyCode::Space),
-                            ..
-                        },
+                        input:
+                            KeyboardInput {
+                                state: ElementState::Pressed,
+                                virtual_keycode: Some(VirtualKeyCode::Space),
+                                ..
+                            },
                         ..
                     } => pos.y += 1.,
                     MyEvent::KeyboardInput {
-                        input: KeyboardInput {
-                            state: ElementState::Pressed,
-                            virtual_keycode: Some(VirtualKeyCode::C),
-                            ..
-                        },
+                        input:
+                            KeyboardInput {
+                                state: ElementState::Pressed,
+                                virtual_keycode: Some(VirtualKeyCode::C),
+                                ..
+                            },
                         ..
                     } => pos.y -= 1.,
                     MyEvent::KeyboardInput {
-                        input: KeyboardInput {
-                            state,
-                            virtual_keycode: Some(VirtualKeyCode::W),
-                            ..
-                        },
+                        input:
+                            KeyboardInput {
+                                state,
+                                virtual_keycode: Some(VirtualKeyCode::W),
+                                ..
+                            },
                         ..
                     } => {
                         self.pad.up = match state {
                             ElementState::Pressed => true,
                             ElementState::Released => false,
                         }
-                    },
+                    }
                     MyEvent::KeyboardInput {
-                        input: KeyboardInput {
-                            state,
-                            virtual_keycode: Some(VirtualKeyCode::S),
-                            ..
-                        },
+                        input:
+                            KeyboardInput {
+                                state,
+                                virtual_keycode: Some(VirtualKeyCode::S),
+                                ..
+                            },
                         ..
                     } => {
                         self.pad.down = match state {
                             ElementState::Pressed => true,
                             ElementState::Released => false,
                         }
-                    },
+                    }
                     MyEvent::KeyboardInput {
-                        input: KeyboardInput {
-                            state,
-                            virtual_keycode: Some(VirtualKeyCode::A),
-                            ..
-                        },
+                        input:
+                            KeyboardInput {
+                                state,
+                                virtual_keycode: Some(VirtualKeyCode::A),
+                                ..
+                            },
                         ..
                     } => {
                         self.pad.left = match state {
                             ElementState::Pressed => true,
                             ElementState::Released => false,
                         }
-                    },
+                    }
                     MyEvent::KeyboardInput {
-                        input: KeyboardInput {
-                            state,
-                            virtual_keycode: Some(VirtualKeyCode::D),
-                            ..
-                        },
+                        input:
+                            KeyboardInput {
+                                state,
+                                virtual_keycode: Some(VirtualKeyCode::D),
+                                ..
+                            },
                         ..
                     } => {
                         self.pad.right = match state {
                             ElementState::Pressed => true,
                             ElementState::Released => false,
                         }
-                    },
+                    }
                     MyEvent::Resized(w, h) => cam.update_aspect(*w as f32 / *h as f32),
-                    _ => ()
+                    _ => (),
                 };
             }
-
 
             cam.distance += 0.4 * accum_dist;
             cam.yaw += 0.4 * accum_delta.0 as f32;
             cam.pitch -= 0.4 * accum_delta.1 as f32;
-
 
             let mut degree = cam.yaw - 180.;
 
@@ -284,10 +291,7 @@ pub mod test {
     pub struct MoveSystem;
 
     impl<'a> System<'a> for MoveSystem {
-        type SystemData = (
-            WriteStorage<'a, Position>,
-            WriteStorage<'a, Velocity>
-        );
+        type SystemData = (WriteStorage<'a, Position>, WriteStorage<'a, Velocity>);
 
         fn run(&mut self, (mut pos, mut vel): Self::SystemData) {
             for (p, v) in (&mut pos, &mut vel).join() {
@@ -312,23 +316,23 @@ pub mod test {
     #[derive(Component, Debug)]
     #[storage(VecStorage)]
     pub struct Follower {
-        pub lead: Entity
+        pub lead: Entity,
     }
 
     pub struct FollowingSystem;
-
 
     impl<'a> System<'a> for FollowingSystem {
         type SystemData = (
             ReadStorage<'a, Follower>,
             ReadStorage<'a, Position>,
-            WriteStorage<'a, Velocity>
+            WriteStorage<'a, Velocity>,
         );
 
         fn run(&mut self, (fol, pos, mut vel): Self::SystemData) {
             for (f, p, v) in (&fol, &pos, &mut vel).join() {
                 let lp = pos.get(f.lead).unwrap();
-                v.v = glm::normalize(&(glm::vec3(lp.x, lp.y, lp.z) - glm::vec3(p.x, p.y, p.z))) * 0.3;
+                v.v =
+                    glm::normalize(&(glm::vec3(lp.x, lp.y, lp.z) - glm::vec3(p.x, p.y, p.z))) * 0.3;
             }
         }
     }
@@ -337,7 +341,10 @@ pub mod test {
 pub mod generic {
     use std::sync::mpsc::Sender;
 
-    use rx::ecs::{ActiveCamera, CameraTarget, Position, Render, Rotation, TargetCamera, Transformation, ViewProjection};
+    use rx::ecs::{
+        ActiveCamera, CameraTarget, Position, Render, Rotation, TargetCamera, Transformation,
+        ViewProjection,
+    };
     use rx::glm;
     use rx::render::{DrawCmd, RenderCommand};
     use rx::specs::{Join, Read, ReadStorage, System, Write, WriteStorage};
@@ -361,16 +368,21 @@ pub mod generic {
             Read<'a, ActiveCamera>,
             ReadStorage<'a, TargetCamera>,
             ReadStorage<'a, Transformation>,
-            WriteStorage<'a, Render>
+            WriteStorage<'a, Render>,
         );
-
 
         fn run(&mut self, (active, camera, transformation, mut render): Self::SystemData) {
             let cam = camera.get(active.0.unwrap()).unwrap();
-            self.send_render.send(RenderCommand::PushView(cam.view.clone()));
+            self.send_render
+                .send(RenderCommand::PushView(cam.view.clone()));
 
             for (transformation, render) in (&transformation, &mut render).join() {
-                self.send_draw.send((render.mesh.clone(), transformation.mvp, transformation.model))
+                self.send_draw
+                    .send((
+                        render.mesh.clone(),
+                        transformation.mvp.clone() as glm::Mat4,
+                        transformation.model.clone() as glm::Mat4,
+                    ))
                     .expect("not able to submit");
             }
         }
@@ -390,31 +402,15 @@ pub mod generic {
         );
 
         fn run(&mut self, data: Self::SystemData) {
-            let (
-                active_camera,
-                camera_target,
-                mut camera,
-                rot,
-                pos,
-                mut tsm,
-                mut vp_e
-            ) = data;
+            let (active_camera, camera_target, mut camera, rot, pos, mut tsm, mut vp_e) = data;
 
             let target_pos = pos.get(camera_target.0.unwrap()).unwrap();
             let target_rot = rot.get(camera_target.0.unwrap()).unwrap();
             let cam = camera.get_mut(active_camera.0.unwrap()).unwrap();
 
             let vp = cam.target_at(
-                &glm::vec3(
-                    target_pos.x,
-                    target_pos.y,
-                    target_pos.z,
-                ),
-                &glm::vec3(
-                    target_rot.x,
-                    target_rot.y,
-                    target_rot.z,
-                ),
+                &glm::vec3(target_pos.x, target_pos.y, target_pos.z),
+                &glm::vec3(target_rot.x, target_rot.y, target_rot.z),
             );
 
             vp_e.view = cam.view.clone();
@@ -423,10 +419,10 @@ pub mod generic {
             for (pos, rot, tsm) in (&pos, &rot, &mut tsm).join() {
                 tsm.model = {
                     let mut mtx = glm::identity();
-                    glm::rotate(&mut mtx, rot.x, &glm::vec3(1., 0., 0.)) *
-                        glm::rotate(&mut mtx, rot.y, &glm::vec3(0., 1., 0.)) *
-                        glm::rotate(&mut mtx, rot.z, &glm::vec3(0., 0., 1.)) *
-                        glm::translate(&mut mtx, &glm::vec3(pos.x, pos.y, pos.z))
+                    glm::rotate(&mut mtx, rot.x, &glm::vec3(1., 0., 0.))
+                        * glm::rotate(&mut mtx, rot.y, &glm::vec3(0., 1., 0.))
+                        * glm::rotate(&mut mtx, rot.z, &glm::vec3(0., 0., 1.))
+                        * glm::translate(&mut mtx, &glm::vec3(pos.x, pos.y, pos.z))
                 };
                 tsm.mvp = &vp * tsm.model
             }

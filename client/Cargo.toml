@@ -21,6 +21,6 @@ rx = {path="../rx", default-features=false}
 path="../rx"
 optional=true
 
-[target.'cfg(target_arch = "wasm32")'.dependencies.rx]
-path="../rx"
-features=["wgl"]
+#[target.'cfg(target_arch = "wasm32")'.dependencies.rx]
+#path="../rx"
+#features=["wgl"]
