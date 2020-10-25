@@ -4,9 +4,12 @@ pub mod test {
     #[allow(unused_imports)]
     use log::{debug, error, info, trace, warn};
 
+    use rx::ecs::base_systems::camera3d::{
+        ActiveCamera, CameraTarget, ViewProjection, TargetedCamera
+    };
     use rx::ecs::{
-        ActiveCamera, CameraTarget, Position, Render, Rotation, SelectedEntity, TargetCamera,
-        Transformation, Velocity, ViewProjection, WinitEvents,
+        Position, Render, Rotation, SelectedEntity,
+        Transformation, Velocity, WinitEvents,
     };
     use rx::events::MyEvent;
     use rx::glm;
@@ -35,7 +38,7 @@ pub mod test {
             Read<'a, ViewProjection>,
             Read<'a, WinitEvents>,
             Read<'a, ActiveCamera>,
-            ReadStorage<'a, TargetCamera>,
+            ReadStorage<'a, TargetedCamera>,
             Read<'a, CameraTarget>,
             WriteStorage<'a, Position>,
             WriteStorage<'a, Velocity>,
@@ -47,8 +50,8 @@ pub mod test {
 
             let cam = camera.get(active_cam.0.unwrap()).unwrap();
             let mut posit = pos.get_mut(target.0.unwrap()).unwrap();
-            let mut velos: &mut Velocity = vel.get_mut(target.0.unwrap()).unwrap();
-            let mut sel: &mut Position = pos.get_mut(selected.0.unwrap()).unwrap();
+            // let mut velos: &mut Velocity = vel.get_mut(target.0.unwrap()).unwrap();
+            let mut sel: &mut Position = pos.get_mut(selected.0.unwrap()).unwrap();d
             let mut sel_vel: &mut Velocity = vel.get_mut(selected.0.unwrap()).unwrap();
 
             for e in &events.0 {
@@ -149,7 +152,7 @@ pub mod test {
             Read<'a, CameraTarget>,
             WriteStorage<'a, Position>,
             //        Write<'a, CameraTarget>,
-            WriteStorage<'a, TargetCamera>,
+            WriteStorage<'a, TargetedCamera>,
             WriteStorage<'a, Velocity>,
         );
 
@@ -341,9 +344,12 @@ pub mod test {
 pub mod generic {
     use std::sync::mpsc::Sender;
 
+    use rx::ecs::base_systems::camera3d::{
+        ActiveCamera, CameraTarget, ViewProjection, TargetedCamera
+    };
+
     use rx::ecs::{
-        ActiveCamera, CameraTarget, Position, Render, Rotation, TargetCamera, Transformation,
-        ViewProjection,
+        Position, Render, Rotation, Transformation,
     };
     use rx::glm;
     use rx::render::{DrawCmd, RenderCommand};
@@ -366,7 +372,7 @@ pub mod generic {
     impl<'a> System<'a> for RenderSubmitSystem {
         type SystemData = (
             Read<'a, ActiveCamera>,
-            ReadStorage<'a, TargetCamera>,
+            ReadStorage<'a, TargetedCamera>,
             ReadStorage<'a, Transformation>,
             WriteStorage<'a, Render>,
         );
@@ -384,47 +390,6 @@ pub mod generic {
                         transformation.model.clone() as glm::Mat4,
                     ))
                     .expect("not able to submit");
-            }
-        }
-    }
-
-    pub struct TransformationSystem;
-
-    impl<'a> System<'a> for TransformationSystem {
-        type SystemData = (
-            Read<'a, ActiveCamera>,
-            Read<'a, CameraTarget>,
-            WriteStorage<'a, TargetCamera>,
-            ReadStorage<'a, Rotation>,
-            ReadStorage<'a, Position>,
-            WriteStorage<'a, Transformation>,
-            Write<'a, ViewProjection>,
-        );
-
-        fn run(&mut self, data: Self::SystemData) {
-            let (active_camera, camera_target, mut camera, rot, pos, mut tsm, mut vp_e) = data;
-
-            let target_pos = pos.get(camera_target.0.unwrap()).unwrap();
-            let target_rot = rot.get(camera_target.0.unwrap()).unwrap();
-            let cam = camera.get_mut(active_camera.0.unwrap()).unwrap();
-
-            let vp = cam.target_at(
-                &glm::vec3(target_pos.x, target_pos.y, target_pos.z),
-                &glm::vec3(target_rot.x, target_rot.y, target_rot.z),
-            );
-
-            vp_e.view = cam.view.clone();
-            vp_e.proj = cam.projection.clone();
-
-            for (pos, rot, tsm) in (&pos, &rot, &mut tsm).join() {
-                tsm.model = {
-                    let mut mtx = glm::identity();
-                    glm::rotate(&mut mtx, rot.x, &glm::vec3(1., 0., 0.))
-                        * glm::rotate(&mut mtx, rot.y, &glm::vec3(0., 1., 0.))
-                        * glm::rotate(&mut mtx, rot.z, &glm::vec3(0., 0., 1.))
-                        * glm::translate(&mut mtx, &glm::vec3(pos.x, pos.y, pos.z))
-                };
-                tsm.mvp = &vp * tsm.model
             }
         }
     }

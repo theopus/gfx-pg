@@ -21,8 +21,8 @@ pub struct AssetsStorage {
 
 #[derive(Debug, Clone)]
 pub struct MeshPtr {
-    pub(crate)indices: Range<u32>,
-    pub(crate)base_vertex: i32,
+    pub(crate) indices: Range<u32>,
+    pub(crate) base_vertex: i32,
 }
 
 impl PartialEq<Self> for MeshPtr {
@@ -31,30 +31,38 @@ impl PartialEq<Self> for MeshPtr {
     }
 }
 
-
 impl AssetsStorage {
     pub fn new() -> Result<Self, &'static str> {
-        Ok(Self { mesh_offset: 0, idx_offset: 0 })
+        Ok(Self {
+            mesh_offset: 0,
+            idx_offset: 0,
+        })
     }
 
-    pub fn load_mesh<B: Backend>(&mut self,
-                                 wrapper: &ApiWrapper<B>,
-                                 mesh: Mesh,
+    pub fn load_mesh<B: Backend>(
+        &mut self,
+        wrapper: &ApiWrapper<B>,
+        mesh: Mesh,
     ) -> Result<MeshPtr, &'static str> {
         unsafe {
-            let Mesh { positions, mut uvs, normals, indices } = mesh;
+            let Mesh {
+                positions,
+                mut uvs,
+                normals,
+                indices,
+            } = mesh;
             let device: &B::Device = &wrapper.hal_state.device.deref();
 
             if uvs.len() == 0 {
                 uvs = vec![0_f32; positions.len() / 3 * 2];
             }
 
-            let flatten_mesh_vec = positions.chunks_exact(3)
+            let flatten_mesh_vec = positions
+                .chunks_exact(3)
                 .zip(uvs.chunks_exact(2))
                 .zip(normals.chunks_exact(3))
-                .flat_map(|((p, uv), n): ((&[f32], &[f32]), &[f32])| {
-                    [p, uv, n].concat()
-                }).collect::<Vec<f32>>();
+                .flat_map(|((p, uv), n): ((&[f32], &[f32]), &[f32])| [p, uv, n].concat())
+                .collect::<Vec<f32>>();
             let flatten_mesh = flatten_mesh_vec.as_slice();
 
             assert_eq!(positions.len() / 3, uvs.len() / 2);
@@ -161,7 +169,8 @@ impl AssetsLoader {
         let (mut buffer, file_name) = self.open_file(name, Self::MODEL_DIR, "obj")?;
         let (mut models, _) = tobj::load_obj_buf(&mut buffer, |_| -> tobj::MTLLoadResult {
             Ok((Vec::new(), HashMap::new()))
-        }).map_err(|e| {
+        })
+        .map_err(|e| {
             error!("{:?}", e);
             "Error with loading obj mesh"
         })?;
