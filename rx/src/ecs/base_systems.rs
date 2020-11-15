@@ -1,18 +1,18 @@
-
-
 pub mod world3d {
+    use glm;
     #[allow(unused_imports)]
     use log::{debug, error, info, trace, warn};
-    use glm;
     use specs::{
-        shred::DefaultProvider, Builder, Component, Entity, Join, Read, ReadStorage, System, World,
-        WorldExt, Write, WriteStorage, VecStorage
+        shred::DefaultProvider, Builder, Component, Entity, Join, Read, ReadStorage, System,
+        VecStorage, World, WorldExt, Write, WriteStorage,
     };
 
     use crate::ecs::base_systems::camera3d::{
         init as init_cam, ActiveCamera, CameraTarget, TargetedCamera, ViewProjection,
     };
 
+    ///
+    ///                  camera  system
     pub type WorldInit = (Entity, TransformationSystem);
     pub fn init(world: &mut World, camera_at: &glm::Vec3) -> WorldInit {
         info!("Init world3d_system");
@@ -23,7 +23,11 @@ pub mod world3d {
         let target = world
             .create_entity()
             .with(Rotation::default())
-            .with(Position::default())
+            .with(Position{
+                x: camera_at.x,
+                y: camera_at.y,
+                z: camera_at.z
+            })
             .build();
 
         (init_cam(world, target), TransformationSystem)
@@ -129,10 +133,10 @@ pub mod world3d {
 }
 
 pub mod camera3d {
+    use glm;
     #[allow(unused_imports)]
     use log::{debug, error, info, trace, warn};
-    use glm;
-    use specs::{Builder, Entity, World, WorldExt, Component, VecStorage};
+    use specs::{Builder, Component, Entity, VecStorage, World, WorldExt};
 
     ///
     /// creates targeted camera, places camera to active

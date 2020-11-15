@@ -5,9 +5,9 @@ extern crate log;
 use log::{debug, error, info, trace, warn};
 
 pub use rx;
+use rx::ecs::{Render, SelectedEntity, Transformation, Velocity, WinitEvents};
 use rx::ecs::base_systems::world3d::init;
 use rx::ecs::layer::EcsInitTuple;
-use rx::ecs::{Render, SelectedEntity, Transformation, Velocity, WinitEvents};
 use rx::glm;
 use rx::specs::Builder;
 use rx::specs::WorldExt;
@@ -57,12 +57,11 @@ pub fn start() {
     let ecs_layer = rx::ecs::layer::EcsLayer::new(
         move |(mut world, mut r_dispatcher, mut c_dispatcher): EcsInitTuple<'static>| {
             use rx::ecs::{ActiveCamera, CameraTarget, Position, Rotation};
-
-            let (tg, transform_sys) = init(&mut world, &glm::vec3(0., 0., 0.));
-
             world.register::<Render>();
             world.register::<Velocity>();
             world.register::<Follower>();
+
+            let (transform_sys, ..) = init(&mut world, &glm::vec3(0., 0., 0.));
 
             let player = world
                 .create_entity()
@@ -99,38 +98,39 @@ pub fn start() {
                 })
                 .build();
 
-            for e in 0..0 {
-                let _ = world
-                    .create_entity()
-                    .with(Rotation::default())
-                    .with(Position {
-                        x: e as f32 * 10. * {
-                            if e % 2 == 0 {
-                                -1.
-                            } else {
-                                1.
-                            }
-                        },
-                        y: 0.0,
-                        z: 0.0,
-                    })
-                    .with(Transformation::default())
-                    .with(Render {
-                        mesh: {
-                            if e % 2 == 0 {
-                                ico_mesh.clone()
-                            } else {
-                                tetrahedron_mesh.clone()
-                            }
-                        },
-                    })
-                    .with(Follower { lead: player })
-                    .with(Velocity::default())
-                    .build();
-            }
+            // for e in 0..10 {
+            //     let _ = world
+            //         .create_entity()
+            //         .with(Rotation::default())
+            //         .with(Position {
+            //             x: e as f32 * 10. * {
+            //                 if e % 2 == 0 {
+            //                     -1.
+            //                 } else {
+            //                     1.
+            //                 }
+            //             },
+            //             y: 0.0,
+            //             z: 0.0,
+            //         })
+            //         .with(Transformation::default())
+            //         .with(Render {
+            //             mesh: {
+            //                 if e % 2 == 0 {
+            //                     ico_mesh.clone()
+            //                 } else {
+            //                     tetrahedron_mesh.clone()
+            //                 }
+            //             },
+            //         })
+            //         .with(Follower { lead: player })
+            //         .with(Velocity::default())
+            //         .build();
+            // }
 
             world.insert(SelectedEntity(Some(selected)));
             world.insert(WinitEvents::default());
+            world.insert(CameraTarget(Some(player)));
 
             r_dispatcher = r_dispatcher
                 .with(systems::test::FollowingSystem, "follow_sys", &[])

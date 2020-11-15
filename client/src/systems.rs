@@ -51,7 +51,7 @@ pub mod test {
             let cam = camera.get(active_cam.0.unwrap()).unwrap();
             let mut posit = pos.get_mut(target.0.unwrap()).unwrap();
             // let mut velos: &mut Velocity = vel.get_mut(target.0.unwrap()).unwrap();
-            let mut sel: &mut Position = pos.get_mut(selected.0.unwrap()).unwrap();d
+            let mut sel: &mut Position = pos.get_mut(selected.0.unwrap()).unwrap();
             let mut sel_vel: &mut Velocity = vel.get_mut(selected.0.unwrap()).unwrap();
 
             for e in &events.0 {
@@ -342,6 +342,8 @@ pub mod test {
 }
 
 pub mod generic {
+    #[allow(unused_imports)]
+    use log::{debug, error, info, trace, warn};
     use std::sync::mpsc::Sender;
 
     use rx::ecs::base_systems::camera3d::{
@@ -381,7 +383,6 @@ pub mod generic {
             let cam = camera.get(active.0.unwrap()).unwrap();
             self.send_render
                 .send(RenderCommand::PushView(cam.view.clone()));
-
             for (transformation, render) in (&transformation, &mut render).join() {
                 self.send_draw
                     .send((
