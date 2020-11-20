@@ -5,20 +5,21 @@ extern crate log;
 use log::{debug, error, info, trace, warn};
 
 pub use rx;
-use rx::ecs::{Render, SelectedEntity, Transformation, Velocity, WinitEvents};
 use rx::ecs::base_systems::world3d::init;
 use rx::ecs::layer::EcsInitTuple;
+use rx::ecs::{Render, SelectedEntity, Transformation, Velocity, WinitEvents};
 use rx::glm;
 use rx::specs::Builder;
 use rx::specs::WorldExt;
 
 use crate::systems::test::Follower;
 
+mod flowchart;
 mod map;
 mod maths;
 mod systems;
 
-pub fn start() {
+pub fn init_log() {
     env_logger::from_env(env_logger::Env::default().default_filter_or(
         "\
          info,\
@@ -27,7 +28,9 @@ pub fn start() {
          ",
     ))
     .init();
+}
 
+pub fn start() {
     let mut eng = rx::run::Engine::default();
 
     let ico_mesh = {
@@ -61,7 +64,7 @@ pub fn start() {
             world.register::<Velocity>();
             world.register::<Follower>();
 
-            let (transform_sys, ..) = init(&mut world, &glm::vec3(0., 0., 0.));
+            let (.., transform_sys) = init(&mut world, &glm::vec3(0., 0., 0.));
 
             let player = world
                 .create_entity()
