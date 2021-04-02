@@ -1,15 +1,11 @@
-use glm::{radians, Mat4, Vec3};
+use glm::{Mat4, radians, Vec3};
 #[allow(unused_imports)]
 use log::{debug, error, info, trace, warn};
 use specs::{Component, Entity, VecStorage};
 
-use crate::assets::MeshPtr;
-use crate::events::MyEvent;
-
-pub mod base_systems;
 pub use base_systems::{
-    camera3d::CameraTarget,
     camera3d::ActiveCamera,
+    camera3d::CameraTarget,
     camera3d::ViewProjection,
 };
 pub use base_systems::world3d::{
@@ -17,8 +13,13 @@ pub use base_systems::world3d::{
     Rotation,
     Transformation,
 };
-pub mod layer;
 
+use crate::assets::MeshPtr;
+use crate::events::MyEvent;
+
+pub mod base_systems;
+
+pub mod layer;
 
 
 #[derive(Component, Debug)]

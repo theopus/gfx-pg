@@ -1,0 +1,59 @@
+=========================Instruments for investigation=========================
+0. Question any person. ?
+1. Get file on a person.
+2. Cellphone billing.
+3. Credit card info. ?
+4. Check tickets (air, bus, etc.)?
+5. Set surveillance on person ?
+6. Camera recordings?
+
+=========================Stories==========================
+
+    Crimegraph
+Monday 10:30: A cheats on B with C                                                    --- A4
+Tuesday 18:00 -- B finds out about A4                                                 --- A3
+Wednesday 19:30 B and C spend time in the bar                                         --- A2
+Wednesday 23:30 on the way back B and C gets in the fight, B pushes C from the bridge --- A1
+Thursday 9:00 C body found by ```fisherman```                                         --- A0
+
+    Crime
+Victim: C
+Criminal: B
+Motivation: C cheated with A
+Action: B murder C (B pushed C)
+Time: Wed 23:30
+Location: St. Main, bridge
+
+    Investigation
+
+0. Got name of a person + death cause
+---------------------------
+| Name?: C                |
+| Age?: 30                |
+| Sex?: Male              |
+| Cause of death: gravity |
+| Signs of fighting: yes  |
+| Weight: 80 kg           |
+| Height: 190 cm          |
+| Approximate time: Wed: 23:00 - 24:00
+---------------------------
+1. Get full file  --I1
+\---------------------------
+| Workplace: ..           |
+| Residence place: ..     |
+| Family: ...             |
+| Property: ...           |
+---------------------------
+2. Interrogate family members. ---I0
+Nothing special. Friend list: A(F),B(M).
+3. Interrogate A(F):
+    Relation: Friend (9)
+    Alibi:    -21 work;
+            21-22 commute to friend D(F);
+            22-24 at friend place;
+            24-01 home commute;
+3. Interrogate C(M): (lie)
+    Relation: Friend (9)
+    Alibi:    -22 work;
+            23-24 commute to home;
+

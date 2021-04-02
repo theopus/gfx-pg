@@ -3,17 +3,18 @@ pub mod world3d {
     #[allow(unused_imports)]
     use log::{debug, error, info, trace, warn};
     use specs::{
-        shred::DefaultProvider, Builder, Component, Entity, Join, Read, ReadStorage, System,
+        Builder, Component, Entity, Join, Read, ReadStorage, shred::DefaultProvider, System,
         VecStorage, World, WorldExt, Write, WriteStorage,
     };
 
     use crate::ecs::base_systems::camera3d::{
-        init as init_cam, ActiveCamera, CameraTarget, TargetedCamera, ViewProjection,
+        ActiveCamera, CameraTarget, init as init_cam, TargetedCamera, ViewProjection,
     };
 
     ///
     ///                  camera  system
     pub type WorldInit = (Entity, TransformationSystem);
+
     pub fn init(world: &mut World, camera_at: &glm::Vec3) -> WorldInit {
         info!("Init world3d_system");
         world.register::<Rotation>();
@@ -23,10 +24,10 @@ pub mod world3d {
         let target = world
             .create_entity()
             .with(Rotation::default())
-            .with(Position{
+            .with(Position {
                 x: camera_at.x,
                 y: camera_at.y,
-                z: camera_at.z
+                z: camera_at.z,
             })
             .build();
 
@@ -89,6 +90,7 @@ pub mod world3d {
         pub y: f32,
         pub z: f32,
     }
+
     #[derive(Component, Debug)]
     #[storage(VecStorage)]
     pub struct Rotation {
@@ -115,6 +117,7 @@ pub mod world3d {
             }
         }
     }
+
     impl Default for Rotation {
         fn default() -> Self {
             Self {
@@ -163,6 +166,7 @@ pub mod camera3d {
     //current camera Id
     #[derive(Default)]
     pub struct ActiveCamera(pub Option<Entity>);
+
     //camera target for ```TargetedCamera```
     #[derive(Default)]
     pub struct CameraTarget(pub Option<Entity>);

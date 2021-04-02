@@ -146,8 +146,8 @@ impl Engine {
     }
 
     pub fn push_layer<L>(&mut self, layer: L)
-    where
-        L: Layer + 'static,
+        where
+            L: Layer + 'static,
     {
         self.layers.push(Box::new(layer));
     }
@@ -162,8 +162,8 @@ pub trait Layer {
 }
 
 impl<F> Layer for F
-where
-    F: FnMut(&Vec<MyEvent>, Duration),
+    where
+        F: FnMut(&Vec<MyEvent>, Duration),
 {
     fn on_update(&mut self, events: &Vec<MyEvent>, elapsed: Duration) {
         self(events, elapsed)

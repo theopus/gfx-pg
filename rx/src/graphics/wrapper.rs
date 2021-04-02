@@ -1,4 +1,5 @@
 use hal::{Backend, device::Device};
+use winit::dpi::PhysicalSize;
 use winit::window::Window;
 
 use crate::graphics::memory::MemoryManager;
@@ -6,7 +7,6 @@ use crate::graphics::pipelines::PipelineV0;
 use crate::graphics::state::HalStateV2;
 use crate::graphics::swapchain::{CommonSwapchain, DeviceDrop};
 use crate::hal::adapter::Adapter;
-use winit::dpi::PhysicalSize;
 
 pub struct ApiWrapper<B: Backend> {
     pub(crate) hal_state: HalStateV2<B>,

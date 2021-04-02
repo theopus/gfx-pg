@@ -25,8 +25,8 @@ pub struct PipelineV0<B: Backend> {
     //    pub(crate)descriptor_set: ManuallyDrop<B::DescriptorSet>,
 //    descriptor_pool: ManuallyDrop<B::DescriptorPool>,
 //    descriptor_set_layouts: Vec<B::DescriptorSetLayout>,
-    pub(crate)pipeline_layout: ManuallyDrop<B::PipelineLayout>,
-    pub(crate)graphics_pipeline: ManuallyDrop<B::GraphicsPipeline>,
+    pub(crate) pipeline_layout: ManuallyDrop<B::PipelineLayout>,
+    pub(crate) graphics_pipeline: ManuallyDrop<B::GraphicsPipeline>,
 }
 
 impl<B: Backend> DeviceDrop<B> for PipelineV0<B> {
@@ -62,9 +62,8 @@ impl<B: Backend> PipelineV0<B> {
         _extent: Extent2D,
         render_pass: &<B as Backend>::RenderPass,
     ) -> Result<Self, &'static str> {
-
         #[cfg(not(target_arch = "wasm32"))]
-        let (vertex_shader_module, fragment_shader_module) = {
+            let (vertex_shader_module, fragment_shader_module) = {
             let vertex_compile_artifact = shader::compile(
                 VERTEX_SOURCE,
                 shaderc::ShaderKind::Vertex,

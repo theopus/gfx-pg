@@ -20,7 +20,7 @@ pub enum MyEvent {
     CursorMoved {
         device_id: DeviceId,
         position: PhysicalPosition<f64>,
-    }
+    },
 }
 
 //TODO: find out adequate solution
@@ -54,7 +54,7 @@ pub fn map_event(src: Event<()>) -> Option<MyEvent> {
                     device_id, position, ..
                 } => Some(MyEvent::CursorMoved {
                     device_id,
-                    position
+                    position,
                 }),
                 _ => None
             }

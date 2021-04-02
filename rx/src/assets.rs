@@ -170,10 +170,10 @@ impl AssetsLoader {
         let (mut models, _) = tobj::load_obj_buf(&mut buffer, |_| -> tobj::MTLLoadResult {
             Ok((Vec::new(), HashMap::new()))
         })
-        .map_err(|e| {
-            error!("{:?}", e);
-            "Error with loading obj mesh"
-        })?;
+            .map_err(|e| {
+                error!("{:?}", e);
+                "Error with loading obj mesh"
+            })?;
         let tobj::Mesh {
             positions,
             normals,

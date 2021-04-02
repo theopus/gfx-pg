@@ -1,13 +1,19 @@
 extern crate env_logger;
+extern crate itertools;
 extern crate log;
+extern crate rand;
+extern crate rand_distr;
+extern crate rand_pcg;
+extern crate rand_seeder;
+extern crate serde_json;
 
 #[allow(unused_imports)]
 use log::{debug, error, info, trace, warn};
 
 pub use rx;
+use rx::ecs::{Render, SelectedEntity, Transformation, Velocity, WinitEvents};
 use rx::ecs::base_systems::world3d::init;
 use rx::ecs::layer::EcsInitTuple;
-use rx::ecs::{Render, SelectedEntity, Transformation, Velocity, WinitEvents};
 use rx::glm;
 use rx::specs::Builder;
 use rx::specs::WorldExt;
@@ -15,6 +21,7 @@ use rx::specs::WorldExt;
 use crate::systems::test::Follower;
 
 mod flowchart;
+mod generatin;
 mod map;
 mod maths;
 mod systems;
@@ -27,7 +34,7 @@ pub fn init_log() {
          gfx_backend_vulkan=warn\
          ",
     ))
-    .init();
+        .init();
 }
 
 pub fn start() {

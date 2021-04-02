@@ -2,7 +2,6 @@
 /// 2. set values for grid hardness
 ///
 /// 3. on click calculate routes starting from destination
-
 #[allow(unused_imports)]
 use log::{debug, error, info, trace, warn};
 
@@ -37,11 +36,11 @@ impl Grid {
                 visited: false,
                 ch: '*',
             })
-            .take(n_cells)
-            .collect::<Vec<Cell>>()
+                .take(n_cells)
+                .collect::<Vec<Cell>>()
         })
-        .take(n_cells)
-        .collect::<Vec<Vec<Cell>>>();
+            .take(n_cells)
+            .collect::<Vec<Vec<Cell>>>();
 
         Self {
             array: grid_array,

@@ -2,7 +2,6 @@ use std::ops::Deref;
 use std::sync::mpsc::{channel, Receiver, Sender};
 
 use arrayvec::ArrayVec;
-use back;
 use gfx_hal::Instance;
 use hal::{
     command,
@@ -15,6 +14,8 @@ use itertools::Itertools;
 use log::{debug, error, info, trace, warn};
 use winit::dpi::PhysicalSize;
 
+use back;
+
 use crate::assets::{AssetsLoader, AssetsStorage, MeshPtr};
 use crate::glm::Mat4;
 use crate::graphics::wrapper::ApiWrapper;
@@ -24,7 +25,6 @@ use crate::utils::cast_slice;
 use crate::window::WinitState;
 
 pub type DrawCmd = (MeshPtr, glm::Mat4, glm::Mat4);
-
 
 
 pub enum RenderCommand {
@@ -39,9 +39,9 @@ pub trait Pipeline {
 }
 
 pub struct Renderer {
-    pub(crate)api: ApiWrapper<back::Backend>,
-    pub(crate)storage: AssetsStorage,
-    pub(crate)loader: AssetsLoader,
+    pub(crate) api: ApiWrapper<back::Backend>,
+    pub(crate) storage: AssetsStorage,
+    pub(crate) loader: AssetsLoader,
     resize_flag: Option<PhysicalSize<u32>>,
 
     sender: Sender<DrawCmd>,
@@ -50,7 +50,7 @@ pub struct Renderer {
     cmd_s: Sender<RenderCommand>,
     cmd_r: Receiver<RenderCommand>,
 
-    pipelines: Vec<Box<dyn Pipeline>>
+    pipelines: Vec<Box<dyn Pipeline>>,
 }
 
 impl Renderer {
@@ -72,7 +72,7 @@ impl Renderer {
             receiver: recv,
             cmd_s: r_send,
             cmd_r: r_recv,
-            pipelines: vec![]
+            pipelines: vec![],
         })
     }
 
@@ -99,9 +99,7 @@ impl Renderer {
         let next_frame = self.api.next_frame();
         match next_frame {
             Ok(fr) => {
-                for pipe in self.pipelines.iter_mut() {
-
-                }
+                for pipe in self.pipelines.iter_mut() {}
 
 
                 let (
@@ -146,18 +144,17 @@ impl Renderer {
                     buffer.set_scissors(0, &[render_area]);
 
 
-
                     buffer.bind_graphics_pipeline(&pipeline.graphics_pipeline);
 
 
                     let buffers: ArrayVec<[_; 2]> = [
                         (storage.mesh_bundle.buffer.deref(), SubRange {
                             offset: 0,
-                            size: None
+                            size: None,
                         }),
                         (storage.instanced_bundle.buffer.deref(), SubRange {
                             offset: instanced_offset.start as u64,
-                            size: None
+                            size: None,
                         })
                     ].into();
                     buffer.bind_vertex_buffers(0, buffers);
@@ -185,7 +182,7 @@ impl Renderer {
 //                                    cast_slice::<f32, u32>(&mtx.as_slice())
 //                                        .expect("this cast never fails for same-aligned same-size data"),
 //                                );
-                            },
+                            }
                             _ => ()
                         }
                     }
@@ -215,7 +212,6 @@ impl Renderer {
                         .group_by(|ptr| ptr.0.clone());
 
                     for (ptr, list) in &grouped_queue {
-
                         let mut current_count = 0;
 
                         let data: Vec<_> = list.flat_map(|(_, mvp, model)| {
@@ -306,7 +302,7 @@ impl ApiWrapper<back::Backend> {
             (window, surface)
         };
         #[cfg(target_arch = "wasm32")]
-        let (window, surface) = {
+            let (window, surface) = {
             extern crate web_sys;
             let wb = st.window_builder.take();
             let window = wb.unwrap().build(&st.events_loop).unwrap();

@@ -1,9 +1,9 @@
 extern crate client;
 
 use std::fs::File;
+use std::io::Write;
 
 use client::rx::shaderc::ShaderKind;
-use std::io::Write;
 
 pub const VERTEX_SOURCE: &'static str = include_str!("../../shaders/one.vert");
 

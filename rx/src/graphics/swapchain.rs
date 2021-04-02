@@ -12,10 +12,10 @@ use hal::{
 use hal::pass::{SubpassDependency, SubpassId};
 #[allow(unused_imports)]
 use log::{debug, error, info, trace, warn};
+use winit::dpi::PhysicalSize;
 
 use crate::graphics::hal_utils::DepthImage;
 use crate::graphics::state::HalStateV2;
-use winit::dpi::PhysicalSize;
 
 pub trait DeviceDrop<B: Backend> {
     unsafe fn manually_drop(&mut self, device: &B::Device);
@@ -207,7 +207,7 @@ impl<B: Backend> CommonSwapchain<B> {
         let swapchain = &mut self.base;
         self.swapchain_config.extent = Extent2D {
             width: size.width as u32,
-            height: size.height as u32
+            height: size.height as u32,
         };
         let old = swapchain.pop_old_swapchain(&state.device);
         self.base = BaseSwapchain::new(state, &self.render_pass, self.swapchain_config.clone(), Some(old))?;

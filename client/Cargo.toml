@@ -15,11 +15,17 @@ wgl = ["rx", "rx/wgl"]
 [dependencies]
 env_logger = "0.7.1"
 log = "0.4.0"
-rx = {path="../rx", default-features=false}
+serde_json = "1.0"
+rx = { path = "../rx", default-features = false }
+rand = "0.8.3"
+rand_seeder = "0.2.2"
+rand_pcg = "0.3.0"
+rand_distr = "0.4.0"
+itertools = "0.10.0"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies.rx]
-path="../rx"
-optional=true
+path = "../rx"
+optional = true
 
 #[target.'cfg(target_arch = "wasm32")'.dependencies.rx]
 #path="../rx"

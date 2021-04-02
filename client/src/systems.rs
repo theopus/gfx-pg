@@ -4,21 +4,21 @@ pub mod test {
     #[allow(unused_imports)]
     use log::{debug, error, info, trace, warn};
 
-    use rx::ecs::base_systems::camera3d::{
-        ActiveCamera, CameraTarget, ViewProjection, TargetedCamera
-    };
     use rx::ecs::{
         Position, Render, Rotation, SelectedEntity,
         Transformation, Velocity, WinitEvents,
+    };
+    use rx::ecs::base_systems::camera3d::{
+        ActiveCamera, CameraTarget, TargetedCamera, ViewProjection,
     };
     use rx::events::MyEvent;
     use rx::glm;
     use rx::glm::{Vec2, Vec3};
     use rx::na::Vector3;
     use rx::render::{DrawCmd, RenderCommand};
-    use rx::specs::storage::VecStorage;
-    use rx::specs::Component;
     use rx::specs::{Entity, Join, Read, ReadStorage, System, Write, WriteStorage};
+    use rx::specs::Component;
+    use rx::specs::storage::VecStorage;
     use rx::winit::event::{ElementState, KeyboardInput, MouseButton, VirtualKeyCode};
 
     use crate::maths;
@@ -85,7 +85,7 @@ pub mod test {
                     &vec,
                     &cam.cam_pos,
                 )
-                .unwrap();
+                    .unwrap();
                 info!("{:?}", &intersect);
 
                 let dir = &intersect - &sel.as_vec3();
@@ -195,29 +195,29 @@ pub mod test {
                     //move
                     MyEvent::KeyboardInput {
                         input:
-                            KeyboardInput {
-                                state: ElementState::Pressed,
-                                virtual_keycode: Some(VirtualKeyCode::Space),
-                                ..
-                            },
+                        KeyboardInput {
+                            state: ElementState::Pressed,
+                            virtual_keycode: Some(VirtualKeyCode::Space),
+                            ..
+                        },
                         ..
                     } => pos.y += 1.,
                     MyEvent::KeyboardInput {
                         input:
-                            KeyboardInput {
-                                state: ElementState::Pressed,
-                                virtual_keycode: Some(VirtualKeyCode::C),
-                                ..
-                            },
+                        KeyboardInput {
+                            state: ElementState::Pressed,
+                            virtual_keycode: Some(VirtualKeyCode::C),
+                            ..
+                        },
                         ..
                     } => pos.y -= 1.,
                     MyEvent::KeyboardInput {
                         input:
-                            KeyboardInput {
-                                state,
-                                virtual_keycode: Some(VirtualKeyCode::W),
-                                ..
-                            },
+                        KeyboardInput {
+                            state,
+                            virtual_keycode: Some(VirtualKeyCode::W),
+                            ..
+                        },
                         ..
                     } => {
                         self.pad.up = match state {
@@ -227,11 +227,11 @@ pub mod test {
                     }
                     MyEvent::KeyboardInput {
                         input:
-                            KeyboardInput {
-                                state,
-                                virtual_keycode: Some(VirtualKeyCode::S),
-                                ..
-                            },
+                        KeyboardInput {
+                            state,
+                            virtual_keycode: Some(VirtualKeyCode::S),
+                            ..
+                        },
                         ..
                     } => {
                         self.pad.down = match state {
@@ -241,11 +241,11 @@ pub mod test {
                     }
                     MyEvent::KeyboardInput {
                         input:
-                            KeyboardInput {
-                                state,
-                                virtual_keycode: Some(VirtualKeyCode::A),
-                                ..
-                            },
+                        KeyboardInput {
+                            state,
+                            virtual_keycode: Some(VirtualKeyCode::A),
+                            ..
+                        },
                         ..
                     } => {
                         self.pad.left = match state {
@@ -255,11 +255,11 @@ pub mod test {
                     }
                     MyEvent::KeyboardInput {
                         input:
-                            KeyboardInput {
-                                state,
-                                virtual_keycode: Some(VirtualKeyCode::D),
-                                ..
-                            },
+                        KeyboardInput {
+                            state,
+                            virtual_keycode: Some(VirtualKeyCode::D),
+                            ..
+                        },
                         ..
                     } => {
                         self.pad.right = match state {
@@ -342,16 +342,16 @@ pub mod test {
 }
 
 pub mod generic {
-    #[allow(unused_imports)]
-    use log::{debug, error, info, trace, warn};
     use std::sync::mpsc::Sender;
 
-    use rx::ecs::base_systems::camera3d::{
-        ActiveCamera, CameraTarget, ViewProjection, TargetedCamera
-    };
+    #[allow(unused_imports)]
+    use log::{debug, error, info, trace, warn};
 
     use rx::ecs::{
         Position, Render, Rotation, Transformation,
+    };
+    use rx::ecs::base_systems::camera3d::{
+        ActiveCamera, CameraTarget, TargetedCamera, ViewProjection,
     };
     use rx::glm;
     use rx::render::{DrawCmd, RenderCommand};

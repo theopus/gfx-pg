@@ -4,7 +4,7 @@ use std::ops::{Deref, Range};
 
 use hal::{
     adapter, adapter::PhysicalDevice, Backend, buffer, device::Device, memory, memory::Segment,
-    MemoryTypeId
+    MemoryTypeId,
 };
 #[allow(unused_imports)]
 use log::{debug, error, info, trace, warn};
@@ -14,9 +14,9 @@ use crate::graphics::swapchain::DeviceDrop;
 
 pub struct MemoryManager<B: Backend> {
     memory_properties: adapter::MemoryProperties,
-    pub(crate)mesh_bundle: BufBundle<B>,
-    pub(crate)idx_bundle: BufBundle<B>,
-    pub(crate)instanced_bundle: BufBundle<B>,
+    pub(crate) mesh_bundle: BufBundle<B>,
+    pub(crate) idx_bundle: BufBundle<B>,
+    pub(crate) instanced_bundle: BufBundle<B>,
     instanced_mem: usize,
     instanced_par_count: usize,
 }
@@ -69,7 +69,7 @@ impl<B: Backend> MemoryManager<B> {
             idx_bundle: idx_storage,
             instanced_bundle: insatnced_storage,
             instanced_mem: insatnced_mem,
-            instanced_par_count: images_cnt as usize
+            instanced_par_count: images_cnt as usize,
         })
     }
 
@@ -80,7 +80,7 @@ impl<B: Backend> MemoryManager<B> {
 }
 
 pub struct BufBundle<B: Backend> {
-    pub(crate)buffer: ManuallyDrop<B::Buffer>,
+    pub(crate) buffer: ManuallyDrop<B::Buffer>,
     requirements: memory::Requirements,
     memory: ManuallyDrop<B::Memory>,
 }
@@ -146,7 +146,7 @@ impl<B: Backend> BufBundle<B> {
             .flush_mapped_memory_ranges(iter::once((self.memory.deref(), Segment {
                 //flush seg doesn't matter?!
                 offset: 0,
-                size: Some(0)
+                size: Some(0),
             })))
             .map_err(|_| "Failed to flush memory!")
     }

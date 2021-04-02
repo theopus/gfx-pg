@@ -10,7 +10,7 @@ use winit::{
 pub struct WinitState {
     pub events_loop: EventLoop<()>,
     pub window: Option<Window>,
-    pub window_builder: Option<WindowBuilder>
+    pub window_builder: Option<WindowBuilder>,
 }
 
 impl WinitState {
@@ -23,7 +23,7 @@ impl WinitState {
         Ok(Self {
             events_loop,
             window: None,
-            window_builder: Some(output)
+            window_builder: Some(output),
         })
     }
 }
