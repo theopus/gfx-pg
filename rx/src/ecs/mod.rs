@@ -1,4 +1,4 @@
-use glm::{Mat4, radians, Vec3};
+use glm::{Vec3};
 #[allow(unused_imports)]
 use log::{debug, error, info, trace, warn};
 use specs::{Component, Entity, VecStorage};

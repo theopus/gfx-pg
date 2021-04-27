@@ -1,10 +1,8 @@
-use core::ptr;
 use std::mem::ManuallyDrop;
 
 use hal::{
     adapter::{Gpu, PhysicalDevice},
     Backend,
-    Instance,
     queue::{QueueFamily, QueueGroup}, window::Surface,
 };
 #[allow(unused_imports)]

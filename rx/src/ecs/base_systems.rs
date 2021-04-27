@@ -3,7 +3,7 @@ pub mod world3d {
     #[allow(unused_imports)]
     use log::{debug, error, info, trace, warn};
     use specs::{
-        Builder, Component, Entity, Join, Read, ReadStorage, shred::DefaultProvider, System,
+        Builder, Component, Entity, Join, Read, ReadStorage, System,
         VecStorage, World, WorldExt, Write, WriteStorage,
     };
 

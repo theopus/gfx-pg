@@ -1,12 +1,10 @@
 pub mod test {
-    use std::sync::mpsc::Sender;
-
     #[allow(unused_imports)]
     use log::{debug, error, info, trace, warn};
 
     use rx::ecs::{
-        Position, Render, Rotation, SelectedEntity,
-        Transformation, Velocity, WinitEvents,
+        Position, SelectedEntity,
+        Velocity, WinitEvents,
     };
     use rx::ecs::base_systems::camera3d::{
         ActiveCamera, CameraTarget, TargetedCamera, ViewProjection,
@@ -14,9 +12,7 @@ pub mod test {
     use rx::events::MyEvent;
     use rx::glm;
     use rx::glm::{Vec2, Vec3};
-    use rx::na::Vector3;
-    use rx::render::{DrawCmd, RenderCommand};
-    use rx::specs::{Entity, Join, Read, ReadStorage, System, Write, WriteStorage};
+    use rx::specs::{Entity, Join, Read, ReadStorage, System, WriteStorage};
     use rx::specs::Component;
     use rx::specs::storage::VecStorage;
     use rx::winit::event::{ElementState, KeyboardInput, MouseButton, VirtualKeyCode};
@@ -49,9 +45,9 @@ pub mod test {
             let (vp, events, active_cam, camera, target, mut pos, mut vel, selected) = data;
 
             let cam = camera.get(active_cam.0.unwrap()).unwrap();
-            let mut posit = pos.get_mut(target.0.unwrap()).unwrap();
+            let mut _posit = pos.get_mut(target.0.unwrap()).unwrap();
             // let mut velos: &mut Velocity = vel.get_mut(target.0.unwrap()).unwrap();
-            let mut sel: &mut Position = pos.get_mut(selected.0.unwrap()).unwrap();
+            let sel: &mut Position = pos.get_mut(selected.0.unwrap()).unwrap();
             let mut sel_vel: &mut Velocity = vel.get_mut(selected.0.unwrap()).unwrap();
 
             for e in &events.0 {
@@ -79,7 +75,7 @@ pub mod test {
             if self.pressed {
                 let vec =
                     maths::screen2world((self.x, self.y), (self.w, self.h), &vp.view, &vp.proj);
-                let mut intersect = maths::intersection(
+                let intersect = maths::intersection(
                     &glm::vec3(0., 1., 0.),
                     &glm::vec3(0., 0., 0.),
                     &vec,
@@ -276,13 +272,13 @@ pub mod test {
             cam.yaw += 0.4 * accum_delta.0 as f32;
             cam.pitch -= 0.4 * accum_delta.1 as f32;
 
-            let mut degree = cam.yaw - 180.;
+            let degree = cam.yaw - 180.;
 
-            let mut d_vec: Vec2 = self.pad.as_vec2();
+            let d_vec: Vec2 = self.pad.as_vec2();
             if self.pad.is_active() {
                 self.speed = 0.5;
 
-                let mut d_vec: Vec2 = glm::rotate_vec2(&d_vec, glm::radians(&glm::vec1(degree)).x);
+                let d_vec: Vec2 = glm::rotate_vec2(&d_vec, glm::radians(&glm::vec1(degree)).x);
                 let move_vec = self.speed * d_vec;
 
                 let mut v: &mut Velocity = velocity.get_mut(target.0.unwrap()).unwrap();
@@ -348,14 +344,14 @@ pub mod generic {
     use log::{debug, error, info, trace, warn};
 
     use rx::ecs::{
-        Position, Render, Rotation, Transformation,
+        Render, Transformation,
     };
     use rx::ecs::base_systems::camera3d::{
-        ActiveCamera, CameraTarget, TargetedCamera, ViewProjection,
+        ActiveCamera, TargetedCamera,
     };
     use rx::glm;
     use rx::render::{DrawCmd, RenderCommand};
-    use rx::specs::{Join, Read, ReadStorage, System, Write, WriteStorage};
+    use rx::specs::{Join, Read, ReadStorage, System, WriteStorage};
 
     pub struct RenderSubmitSystem {
         send_draw: Sender<DrawCmd>,
@@ -382,7 +378,7 @@ pub mod generic {
         fn run(&mut self, (active, camera, transformation, mut render): Self::SystemData) {
             let cam = camera.get(active.0.unwrap()).unwrap();
             self.send_render
-                .send(RenderCommand::PushView(cam.view.clone()));
+                .send(RenderCommand::PushView(cam.view.clone())).unwrap();
             for (transformation, render) in (&transformation, &mut render).join() {
                 self.send_draw
                     .send((

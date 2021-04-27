@@ -1,14 +1,8 @@
 extern crate client;
 
-use std::fs::File;
-use std::io::Write;
-
-use client::rx::shaderc::ShaderKind;
-
 pub const VERTEX_SOURCE: &'static str = include_str!("../../shaders/one.vert");
 
 pub const FRAGMENT_SOURCE: &'static str = include_str!("../../shaders/one.frag");
-
 
 fn main() {
 //    let v = client::rx::graphics::pipelines::shader::compile(VERTEX_SOURCE, ShaderKind::Vertex, "one", "main").expect("");

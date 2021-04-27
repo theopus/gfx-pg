@@ -93,7 +93,7 @@ impl Engine {
                     info!("On close handle")
                     /*On close*/
                 }
-                Event::RedrawRequested(w) => {
+                Event::RedrawRequested(_w) => {
                     /*Render*/
                     renderer.render();
                     if draw_req < 0 {

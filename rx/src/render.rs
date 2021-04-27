@@ -17,11 +17,9 @@ use winit::dpi::PhysicalSize;
 use back;
 
 use crate::assets::{AssetsLoader, AssetsStorage, MeshPtr};
-use crate::glm::Mat4;
 use crate::graphics::wrapper::ApiWrapper;
 use crate::hal::buffer::{IndexBufferView, SubRange};
 use crate::hal::IndexType;
-use crate::utils::cast_slice;
 use crate::window::WinitState;
 
 pub type DrawCmd = (MeshPtr, glm::Mat4, glm::Mat4);
@@ -99,7 +97,7 @@ impl Renderer {
         let next_frame = self.api.next_frame();
         match next_frame {
             Ok(fr) => {
-                for pipe in self.pipelines.iter_mut() {}
+                for _pipe in self.pipelines.iter_mut() {}
 
 
                 let (
@@ -173,8 +171,8 @@ impl Renderer {
 
                     for cmd in self.cmd_r.try_iter() {
                         match cmd {
-                            RenderCommand::PushView(mtx) => {
-                                use hal::pso::ShaderStageFlags;
+                            RenderCommand::PushView(_mtx) => {
+                                // use hal::pso::ShaderStageFlags;
 //                                buffer.push_graphics_constants(
 //                                    &pipeline.pipeline_layout,
 //                                    ShaderStageFlags::VERTEX | ShaderStageFlags::FRAGMENT,
@@ -244,8 +242,8 @@ impl Renderer {
                     storage.instanced_bundle.flush_mem_range(
                         &state.device,
                         instanced_offset.start as u64..instanced_offset.end as u64,
-                    );
-                    storage.instanced_bundle.unmap(&state.device);
+                    ).unwrap();
+                    storage.instanced_bundle.unmap(&state.device).unwrap();
                     //
                     buffer.end_render_pass();
                     buffer.finish();

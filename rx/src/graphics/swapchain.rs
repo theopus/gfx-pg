@@ -9,7 +9,7 @@ use hal::{
     pool::CommandPool,
     pso::*, queue::*, window::*, window::Surface,
 };
-use hal::pass::{SubpassDependency, SubpassId};
+use hal::pass::{SubpassDependency};
 #[allow(unused_imports)]
 use log::{debug, error, info, trace, warn};
 use winit::dpi::PhysicalSize;
@@ -107,7 +107,7 @@ impl<B: Backend> BaseSwapchain<B> {
         old_chain: Option<B::Swapchain>,
     ) -> Result<Self, &'static str> {
         let (swapchain, extent, backbuffer, config) = {
-            let SurfaceCapabilities { current_extent, .. } =
+            let SurfaceCapabilities { current_extent: _, .. } =
                 state._surface.capabilities(&state._adapter.physical_device);
             let extent = config.extent;
             let swapchain_config = SwapchainConfig { extent, ..config };

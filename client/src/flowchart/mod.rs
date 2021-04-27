@@ -16,20 +16,23 @@ struct Cell {
     ch: char,
 }
 
+#[allow(dead_code)]
 struct Grid {
     array: Vec<Vec<Cell>>,
     n_cells: usize,
     cells_width: f32,
     origin: glm::Vec2,
 }
-
+#[allow(dead_code)]
 const BLOCKED: u32 = u32::max_value();
+#[allow(dead_code)]
 const DEFAULT: u32 = u32::max_value() - 1000;
 
 impl Grid {
+    #[allow(dead_code)]
     fn new(a: &glm::Vec2, cells_width: f32, n_cells: usize) -> Self {
         use std::iter;
-        let mut grid_array = iter::repeat_with(|| {
+        let grid_array = iter::repeat_with(|| {
             iter::repeat_with(|| Cell {
                 cost: 1,
                 integration: DEFAULT,
@@ -49,13 +52,13 @@ impl Grid {
             origin: a.clone_owned(),
         }
     }
-
+    #[allow(dead_code)]
     fn cell_coords(&self, coords: &glm::Vec2) -> glm::UVec2 {
         let x = ((coords.x + (-1. * self.origin.x)) / self.cells_width) as u32;
         let y = ((coords.y + (-1. * self.origin.y)) / self.cells_width) as u32;
         glm::vec2(x, y)
     }
-
+    #[allow(dead_code)]
     pub fn neighbors(&self, x: u32, y: u32) -> Vec<glm::UVec2> {
         let mut neighbours = Vec::new();
         let n = glm::vec2(x, y + 1);
@@ -75,6 +78,7 @@ impl Grid {
         neighbours
     }
 
+    #[allow(dead_code)]
     pub fn neighbors_1(&self, x: u32, y: u32) -> Vec<glm::UVec2> {
         let mut neighbours = Vec::new();
 
@@ -115,9 +119,10 @@ impl Grid {
         neighbours
     }
 
+    #[allow(dead_code)]
     pub fn print_integration(&self) {
-        for (y, line) in self.array.iter().rev().enumerate() {
-            for (x, c) in line.iter().enumerate() {
+        for (_y, line) in self.array.iter().rev().enumerate() {
+            for (_x, c) in line.iter().enumerate() {
                 if c.integration == BLOCKED {
                     print!("-X-");
                     continue;
@@ -133,22 +138,25 @@ impl Grid {
         }
     }
 
+    #[allow(dead_code)]
     pub fn print_flowfield(&self) {
         let flow = self.to_char_flowfield(&self.flow_field());
         for line in flow.iter().rev() {
             let mut string_vec = Vec::with_capacity(self.n_cells);
-            for (i, c) in line.iter().enumerate() {
+            for (_i, c) in line.iter().enumerate() {
                 string_vec.push(c.to_string());
             }
             info!("{:?}", string_vec);
         }
     }
 
+    #[allow(dead_code)]
     pub fn cell(&self, x: u32, y: u32) -> &Cell {
         // maybe wrong?
         &self.array[y as usize][x as usize]
     }
 
+    #[allow(dead_code)]
     pub fn cell_mut(&mut self, x: u32, y: u32) -> &mut Cell {
         // maybe wrong?
         &mut self.array[y as usize][x as usize]
@@ -183,11 +191,12 @@ impl Grid {
         response
     }
 
+    #[allow(dead_code)]
     pub fn to_char_flowfield(&self, field: &Vec<Vec<glm::IVec2>>) -> Vec<Vec<char>> {
         let mut response = Vec::with_capacity(field.len());
-        for (y, line) in field.iter().enumerate() {
+        for (_y, line) in field.iter().enumerate() {
             let mut c_line = Vec::with_capacity(line.len());
-            for (x, dir) in line.iter().enumerate() {
+            for (_x, dir) in line.iter().enumerate() {
                 let mut character = '↯';
                 if dir.x == i32::max_value() && dir.y == i32::max_value() {
                     character = 'x';
@@ -224,6 +233,7 @@ impl Grid {
         response
     }
 
+    #[allow(dead_code)]
     pub fn integration_field(&mut self, coords: &glm::Vec2) {
         let selected_cell = self.cell_coords(coords);
         info!("{:?}", selected_cell);
@@ -236,7 +246,7 @@ impl Grid {
 
         while !open_list.is_empty() {
             let cell_xy = open_list.pop().unwrap();
-            let mut neighbors = self.neighbors(cell_xy.x, cell_xy.y);
+            let neighbors = self.neighbors(cell_xy.x, cell_xy.y);
             self.cell_mut(cell_xy.x, cell_xy.y).visited = true;
 
             for n in neighbors.iter() {

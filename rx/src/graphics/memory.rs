@@ -13,7 +13,7 @@ use crate::graphics::state::HalStateV2;
 use crate::graphics::swapchain::DeviceDrop;
 
 pub struct MemoryManager<B: Backend> {
-    memory_properties: adapter::MemoryProperties,
+    _memory_properties: adapter::MemoryProperties,
     pub(crate) mesh_bundle: BufBundle<B>,
     pub(crate) idx_bundle: BufBundle<B>,
     pub(crate) instanced_bundle: BufBundle<B>,
@@ -64,7 +64,7 @@ impl<B: Backend> MemoryManager<B> {
         )?;
 
         Ok(Self {
-            memory_properties: mem_props,
+            _memory_properties: mem_props,
             mesh_bundle: mesh_storage,
             idx_bundle: idx_storage,
             instanced_bundle: insatnced_storage,
@@ -140,7 +140,7 @@ impl<B: Backend> BufBundle<B> {
     pub unsafe fn flush_mem_range(
         &self,
         device: &B::Device,
-        range: Range<u64>,
+        _range: Range<u64>,
     ) -> Result<(), &'static str> {
         device
             .flush_mapped_memory_ranges(iter::once((self.memory.deref(), Segment {

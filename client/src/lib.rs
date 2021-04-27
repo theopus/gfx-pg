@@ -46,14 +46,14 @@ pub fn start() {
         storage.load_mesh(api, obj).expect("")
     };
 
-    let tetrahedron_mesh = {
+    let _tetrahedron_mesh = {
         let (api, loader, storage) = eng.loader();
         let obj = loader.load_obj("tetrahedron").expect("");
         storage.load_mesh(api, obj).expect("")
     };
 
     let map_mesh_ptr = {
-        let (api, loader, storage) = eng.loader();
+        let (api, _loader, storage) = eng.loader();
         let mesh = map::generate2d();
         storage.load_mesh(api, mesh).expect("")
     };
@@ -66,7 +66,7 @@ pub fn start() {
 
     let ecs_layer = rx::ecs::layer::EcsLayer::new(
         move |(mut world, mut r_dispatcher, mut c_dispatcher): EcsInitTuple<'static>| {
-            use rx::ecs::{ActiveCamera, CameraTarget, Position, Rotation};
+            use rx::ecs::{CameraTarget, Position, Rotation};
             world.register::<Render>();
             world.register::<Velocity>();
             world.register::<Follower>();

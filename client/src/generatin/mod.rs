@@ -1,19 +1,12 @@
-use std::{fmt, fs};
-use std::fs::File;
-use std::io;
-use std::io::{BufRead, BufReader};
-use std::path::PathBuf;
+use std::{fmt};
 
 #[allow(unused_imports)]
 use log::{debug, error, info, trace, warn};
 use rand;
-use rand::{Rng, RngCore, SeedableRng};
+use rand::{Rng};
 use rand::distributions::Distribution;
 use rand_distr;
 use rand_distr::Normal;
-use rand_pcg::Pcg64;
-use rand_seeder::Seeder;
-use serde_json;
 
 struct Person {
     first_name: String,
@@ -23,6 +16,7 @@ struct Person {
 }
 
 impl Person {
+    #[allow(dead_code)]
     pub fn new(first_name: String, last_name: String, height: u32, sex: u8) -> Self {
         Person {
             first_name,
@@ -114,18 +108,18 @@ mod file_system {
 
     pub fn read_lines(path: &PathBuf) -> impl Iterator<Item=Result<String, io::Error>> {
         let file = File::open(path).unwrap();
-        let mut reader = BufReader::new(file);
+        let reader = BufReader::new(file);
         reader.lines()
     }
 }
 
 pub mod variables {
     use std::env;
-    use std::env::VarError;
 
     #[allow(unused_imports)]
     use log::{debug, error, info, trace, warn};
 
+    #[allow(dead_code)]
     pub fn get_str(key: &str) -> Option<String> {
         _get_str(key, false)
     }
@@ -152,20 +146,20 @@ pub mod variables {
 mod spc {
     #[allow(unused_imports)]
     use log::{debug, error, info, trace, warn};
-
+    #[allow(unused_imports)]
     use rx::specs::Join;
     use rx::specs;
-    use rx::specs::{RunNow, System, WorldExt, Write};
     use rx::specs::{Component, prelude::*};
 
     struct DecisionSystem;
 
     impl<'a> specs::System<'a> for DecisionSystem {
-        type SystemData = (WriteStorage<'a, Status>);
+        type SystemData = WriteStorage<'a, Status>;
 
         fn run(&mut self, data: Self::SystemData) {
+            #[allow(unused_imports)]
             use rx::specs::Join;
-            let (mut status) = data;
+            let status = data;
             for s in status.join() {
                 info!("{:?}", &s);
             }

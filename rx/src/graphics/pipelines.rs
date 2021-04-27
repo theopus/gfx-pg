@@ -1,4 +1,3 @@
-use std::io::Cursor;
 use std::mem::{ManuallyDrop, size_of};
 
 use hal::{
@@ -18,7 +17,6 @@ use hal::pso::{BasePipeline, PolygonMode, VertexInputRate};
 use log::{debug, error, info, trace, warn};
 
 use crate::graphics::swapchain::DeviceDrop;
-use crate::hal::pso;
 use crate::hal::pso::State;
 
 pub struct PipelineV0<B: Backend> {

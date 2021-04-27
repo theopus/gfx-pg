@@ -39,7 +39,8 @@ pub fn generate2d() -> Mesh {
     for line in MAP.split("\n").collect::<Vec<_>>().iter() {
         info!("{:?}", line);
         for char in line.trim().chars() {
-            let value = char.to_digit(RADIX).unwrap();
+            let value
+                 = char.to_digit(RADIX).unwrap();
             if value > 0 {
                 let (lu, ld, ru, rd) =
                     (
@@ -89,7 +90,7 @@ pub fn generate2d() -> Mesh {
     }
     let p_len = positions.len();
     let mut normals = Vec::with_capacity(positions.len());
-    for i in 0..p_len / 3 {
+    for _i in 0..p_len / 3 {
         normals.push(0.);
         normals.push(1.);
         normals.push(0.);

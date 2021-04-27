@@ -1,5 +1,6 @@
 use std::mem::size_of;
 
+#[allow(dead_code)]
 pub fn cast_slice<T, U>(ts: &[T]) -> Option<&[U]> {
     use core::mem::align_of;
     // Handle ZST (this all const folds)
