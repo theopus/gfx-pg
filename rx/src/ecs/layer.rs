@@ -1,5 +1,5 @@
 use std::convert::identity;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 #[allow(unused_imports)]
 use log::{debug, error, info, trace, warn};
@@ -29,13 +29,28 @@ impl<'a> Layer for EcsLayer<'a> {
             }
         }
 
-        while self.lag >= DURATION_PER_UPD {
-            self.rated_dispatcher.dispatch(&self.world);
-            let mut events_resource = self.world.write_resource::<WinitEvents>();
-            events_resource.0.clear();
-            self.lag -= DURATION_PER_UPD;
+        {
+            let start =  Instant::now();
+            let mut count = 0;
+            while self.lag >= DURATION_PER_UPD {
+                self.rated_dispatcher.dispatch(&self.world);
+                let mut events_resource = self.world.write_resource::<WinitEvents>();
+                events_resource.0.clear();
+                self.lag -= DURATION_PER_UPD;
+                count += 1;
+            }
+            debug!("rated dispatch took {:?}, {:?} times", Instant::now() - start, count);
         }
-        self.constant_dispatcher.dispatch(&self.world)
+
+        {
+            let start =  Instant::now();
+            self.constant_dispatcher.dispatch(&self.world);
+            debug!("constant dispatcher took {:?}", Instant::now() - start);
+        }
+    }
+
+    fn name(&self) -> &'static str {
+        "layer_ecs"
     }
 }
 

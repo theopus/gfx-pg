@@ -18,13 +18,14 @@ use rx::glm;
 use rx::specs::Builder;
 use rx::specs::WorldExt;
 
-use crate::systems::test::Follower;
+use crate::systems::test::{Follower, MoveClickSystem};
 
 mod flowchart;
 mod generatin;
 mod map;
 mod maths;
 mod systems;
+mod arrowdrop;
 
 pub fn init_log() {
     env_logger::from_env(env_logger::Env::default().default_filter_or(
@@ -33,11 +34,11 @@ pub fn init_log() {
          winit::platform_impl::platform::event_loop::runner=error,\
          gfx_backend_vulkan=warn\
          ",
-    ))
-        .init();
+    )).init();
 }
 
 pub fn start() {
+    init_log();
     let mut eng = rx::run::Engine::default();
 
     let ico_mesh = {
@@ -52,11 +53,18 @@ pub fn start() {
         storage.load_mesh(api, obj).expect("")
     };
 
+    let cube_mesh = {
+        let (api, loader, storage) = eng.loader();
+        let obj = loader.load_obj("cube").expect("");
+        storage.load_mesh(api, obj).expect("")
+    };
+
     let map_mesh_ptr = {
         let (api, _loader, storage) = eng.loader();
         let mesh = map::generate2d();
         storage.load_mesh(api, mesh).expect("")
     };
+
     let (draw, redner) = eng.renderer().queue();
 
     let render_sys = systems::generic::RenderSubmitSystem::new(draw, redner);
@@ -142,14 +150,17 @@ pub fn start() {
             world.insert(WinitEvents::default());
             world.insert(CameraTarget(Some(player)));
 
+            arrowdrop::create(&mut world, cube_mesh.clone());
             r_dispatcher = r_dispatcher
                 .with(systems::test::FollowingSystem, "follow_sys", &[])
                 //
                 .with(input_sys, "in_tst_sys", &[])
                 .with(move_sys, "move_sys", &[])
-                .with(mouse_sys, "mouse_sys", &[])
-                .with(transform_sys, "tsm_sys", &[]);
-            c_dispatcher = c_dispatcher.with_thread_local(render_sys);
+                .with(mouse_sys, "mouse_sys", &[]);
+
+            c_dispatcher = c_dispatcher
+                .with(transform_sys, "tsm_sys", &[])
+                .with_thread_local(render_sys);
             return (world, r_dispatcher, c_dispatcher);
         },
     );

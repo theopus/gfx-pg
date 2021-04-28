@@ -95,7 +95,9 @@ impl Engine {
                 }
                 Event::RedrawRequested(_w) => {
                     /*Render*/
+                    let start =  Instant::now();
                     renderer.render();
+                    debug!("render took {:?}", Instant::now() - start);
                     if draw_req < 0 {
                         draw_req = 1
                     } else {
@@ -140,7 +142,9 @@ impl Engine {
 
     fn on_update(layers: &mut Vec<Box<dyn Layer>>, events: &mut Vec<MyEvent>, elapsed: Duration) {
         for layer in layers.iter_mut() {
+            let start =  Instant::now();
             layer.on_update(events, elapsed);
+            debug!("{:?} took {:?}", layer.name(), Instant::now() - start)
         }
         events.clear()
     }
@@ -159,6 +163,7 @@ impl Engine {
 
 pub trait Layer {
     fn on_update(&mut self, events: &Vec<MyEvent>, elapsed: Duration);
+    fn name(&self) -> &'static str;
 }
 
 impl<F> Layer for F
@@ -167,5 +172,9 @@ impl<F> Layer for F
 {
     fn on_update(&mut self, events: &Vec<MyEvent>, elapsed: Duration) {
         self(events, elapsed)
+    }
+
+    fn name(&self) -> &'static str {
+        "stub"
     }
 }

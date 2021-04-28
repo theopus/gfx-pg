@@ -308,6 +308,12 @@ pub mod test {
                 };
 
                 v.v = velocity + oposite_vec * SLOW;
+                if v.v.x >= -1.3 && v.v.x <= 1.3 {
+                    v.v.x = 0.;
+                }
+                if v.v.z >= -1.3 && v.v.z <= 1.3 {
+                    v.v.z = 0.;
+                }
             }
         }
     }

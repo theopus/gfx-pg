@@ -33,8 +33,9 @@ pub fn screen2world(
     eye2world(&eye, view)
 }
 
-pub fn intersection(plane_n: &glm::Vec3, _plane_p: &glm::Vec3, line_vec: &glm::Vec3, line_p: &glm::Vec3) -> Option<glm::Vec3> {
-    let d = glm::dot(plane_n, plane_n);
+//maybe bug [plane_p]!
+pub fn intersection(plane_n: &glm::Vec3, plane_p: &glm::Vec3, line_vec: &glm::Vec3, line_p: &glm::Vec3) -> Option<glm::Vec3> {
+    let d = glm::dot(plane_n, plane_p);
 
     if glm::dot(plane_n, line_vec) == 0. {
         return None;

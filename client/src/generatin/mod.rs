@@ -1,9 +1,9 @@
-use std::{fmt};
+use std::fmt;
 
 #[allow(unused_imports)]
 use log::{debug, error, info, trace, warn};
 use rand;
-use rand::{Rng};
+use rand::{Rng, SeedableRng};
 use rand::distributions::Distribution;
 use rand_distr;
 use rand_distr::Normal;
@@ -146,10 +146,11 @@ pub mod variables {
 mod spc {
     #[allow(unused_imports)]
     use log::{debug, error, info, trace, warn};
-    #[allow(unused_imports)]
-    use rx::specs::Join;
+
     use rx::specs;
     use rx::specs::{Component, prelude::*};
+    #[allow(unused_imports)]
+    use rx::specs::Join;
 
     struct DecisionSystem;
 
@@ -179,7 +180,6 @@ mod spc {
         world.register::<Status>();
         let mut dispatcher = specs::DispatcherBuilder::new()
             .with(DecisionSystem, "decision", &[]).build();
-        ;
 
         dispatcher.dispatch(&world)
     }
@@ -188,15 +188,18 @@ mod spc {
 #[test]
 fn test() {
     use itertools::Itertools;
+    use rand_pcg::Pcg64;
+    use rand_seeder::Seeder;
 
     crate::init_log();
+
+
     let mut rng = Pcg64::from_seed(Seeder::from("ira").make_seed());
     // let mut rng = Pcg64::from_entropy();
 
     for p in (1..100)
-        .map(|n| Person::from_rng(&mut rng))
-        .sorted_by(|a, b| Ord::cmp(&a.last_name, &b.last_name))
-    {
+        .map(|_n| Person::from_rng(&mut rng))
+        .sorted_by(|a, b| Ord::cmp(&a.last_name, &b.last_name)) {
         info!("{:?}", p);
     }
 }

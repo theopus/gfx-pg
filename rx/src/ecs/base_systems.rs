@@ -10,6 +10,8 @@ pub mod world3d {
     use crate::ecs::base_systems::camera3d::{
         ActiveCamera, CameraTarget, init as init_cam, TargetedCamera, ViewProjection,
     };
+    use std::time::Instant;
+    use na::Rotation3;
 
     ///
     ///                  camera  system
@@ -63,15 +65,33 @@ pub mod world3d {
             vp_e.view = cam.view.clone() as glm::Mat4;
             vp_e.proj = cam.projection.clone() as glm::Mat4;
 
-            for (pos, rot, tsm) in (&pos, &rot, &mut tsm).join() {
-                tsm.model = {
-                    let mut mtx = glm::identity();
-                    glm::rotate(&mut mtx, rot.x, &glm::vec3(1., 0., 0.))
-                        * glm::rotate(&mut mtx, rot.y, &glm::vec3(0., 1., 0.))
-                        * glm::rotate(&mut mtx, rot.z, &glm::vec3(0., 0., 1.))
-                        * glm::translate(&mut mtx, &glm::vec3(pos.x, pos.y, pos.z))
-                };
-                tsm.mvp = &vp * &tsm.model
+            //bottleneck
+            {
+                let start =  Instant::now();
+                for (pos, rot, tsm) in (&pos, &rot, &mut tsm).join() {
+                    tsm.model = {
+                        let mut mtx: glm::Mat4 = glm::identity();
+                        mtx = glm::translate(&mut mtx, &glm::vec3(pos.x, pos.y, pos.z));
+                        // if rot.x != 0.0 || rot.x != 0.0 || rot.x != 0.0 {
+                        //     mtx = mtx * Rotation3::from_euler_angles(rot.x, rot.y, rot.z);
+                        // }
+                        // if rot.x != 0.0 || rot.y != 0.0 || rot.z != 0.0 {
+                        //     mtx = mtx * glm::rotate_vec3();
+                        // }
+                        if rot.x != 0.0 {
+                            mtx = glm::rotate(&mut mtx, glm::radians(&glm::vec1(rot.x)).x, &glm::vec3(1., 0., 0.));
+                        }
+                        if rot.y != 0.0 {
+                            mtx = glm::rotate(&mut mtx, glm::radians(&glm::vec1(rot.y)).x, &glm::vec3(0., 1., 0.));
+                        }
+                        if rot.z != 0.0 {
+                            mtx = glm::rotate(&mut mtx, glm::radians(&glm::vec1(rot.z)).x, &glm::vec3(0., 0., 1.));
+                        }
+                        mtx
+                    };
+                    tsm.mvp = &vp * &tsm.model
+                }
+                debug!("matrix took {:?}", Instant::now() - start);
             }
         }
     }
