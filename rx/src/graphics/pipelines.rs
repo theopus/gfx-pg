@@ -18,6 +18,8 @@ use log::{debug, error, info, trace, warn};
 
 use crate::graphics::swapchain::DeviceDrop;
 use crate::hal::pso::State;
+use crate::hal::pso;
+use std::io::Cursor;
 
 pub struct PipelineV0<B: Backend> {
     //    pub(crate)descriptor_set: ManuallyDrop<B::DescriptorSet>,
@@ -60,7 +62,7 @@ impl<B: Backend> PipelineV0<B> {
         _extent: Extent2D,
         render_pass: &<B as Backend>::RenderPass,
     ) -> Result<Self, &'static str> {
-        #[cfg(not(target_arch = "wasm32"))]
+        #[cfg(target_arch = "wasm32")]
             let (vertex_shader_module, fragment_shader_module) = {
             let vertex_compile_artifact = shader::compile(
                 VERTEX_SOURCE,
@@ -86,7 +88,7 @@ impl<B: Backend> PipelineV0<B> {
              })
         };
 
-        #[cfg(target_arch = "wasm32")]
+        #[cfg(not(target_arch = "wasm32"))]
             let (vertex_shader_module, fragment_shader_module) = {
             ({
                  let spirv = pso::read_spirv(Cursor::new(&include_bytes!("../../../assets/map")[..]))
@@ -313,7 +315,7 @@ impl<B: Backend> PipelineV0<B> {
     }
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(target_arch = "wasm32")]
 pub mod shader {
     use log::error;
     use shaderc::CompilationArtifact;

@@ -356,7 +356,7 @@ pub mod generic {
         ActiveCamera, TargetedCamera,
     };
     use rx::glm;
-    use rx::render::{DrawCmd, RenderCommand};
+    use rx::graphics_api::{DrawCmd, RenderCommand};
     use rx::specs::{Join, Read, ReadStorage, System, WriteStorage};
 
     pub struct RenderSubmitSystem {

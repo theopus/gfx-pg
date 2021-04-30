@@ -30,9 +30,17 @@ nalgebra-glm = "0.4.0"
 specs = { version = "0.16", features = ["specs-derive"] }
 specs-derive = "0.4"
 itertools = "0.8.0"
+wgpu = "0.7"
+futures = "0.3"
 
-[target.'cfg(not(target_arch = "wasm32"))'.dependencies.shaderc]
-version = "0.6.1"
+[build-dependencies]
+anyhow = "1.0"
+fs_extra = "1.1"
+glob = "0.3"
+shaderc = "0.7"
+#
+#[target.'cfg(not(target_arch = "wasm32"))'.dependencies.shaderc]
+#version = "0.6.1"
 
 [dependencies.gfx-backend-vulkan]
 version = "0.5"

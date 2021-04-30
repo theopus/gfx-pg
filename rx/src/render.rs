@@ -22,15 +22,6 @@ use crate::hal::buffer::{IndexBufferView, SubRange};
 use crate::hal::IndexType;
 use crate::window::WinitState;
 
-pub type DrawCmd = (MeshPtr, glm::Mat4, glm::Mat4);
-
-
-pub enum RenderCommand {
-    PushView(glm::Mat4),
-    PushLight(glm::Vec3),
-    PushState,
-    Draw,
-}
 
 pub trait Pipeline {
     fn process(&mut self);

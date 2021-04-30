@@ -5,10 +5,12 @@ use log::{debug, error, info, trace, warn};
 use winit::event::{Event, WindowEvent};
 use winit::event_loop::{ControlFlow, EventLoopWindowTarget};
 
+#[cfg(feature = "hal")]
 use crate::assets::{AssetsLoader, AssetsStorage};
 use crate::events::{map_event, MyEvent};
+#[cfg(feature = "hal")]
 use crate::graphics::wrapper::ApiWrapper;
-use crate::render::Renderer;
+use crate::render_w::Renderer;
 use crate::window::WinitState;
 
 pub struct Engine {
@@ -36,19 +38,19 @@ impl Engine {
     pub fn renderer_mut(&mut self) -> &mut Renderer {
         &mut self.renderer
     }
-    pub fn loader(
-        &mut self,
-    ) -> (
-        &mut ApiWrapper<back::Backend>,
-        &mut AssetsLoader,
-        &mut AssetsStorage,
-    ) {
-        (
-            &mut self.renderer.api,
-            &mut self.renderer.loader,
-            &mut self.renderer.storage,
-        )
-    }
+    // pub fn loader(
+    //     &mut self,
+    // ) -> (
+    //     &mut ApiWrapper<back::Backend>,
+    //     &mut AssetsLoader,
+    //     &mut AssetsStorage,
+    // ) {
+    //     (
+    //         &mut self.renderer.api,
+    //         &mut self.renderer.loader,
+    //         &mut self.renderer.storage,
+    //     )
+    // }
 
     pub fn run(self) {
         let (events_loop, window) = {

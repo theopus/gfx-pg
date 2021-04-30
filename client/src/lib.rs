@@ -41,29 +41,29 @@ pub fn start() {
     init_log();
     let mut eng = rx::run::Engine::default();
 
-    let ico_mesh = {
-        let (api, loader, storage) = eng.loader();
-        let obj = loader.load_obj("ico-sphere").expect("");
-        storage.load_mesh(api, obj).expect("")
-    };
+    // let ico_mesh = {
+    //     let (api, loader, storage) = eng.loader();
+    //     let obj = loader.load_obj("ico-sphere").expect("");
+    //     storage.load_mesh(api, obj).expect("")
+    // };
 
-    let _tetrahedron_mesh = {
-        let (api, loader, storage) = eng.loader();
-        let obj = loader.load_obj("tetrahedron").expect("");
-        storage.load_mesh(api, obj).expect("")
-    };
+    // let _tetrahedron_mesh = {
+    //     let (api, loader, storage) = eng.loader();
+    //     let obj = loader.load_obj("tetrahedron").expect("");
+    //     storage.load_mesh(api, obj).expect("")
+    // };
 
-    let cube_mesh = {
-        let (api, loader, storage) = eng.loader();
-        let obj = loader.load_obj("cube").expect("");
-        storage.load_mesh(api, obj).expect("")
-    };
+    // let cube_mesh = {
+    //     let (api, loader, storage) = eng.loader();
+    //     let obj = loader.load_obj("cube").expect("");
+    //     storage.load_mesh(api, obj).expect("")
+    // };
 
-    let map_mesh_ptr = {
-        let (api, _loader, storage) = eng.loader();
-        let mesh = map::generate2d();
-        storage.load_mesh(api, mesh).expect("")
-    };
+    // let map_mesh_ptr = {
+    //     let (api, _loader, storage) = eng.loader();
+    //     let mesh = map::generate2d();
+    //     storage.load_mesh(api, mesh).expect("")
+    // };
 
     let (draw, redner) = eng.renderer().queue();
 
@@ -81,40 +81,40 @@ pub fn start() {
 
             let (.., transform_sys) = init(&mut world, &glm::vec3(0., 0., 0.));
 
-            let player = world
-                .create_entity()
-                .with(Rotation::default())
-                .with(Position::default())
-                .with(Transformation::default())
-                .with(Velocity::default())
-                .with(Render {
-                    mesh: ico_mesh.clone(),
-                })
-                .build();
-
-            let selected = world
-                .create_entity()
-                .with(Rotation::default())
-                .with(Position::default())
-                .with(Transformation::default())
-                .with(Velocity::default())
-                .with(Render {
-                    mesh: ico_mesh.clone(),
-                })
-                .build();
-            world
-                .create_entity()
-                .with(Rotation::default())
-                .with(Position {
-                    x: 0.,
-                    y: -10.,
-                    z: 0.,
-                })
-                .with(Transformation::default())
-                .with(Render {
-                    mesh: map_mesh_ptr.clone(),
-                })
-                .build();
+            // let player = world
+            //     .create_entity()
+            //     .with(Rotation::default())
+            //     .with(Position::default())
+            //     .with(Transformation::default())
+            //     .with(Velocity::default())
+            //     .with(Render {
+            //         mesh: ico_mesh.clone(),
+            //     })
+            //     .build();
+            //
+            // let selected = world
+            //     .create_entity()
+            //     .with(Rotation::default())
+            //     .with(Position::default())
+            //     .with(Transformation::default())
+            //     .with(Velocity::default())
+            //     .with(Render {
+            //         mesh: ico_mesh.clone(),
+            //     })
+            //     .build();
+            // world
+            //     .create_entity()
+            //     .with(Rotation::default())
+            //     .with(Position {
+            //         x: 0.,
+            //         y: -10.,
+            //         z: 0.,
+            //     })
+            //     .with(Transformation::default())
+            //     .with(Render {
+            //         mesh: map_mesh_ptr.clone(),
+            //     })
+            //     .build();
 
             // for e in 0..10 {
             //     let _ = world
@@ -146,20 +146,20 @@ pub fn start() {
             //         .build();
             // }
 
-            world.insert(SelectedEntity(Some(selected)));
+            // world.insert(SelectedEntity(Some(selected)));
             world.insert(WinitEvents::default());
-            world.insert(CameraTarget(Some(player)));
+            // world.insert(CameraTarget(Some(player)));
 
-            arrowdrop::create(&mut world, cube_mesh.clone());
-            r_dispatcher = r_dispatcher
-                .with(systems::test::FollowingSystem, "follow_sys", &[])
-                //
-                .with(input_sys, "in_tst_sys", &[])
-                .with(move_sys, "move_sys", &[])
-                .with(mouse_sys, "mouse_sys", &[]);
+            // arrowdrop::create(&mut world, cube_mesh.clone());
+            // r_dispatcher = r_dispatcher
+            //     .with(systems::test::FollowingSystem, "follow_sys", &[])
+            //     //
+            //     .with(input_sys, "in_tst_sys", &[])
+            //     .with(move_sys, "move_sys", &[])
+            //     .with(mouse_sys, "mouse_sys", &[]);
 
             c_dispatcher = c_dispatcher
-                .with(transform_sys, "tsm_sys", &[])
+                // .with(transform_sys, "tsm_sys", &[])
                 .with_thread_local(render_sys);
             return (world, r_dispatcher, c_dispatcher);
         },
