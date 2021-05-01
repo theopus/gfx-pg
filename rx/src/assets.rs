@@ -136,11 +136,11 @@ impl AssetsLoader {
     const IMAGE_DIR: &'static str = "images";
     const MODEL_DIR: &'static str = "models";
 
-    pub fn new(dir: &'static str) -> Result<Self, &str> {
-        let dir = PathBuf::from(dir).canonicalize().map_err(|e| {
-            error!("{:?}", e);
-            "Error with assets loader"
-        })?;
+    pub fn new(dir: PathBuf) -> Result<Self, &'static str> {
+        // let dir = PathBuf::from(dir).canonicalize().map_err(|e| {
+        //     error!("{:?}", e);
+        //     "Error with assets loader"
+        // })?;
         info!("Assets location {:?}", dir);
         Ok(AssetsLoader { dir })
     }

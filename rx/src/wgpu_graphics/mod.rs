@@ -1,7 +1,11 @@
 use std::mem::size_of;
+use std::sync::mpsc;
 
+use itertools::Itertools;
 use winit::event::WindowEvent;
 use winit::window::Window;
+
+use crate::graphics_api;
 use crate::graphics_api::v0;
 use crate::utils::file_system;
 use crate::wgpu_graphics::memory::{MemoryManager, MemoryManagerConfig};
@@ -10,13 +14,13 @@ pub mod memory;
 
 pub struct State {
     surface: wgpu::Surface,
-    pub(crate)device: wgpu::Device,
-    pub(crate)queue: wgpu::Queue,
+    pub(crate) device: wgpu::Device,
+    pub(crate) queue: wgpu::Queue,
     sc_desc: wgpu::SwapChainDescriptor,
     swap_chain: wgpu::SwapChain,
     size: winit::dpi::PhysicalSize<u32>,
     pipeline: wgpu::RenderPipeline,
-    pub(crate)memory_manager: memory::MemoryManager
+    pub(crate) memory_manager: memory::MemoryManager,
 }
 
 impl State {
@@ -25,7 +29,7 @@ impl State {
 
         // The instance is a handle to our GPU
         // BackendBit::PRIMARY => Vulkan + Metal + DX12 + Browser WebGPU
-        let instance = wgpu::Instance::new(wgpu::BackendBit::PRIMARY);
+        let instance = wgpu::Instance::new(wgpu::BackendBit::VULKAN);
         let surface = unsafe { instance.create_surface(window) };
 
         let adapter = instance.request_adapter(
@@ -37,7 +41,7 @@ impl State {
 
         let (mut device, queue) = adapter.request_device(
             &wgpu::DeviceDescriptor {
-                features: wgpu::Features::empty(),
+                features: wgpu::Features::NON_FILL_POLYGON_MODE | wgpu::Features::MAPPABLE_PRIMARY_BUFFERS,
                 limits: wgpu::Limits::default(),
                 label: None,
             },
@@ -56,7 +60,7 @@ impl State {
         let mm = MemoryManager::new(&mut device, MemoryManagerConfig {
             mesh_buffer_size: 1_000_000,
             idx_buffer_size: 1_000_000,
-            instanced_buffer_size: 1_000_000
+            instanced_buffer_size: (64 * 2) * 50_000,
         });
         Self {
             surface,
@@ -66,7 +70,7 @@ impl State {
             swap_chain,
             size,
             pipeline,
-            memory_manager: mm
+            memory_manager: mm,
         }
     }
 
@@ -84,7 +88,7 @@ impl State {
                 module: &device.create_shader_module(&wgpu::ShaderModuleDescriptor {
                     label: Some("one.vert.spv"),
                     source: wgpu::util::make_spirv(file_system::read_file(vert_path).as_slice()),
-                    flags: Default::default()
+                    flags: Default::default(),
                 }),
                 entry_point: "main",
                 buffers: &[
@@ -97,7 +101,7 @@ impl State {
                 strip_index_format: None,
                 front_face: wgpu::FrontFace::Cw,
                 //culling
-                cull_mode: wgpu::CullMode::None,
+                cull_mode: wgpu::CullMode::Back,
                 topology: wgpu::PrimitiveTopology::TriangleList,
             },
             depth_stencil: None,
@@ -106,7 +110,7 @@ impl State {
                 module: &device.create_shader_module(&wgpu::ShaderModuleDescriptor {
                     label: Some("one.frag.spv"),
                     source: wgpu::util::make_spirv(file_system::read_file(frag_path).as_slice()),
-                    flags: Default::default()
+                    flags: Default::default(),
                 }),
                 entry_point: "main",
                 targets: &[wgpu::ColorTargetState {
@@ -135,8 +139,12 @@ impl State {
         todo!()
     }
 
-    pub fn render(&mut self) -> Result<(), wgpu::SwapChainError> {
+    pub fn render(
+        &mut self,
+        recevier: &mut mpsc::Receiver<graphics_api::DrawCmd>,
+    ) -> Result<(), wgpu::SwapChainError> {
         // self.swap_chain.
+
         let frame = self
             .swap_chain
             .get_current_frame()?
@@ -145,7 +153,7 @@ impl State {
             label: Some("Render Encoder"),
         });
         {
-            let _render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+            let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("Render Pass"),
                 color_attachments: &[
                     wgpu::RenderPassColorAttachmentDescriptor {
@@ -164,6 +172,58 @@ impl State {
                 ],
                 depth_stencil_attachment: None,
             });
+            render_pass.set_pipeline(&self.pipeline);
+            render_pass.set_index_buffer(
+                self.memory_manager.idx_buffer.slice(..),
+                wgpu::IndexFormat::Uint32,
+            );
+            render_pass.set_vertex_buffer(
+                0,
+                self.memory_manager.mesh_buffer.slice(..),
+            );
+            render_pass.set_vertex_buffer(
+                1,
+                self.memory_manager.instanced_buffer.slice(..),
+            );
+
+            {
+                let mut instances_offset: u32 = 0;
+                let mut data_offset = 0;
+                let grouped_queue = recevier
+                    .try_iter()
+                    .into_iter()
+                    .sorted_by(|(l_ptr, ..), (r_ptr, ..)| {
+                        l_ptr.base_vertex.partial_cmp(&r_ptr.base_vertex).unwrap()
+                    })
+                    .group_by(|ptr| ptr.0.clone());
+
+                for (ptr, list) in &grouped_queue {
+                    let mut current_count = 0;
+
+                    let data: Vec<_> = list.flat_map(|(_, mvp, model)| {
+                        current_count += 1;
+                        let mut base = mvp.as_slice().to_owned();
+                        base.append(&mut model.as_slice().to_owned());
+                        base
+                    }).collect::<Vec<f32>>();
+
+                    let data_len = data.len() * 4;
+
+                    self.queue.write_buffer(
+                        &self.memory_manager.instanced_buffer,
+                        data_offset,
+                        unsafe { std::slice::from_raw_parts(data.as_ptr() as *const u8, data.len() * 4) },
+                    );
+
+                    data_offset += data_len as u64;
+                    render_pass.draw_indexed(
+                        ptr.indices.clone(),
+                        ptr.base_vertex,
+                        instances_offset..instances_offset + current_count,
+                    );
+                    instances_offset += current_count
+                };
+            }
         }
 
 

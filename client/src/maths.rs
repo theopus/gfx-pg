@@ -27,7 +27,9 @@ pub fn screen2world(
     view: &glm::Mat4,
     proj: &glm::Mat4,
 ) -> glm::Vec3 {
-    let ndc_v2 = screen2ndc(coords.0, coords.1, dimensions.0 as f32, dimensions.1 as f32);
+    //Note: for top left coordinate system
+    let y = (dimensions.1 as f32 - coords.1).abs();
+    let ndc_v2 = screen2ndc(coords.0, y, dimensions.0 as f32, dimensions.1 as f32);
     let clip = glm::vec4(ndc_v2.x, ndc_v2.y, 0., 1.);
     let eye = clip2eye(&clip, proj);
     eye2world(&eye, view)

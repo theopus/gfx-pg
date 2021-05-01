@@ -81,85 +81,55 @@ pub fn start() {
 
             let (.., transform_sys) = init(&mut world, &glm::vec3(0., 0., 0.));
 
-            // let player = world
-            //     .create_entity()
-            //     .with(Rotation::default())
-            //     .with(Position::default())
-            //     .with(Transformation::default())
-            //     .with(Velocity::default())
-            //     .with(Render {
-            //         mesh: ico_mesh.clone(),
-            //     })
-            //     .build();
+            let player = world
+                .create_entity()
+                .with(Rotation::default())
+                .with(Position::default())
+                .with(Transformation::default())
+                .with(Velocity::default())
+                .with(Render {
+                    mesh: ico_mesh.clone(),
+                })
+                .build();
+
+            let selected = world
+                .create_entity()
+                .with(Rotation::default())
+                .with(Position::default())
+                .with(Transformation::default())
+                .with(Velocity::default())
+                .with(Render {
+                    mesh: ico_mesh.clone(),
+                })
+                .build();
+            world
+                .create_entity()
+                .with(Rotation::default())
+                .with(Position {
+                    x: 0.,
+                    y: -10.,
+                    z: 0.,
+                })
+                .with(Transformation::default())
+                .with(Render {
+                    mesh: map_mesh_ptr.clone(),
+                })
+                .build();
             //
-            // let selected = world
-            //     .create_entity()
-            //     .with(Rotation::default())
-            //     .with(Position::default())
-            //     .with(Transformation::default())
-            //     .with(Velocity::default())
-            //     .with(Render {
-            //         mesh: ico_mesh.clone(),
-            //     })
-            //     .build();
-            // world
-            //     .create_entity()
-            //     .with(Rotation::default())
-            //     .with(Position {
-            //         x: 0.,
-            //         y: -10.,
-            //         z: 0.,
-            //     })
-            //     .with(Transformation::default())
-            //     .with(Render {
-            //         mesh: map_mesh_ptr.clone(),
-            //     })
-            //     .build();
-
-            // for e in 0..10 {
-            //     let _ = world
-            //         .create_entity()
-            //         .with(Rotation::default())
-            //         .with(Position {
-            //             x: e as f32 * 10. * {
-            //                 if e % 2 == 0 {
-            //                     -1.
-            //                 } else {
-            //                     1.
-            //                 }
-            //             },
-            //             y: 0.0,
-            //             z: 0.0,
-            //         })
-            //         .with(Transformation::default())
-            //         .with(Render {
-            //             mesh: {
-            //                 if e % 2 == 0 {
-            //                     ico_mesh.clone()
-            //                 } else {
-            //                     tetrahedron_mesh.clone()
-            //                 }
-            //             },
-            //         })
-            //         .with(Follower { lead: player })
-            //         .with(Velocity::default())
-            //         .build();
-            // }
-
-            // world.insert(SelectedEntity(Some(selected)));
+            world.insert(SelectedEntity(Some(selected)));
             world.insert(WinitEvents::default());
-            // world.insert(CameraTarget(Some(player)));
+            world.insert(CameraTarget(Some(player)));
 
             // arrowdrop::create(&mut world, cube_mesh.clone());
-            // r_dispatcher = r_dispatcher
-            //     .with(systems::test::FollowingSystem, "follow_sys", &[])
-            //     //
-            //     .with(input_sys, "in_tst_sys", &[])
-            //     .with(move_sys, "move_sys", &[])
-            //     .with(mouse_sys, "mouse_sys", &[]);
+            r_dispatcher = r_dispatcher
+                .with(systems::test::FollowingSystem, "follow_sys", &[])
+                //
+                .with(input_sys, "in_tst_sys", &[])
+                .with(move_sys, "move_sys", &[])
+                .with(mouse_sys, "mouse_sys", &[]);
 
             c_dispatcher = c_dispatcher
-                // .with(transform_sys, "tsm_sys", &[])
+                .with(transform_sys, "tsm_sys", &[])
                 .with_thread_local(render_sys);
             return (world, r_dispatcher, c_dispatcher);
         },

@@ -43,11 +43,13 @@ pub struct Renderer {
 
     pipelines: Vec<Box<dyn Pipeline>>,
 }
-
+use crate::utils::file_system;
 impl Renderer {
     pub fn new(window: &mut WinitState) -> Result<Self, &str> {
         let wpgu_state = block_on(wgpu_graphics::State::new(window.window.as_ref().unwrap()));
-        let loader = AssetsLoader::new("assets")?;
+
+        let buf = file_system::path_from_root(&["assets"]);
+        let loader = AssetsLoader::new(buf)?;
         let storage = AssetsStorage::new()?;
         let (send, recv) = channel();
         let (r_send, r_recv) = channel();
@@ -76,6 +78,6 @@ impl Renderer {
     }
 
     pub fn render(&mut self) {
-        self.wpgu_state.render();
+        self.wpgu_state.render(&mut self.receiver);
     }
 }

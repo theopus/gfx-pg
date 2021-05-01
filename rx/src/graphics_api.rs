@@ -63,8 +63,8 @@ pub mod v0 {
     impl VertexInstance {
         pub fn wgpu_attr<'a>() -> wgpu::VertexBufferLayout<'a> {
             wgpu::VertexBufferLayout {
-                array_stride: (mem::size_of::<[f32; 4]>() * 4) as u64,
-                step_mode: wgpu::InputStepMode::Vertex,
+                array_stride: (mem::size_of::<[f32; 4]>() * 8) as u64,
+                step_mode: wgpu::InputStepMode::Instance,
                 attributes: &[
                     wgpu::VertexAttribute {
                         format: wgpu::VertexFormat::Float4,
