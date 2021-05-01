@@ -4,22 +4,22 @@ use winit::event::WindowEvent;
 use winit::window::Window;
 use crate::graphics_api::v0;
 use crate::utils::file_system;
+use crate::wgpu_graphics::memory::{MemoryManager, MemoryManagerConfig};
 
-mod memory;
+pub mod memory;
 
 pub struct State {
     surface: wgpu::Surface,
-    device: wgpu::Device,
-    queue: wgpu::Queue,
+    pub(crate)device: wgpu::Device,
+    pub(crate)queue: wgpu::Queue,
     sc_desc: wgpu::SwapChainDescriptor,
     swap_chain: wgpu::SwapChain,
     size: winit::dpi::PhysicalSize<u32>,
     pipeline: wgpu::RenderPipeline,
-    // memory_manager: memory::MemoryManager
+    pub(crate)memory_manager: memory::MemoryManager
 }
 
 impl State {
-    // Creating some of the wgpu types requires async code
     pub async fn new(window: &Window) -> Self {
         let size = window.inner_size();
 
@@ -53,6 +53,11 @@ impl State {
         };
         let swap_chain = device.create_swap_chain(&surface, &sc_desc);
         let pipeline = Self::pipeline(&mut device, &sc_desc);
+        let mm = MemoryManager::new(&mut device, MemoryManagerConfig {
+            mesh_buffer_size: 1_000_000,
+            idx_buffer_size: 1_000_000,
+            instanced_buffer_size: 1_000_000
+        });
         Self {
             surface,
             device,
@@ -60,14 +65,14 @@ impl State {
             sc_desc,
             swap_chain,
             size,
-            pipeline
+            pipeline,
+            memory_manager: mm
         }
     }
 
     fn pipeline(device: &mut wgpu::Device, sc_desc: &wgpu::SwapChainDescriptor) -> wgpu::RenderPipeline {
         let vert_path = &["shaders", "one.vert.spv"];
         let frag_path = &["shaders", "one.frag.spv"];
-
         device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
             label: Some("v0 render_pipeline"),
             layout: Some(&device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {

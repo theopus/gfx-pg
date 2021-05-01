@@ -21,6 +21,7 @@ use crate::graphics::wrapper::ApiWrapper;
 use crate::hal::buffer::{IndexBufferView, SubRange};
 use crate::hal::IndexType;
 use crate::window::WinitState;
+use crate::graphics_api::{DrawCmd, RenderCommand};
 
 
 pub trait Pipeline {

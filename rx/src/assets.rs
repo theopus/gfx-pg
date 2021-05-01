@@ -10,9 +10,9 @@ use hal::Backend;
 use image::RgbaImage;
 #[allow(unused_imports)]
 use log::{debug, error, info, trace, warn};
-
-#[cfg(feature = "hal")]
-use crate::graphics::wrapper::ApiWrapper;
+use crate::wgpu_graphics::memory::MemoryManager;
+use crate::wgpu_graphics::State;
+use futures::executor::block_on;
 
 #[derive(Debug, Clone)]
 pub struct AssetsStorage {
@@ -40,77 +40,84 @@ impl AssetsStorage {
         })
     }
 
-    // pub fn load_mesh<B: Backend>(
-    //     &mut self,
-    //     wrapper: &ApiWrapper<B>,
-    //     mesh: Mesh,
-    // ) -> Result<MeshPtr, &'static str> {
-    //     unsafe {
-    //         let Mesh {
-    //             positions,
-    //             mut uvs,
-    //             normals,
-    //             indices,
-    //         } = mesh;
-    //         let device: &B::Device = &wrapper.hal_state.device.deref();
-    //
-    //         if uvs.len() == 0 {
-    //             uvs = vec![0_f32; positions.len() / 3 * 2];
-    //         }
-    //
-    //         let flatten_mesh_vec = positions
-    //             .chunks_exact(3)
-    //             .zip(uvs.chunks_exact(2))
-    //             .zip(normals.chunks_exact(3))
-    //             .flat_map(|((p, uv), n): ((&[f32], &[f32]), &[f32])| [p, uv, n].concat())
-    //             .collect::<Vec<f32>>();
-    //         let flatten_mesh = flatten_mesh_vec.as_slice();
-    //
-    //         assert_eq!(positions.len() / 3, uvs.len() / 2);
-    //         assert_eq!(positions.len() / 3, normals.len() / 3);
-    //         {
-    //             let mesh_len = flatten_mesh_vec.len() * size_of::<f32>();
-    //             let bundle = &wrapper.storage.mesh_bundle;
-    //             //hardcoded for vertex 8 (3 + 2 + 3)
-    //             let offset = self.mesh_offset * size_of::<f32>() as i32 * 8;
-    //             let align = offset % 64;
-    //             let range = (offset - align) as u64..((offset - align) + mesh_len as i32) as u64;
-    //             let mesh_ptr = bundle.map_mem_range(device, range.clone())?;
-    //             ptr::copy(
-    //                 flatten_mesh.as_ptr() as *const u8,
-    //                 mesh_ptr.offset(align as isize),
-    //                 mesh_len,
-    //             );
-    //             bundle.flush_mem_range(device, range)?;
-    //             bundle.unmap(device)?;
-    //         }
-    //         {
-    //             let idx_len = indices.len() * size_of::<u32>();
-    //             let bundle = &wrapper.storage.idx_bundle;
-    //             let offset = self.idx_offset * size_of::<u32>() as u32;
-    //             let align = offset % 64;
-    //             let range = (offset - align) as u64..((offset - align) + idx_len as u32) as u64;
-    //             let idx_ptr = bundle.map_mem_range(device, range.clone())?;
-    //             ptr::copy(
-    //                 indices.as_slice().as_ptr() as *const u8,
-    //                 idx_ptr.offset(align as isize),
-    //                 idx_len,
-    //             );
-    //             bundle.flush_mem_range(device, range)?;
-    //             bundle.unmap(device)?;
-    //         }
-    //
-    //         let mesh_ptr = MeshPtr {
-    //             indices: self.idx_offset..(self.idx_offset + indices.len() as u32),
-    //             base_vertex: self.mesh_offset,
-    //         };
-    //         self.mesh_offset += (positions.len() / 3) as i32;
-    //         self.idx_offset += indices.len() as u32;
-    //         info!("mesh_offset{:?}", self.mesh_offset);
-    //         info!("idx_offset{:?}", self.idx_offset);
-    //         Ok(mesh_ptr)
-    //     }
-    // }
+    pub fn load_mesh(
+        &mut self,
+        api: &mut State,
+        mesh: Mesh,
+    ) -> Result<MeshPtr, &'static str> {
+        unsafe {
+            let Mesh {
+                positions,
+                mut uvs,
+                normals,
+                indices,
+            } = mesh;
+
+            if uvs.len() == 0 {
+                uvs = vec![0_f32; positions.len() / 3 * 2];
+            }
+
+            let flatten_mesh_vec = positions
+                .chunks_exact(3)
+                .zip(uvs.chunks_exact(2))
+                .zip(normals.chunks_exact(3))
+                .flat_map(|((p, uv), n): ((&[f32], &[f32]), &[f32])| [p, uv, n].concat())
+                .collect::<Vec<f32>>();
+            let flatten_mesh = flatten_mesh_vec.as_slice();
+
+            assert_eq!(positions.len() / 3, uvs.len() / 2);
+            assert_eq!(positions.len() / 3, normals.len() / 3);
+            {
+                let mesh_len = flatten_mesh_vec.len() * size_of::<f32>();
+
+
+                //hardcoded for vertex 8 (3 + 2 + 3)
+                let offset = self.mesh_offset * size_of::<f32>() as i32 * 8;
+                let align = offset % 64;
+                let range = (offset - align) as u64..((offset - align) + mesh_len as i32) as u64;
+
+                let slice = api.memory_manager.mesh_buffer.slice(range);
+                let map_flag = slice.map_async(wgpu::MapMode::Write);
+                api.device.poll(wgpu::Maintain::Wait);
+                block_on(map_flag).unwrap();
+                let mesh_ptr= slice.get_mapped_range_mut().as_mut_ptr();
+                ptr::copy(
+                    flatten_mesh.as_ptr() as *const u8,
+                    mesh_ptr.offset(align as isize),
+                    mesh_len,
+                );
+                api.memory_manager.mesh_buffer.unmap();
+            }
+            {
+                let idx_len = indices.len() * size_of::<u32>();
+                let offset = self.idx_offset * size_of::<u32>() as u32;
+                let align = offset % 64;
+                let range = (offset - align) as u64..((offset - align) + idx_len as u32) as u64;
+
+                let slice = api.memory_manager.idx_buffer.slice(range);
+                let map_flag = slice.map_async(wgpu::MapMode::Write);
+                api.device.poll(wgpu::Maintain::Wait);
+                block_on(map_flag).unwrap();
+                let idx_ptr= slice.get_mapped_range_mut().as_mut_ptr();
+                ptr::copy(
+                    indices.as_slice().as_ptr() as *const u8,
+                    idx_ptr.offset(align as isize),
+                    idx_len,
+                );
+                api.memory_manager.idx_buffer.unmap();
+            }
+
+            let mesh_ptr = MeshPtr {
+                indices: self.idx_offset..(self.idx_offset + indices.len() as u32),
+                base_vertex: self.mesh_offset,
+            };
+            self.mesh_offset += (positions.len() / 3) as i32;
+            self.idx_offset += indices.len() as u32;
+            info!("mesh_offset{:?}", self.mesh_offset);
+            info!("idx_offset{:?}", self.idx_offset);
+            Ok(mesh_ptr)
+        }
+    }
 }
 
 //fn align_to(value: u32, alignment: u32) -> u32 {

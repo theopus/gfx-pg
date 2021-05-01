@@ -30,7 +30,9 @@ pub trait Pipeline {
 }
 
 pub struct Renderer {
-    wpgu_state: wgpu_graphics::State,
+    pub(crate) wpgu_state: wgpu_graphics::State,
+    pub(crate) storage: AssetsStorage,
+    pub(crate) loader: AssetsLoader,
     resize_flag: Option<PhysicalSize<u32>>,
 
     sender: Sender<DrawCmd>,
@@ -45,15 +47,16 @@ pub struct Renderer {
 impl Renderer {
     pub fn new(window: &mut WinitState) -> Result<Self, &str> {
         let wpgu_state = block_on(wgpu_graphics::State::new(window.window.as_ref().unwrap()));
-
+        let loader = AssetsLoader::new("assets")?;
+        let storage = AssetsStorage::new()?;
         let (send, recv) = channel();
         let (r_send, r_recv) = channel();
 
 
         Ok(Self {
             // api,
-            // storage,
-            // loader,
+            storage,
+            loader,
             wpgu_state,
             resize_flag: None,
             sender: send,

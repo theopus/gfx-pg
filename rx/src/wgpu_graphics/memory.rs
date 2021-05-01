@@ -1,13 +1,13 @@
 pub struct MemoryManager {
-    pub mesh_buffer: wgpu::Buffer,
-    pub idx_buffer: wgpu::Buffer,
-    pub instanced_buffer: wgpu::Buffer,
+    pub (crate)mesh_buffer: wgpu::Buffer,
+    pub (crate)idx_buffer: wgpu::Buffer,
+    pub (crate)instanced_buffer: wgpu::Buffer,
 }
 
 pub struct MemoryManagerConfig {
-    mesh_buffer_size: u64,
-    idx_buffer_size: u64,
-    instanced_buffer_size: u64,
+    pub mesh_buffer_size: u64,
+    pub idx_buffer_size: u64,
+    pub instanced_buffer_size: u64,
 }
 
 impl MemoryManager {
@@ -41,7 +41,6 @@ impl MemoryManager {
         let mesh_buffer = device.create_buffer(&Self::mesh_buffer_desc(&config));
         let idx_buffer = device.create_buffer(&Self::index_buffer_desc(&config));
         let instanced_buffer = device.create_buffer(&Self::instanced_buffer_desc(&config));
-
         MemoryManager {
             mesh_buffer,
             idx_buffer,
