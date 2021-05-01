@@ -75,7 +75,7 @@ pub mod test {
             if self.pressed {
                 let vec =
                     maths::screen2world((self.x, self.y), (self.w, self.h), &vp.view, &vp.proj);
-                let intersect = maths::intersection(
+                let mut intersect = maths::intersection(
                     &glm::vec3(0., 1., 0.),
                     &glm::vec3(0., 0., 0.),
                     &vec,
@@ -83,6 +83,7 @@ pub mod test {
                 )
                     .unwrap();
                 info!("intersection: {:?}", vec);
+                intersect.y = 0.;
 
                 let dir = &intersect - &sel.as_vec3();
                 sel_vel.v = glm::normalize(&dir) as glm::Vec3;

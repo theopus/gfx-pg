@@ -15,7 +15,7 @@ impl MemoryManager {
         wgpu::BufferDescriptor {
             label: Some("mesh_buffer"),
             size: config.mesh_buffer_size,
-            usage: wgpu::BufferUsage::VERTEX | wgpu::BufferUsage::MAP_WRITE | wgpu::BufferUsage::COPY_DST,
+            usage: wgpu::BufferUsage::VERTEX | wgpu::BufferUsage::MAP_WRITE | wgpu::BufferUsage::MAP_READ | wgpu::BufferUsage::COPY_DST,
             mapped_at_creation: false,
         }
     }
@@ -23,7 +23,7 @@ impl MemoryManager {
         wgpu::BufferDescriptor {
             label: Some("idx_buffer"),
             size: config.idx_buffer_size,
-            usage: wgpu::BufferUsage::INDEX | wgpu::BufferUsage::MAP_WRITE | wgpu::BufferUsage::COPY_DST,
+            usage: wgpu::BufferUsage::INDEX | wgpu::BufferUsage::MAP_WRITE| wgpu::BufferUsage::MAP_READ | wgpu::BufferUsage::COPY_DST,
             mapped_at_creation: false,
         }
     }

@@ -6,13 +6,16 @@ use std::mem::size_of;
 use std::ops::{Deref, Range};
 use std::path::PathBuf;
 
+use futures::executor::block_on;
 use hal::Backend;
 use image::RgbaImage;
 #[allow(unused_imports)]
 use log::{debug, error, info, trace, warn};
+
+use crate::graphics_api;
+use crate::graphics_api::v0::Vertex;
 use crate::wgpu_graphics::memory::MemoryManager;
 use crate::wgpu_graphics::State;
-use futures::executor::block_on;
 
 #[derive(Debug, Clone)]
 pub struct AssetsStorage {
@@ -69,52 +72,66 @@ impl AssetsStorage {
             assert_eq!(positions.len() / 3, normals.len() / 3);
             {
                 let mesh_len = flatten_mesh_vec.len() * size_of::<f32>();
-
-
                 //hardcoded for vertex 8 (3 + 2 + 3)
-                let offset = self.mesh_offset * size_of::<f32>() as i32 * 8;
+                let offset = self.mesh_offset as usize * size_of::<f32>() * 8;
                 let align = offset % 64;
-                let range = (offset - align) as u64..((offset - align) + mesh_len as i32) as u64;
-
-                let slice = api.memory_manager.mesh_buffer.slice(range);
-                let map_flag = slice.map_async(wgpu::MapMode::Write);
-                api.device.poll(wgpu::Maintain::Wait);
-                block_on(map_flag).unwrap();
-                let mesh_ptr= slice.get_mapped_range_mut().as_mut_ptr();
-                ptr::copy(
-                    flatten_mesh.as_ptr() as *const u8,
-                    mesh_ptr.offset(align as isize),
-                    mesh_len,
+                let mut range = ((offset - align) as u64..((offset - align) + mesh_len) as u64);
+                api.queue.write_buffer(
+                    &api.memory_manager.mesh_buffer,
+                    range.start,
+                    unsafe { std::slice::from_raw_parts(flatten_mesh.as_ptr() as *const u8, flatten_mesh.len() * 4) },
                 );
-                api.memory_manager.mesh_buffer.unmap();
+                //[WARN] AM I SANE WGPU MAP IS FUCKED UP
+                // range = range.start / 2..range.end / 2;
+                // let slice = api.memory_manager.mesh_buffer.slice(range);
+                // let map_flag = slice.map_async(wgpu::MapMode::Write);
+                // api.device.poll(wgpu::Maintain::Wait);
+                // block_on(map_flag).unwrap();
+                // let mesh_ptr = slice.get_mapped_range_mut().as_mut_ptr();
+                // ptr::copy(
+                //     flatten_mesh.as_ptr() as *const u8,
+                //     mesh_ptr.offset(align as isize),
+                //     mesh_len,
+                // );
+                // api.memory_manager.mesh_buffer.unmap();
             }
             {
                 let idx_len = indices.len() * size_of::<u32>();
                 let offset = self.idx_offset * size_of::<u32>() as u32;
                 let align = offset % 64;
-                let range = (offset - align) as u64..((offset - align) + idx_len as u32) as u64;
+                let mut range = (offset - align) as u64..((offset - align) + idx_len as u32) as u64;
 
-                let slice = api.memory_manager.idx_buffer.slice(range);
-                let map_flag = slice.map_async(wgpu::MapMode::Write);
-                api.device.poll(wgpu::Maintain::Wait);
-                block_on(map_flag).unwrap();
-                let idx_ptr= slice.get_mapped_range_mut().as_mut_ptr();
-                ptr::copy(
-                    indices.as_slice().as_ptr() as *const u8,
-                    idx_ptr.offset(align as isize),
-                    idx_len,
+                api.queue.write_buffer(
+                    &api.memory_manager.idx_buffer,
+                    range.start,
+                    unsafe { std::slice::from_raw_parts(indices.as_ptr() as *const u8, indices.len() * 4) },
                 );
-                api.memory_manager.idx_buffer.unmap();
+                // //[WARN] AM I SANE
+                // range = range.start / 2..range.end / 2;
+                // let slice = api.memory_manager.idx_buffer.slice(range);
+                // let map_flag = slice.map_async(wgpu::MapMode::Write);
+                // api.device.poll(wgpu::Maintain::Wait);
+                // block_on(map_flag).unwrap();
+                // let idx_ptr = slice.get_mapped_range_mut().as_mut_ptr();
+                // ptr::copy(
+                //     indices.as_slice().as_ptr() as *const u8,
+                //     idx_ptr.offset(align as isize),
+                //     idx_len,
+                // );
+                // api.memory_manager.idx_buffer.unmap();
             }
 
             let mesh_ptr = MeshPtr {
                 indices: self.idx_offset..(self.idx_offset + indices.len() as u32),
                 base_vertex: self.mesh_offset,
             };
+
+            info!("mesh_ptr {:?}", mesh_ptr);
             self.mesh_offset += (positions.len() / 3) as i32;
             self.idx_offset += indices.len() as u32;
             info!("mesh_offset{:?}", self.mesh_offset);
             info!("idx_offset{:?}", self.idx_offset);
+
             Ok(mesh_ptr)
         }
     }

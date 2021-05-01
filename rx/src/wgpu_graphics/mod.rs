@@ -12,6 +12,9 @@ use crate::wgpu_graphics::memory::{MemoryManager, MemoryManagerConfig};
 
 pub mod memory;
 
+#[allow(unused_imports)]
+use log::{debug, error, info, trace, warn};
+
 pub struct State {
     surface: wgpu::Surface,
     pub(crate) device: wgpu::Device,
@@ -29,7 +32,7 @@ impl State {
 
         // The instance is a handle to our GPU
         // BackendBit::PRIMARY => Vulkan + Metal + DX12 + Browser WebGPU
-        let instance = wgpu::Instance::new(wgpu::BackendBit::VULKAN);
+        let instance = wgpu::Instance::new(wgpu::BackendBit::DX12);
         let surface = unsafe { instance.create_surface(window) };
 
         let adapter = instance.request_adapter(
@@ -101,7 +104,7 @@ impl State {
                 strip_index_format: None,
                 front_face: wgpu::FrontFace::Cw,
                 //culling
-                cull_mode: wgpu::CullMode::Back,
+                cull_mode: wgpu::CullMode::None,
                 topology: wgpu::PrimitiveTopology::TriangleList,
             },
             depth_stencil: None,
@@ -187,6 +190,7 @@ impl State {
             );
 
             {
+
                 let mut instances_offset: u32 = 0;
                 let mut data_offset = 0;
                 let grouped_queue = recevier
@@ -208,7 +212,6 @@ impl State {
                     }).collect::<Vec<f32>>();
 
                     let data_len = data.len() * 4;
-
                     self.queue.write_buffer(
                         &self.memory_manager.instanced_buffer,
                         data_offset,
@@ -225,7 +228,6 @@ impl State {
                 };
             }
         }
-
 
         // submit will accept anything that implements IntoIter
         self.queue.submit(std::iter::once(encoder.finish()));
