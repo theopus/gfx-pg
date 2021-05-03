@@ -11,6 +11,7 @@ use crate::utils::file_system;
 use crate::wgpu_graphics::memory::{MemoryManager, MemoryManagerConfig};
 
 pub mod memory;
+pub mod texture;
 
 #[allow(unused_imports)]
 use log::{debug, error, info, trace, warn};
@@ -23,6 +24,7 @@ pub struct State {
     swap_chain: wgpu::SwapChain,
     size: winit::dpi::PhysicalSize<u32>,
     pipeline: wgpu::RenderPipeline,
+    depth_texture: texture::Texture,
     pub(crate) memory_manager: memory::MemoryManager,
 }
 
@@ -65,6 +67,7 @@ impl State {
             idx_buffer_size: 1_000_000,
             instanced_buffer_size: (64 * 2) * 50_000,
         });
+        let depth_texture = texture::Texture::create_depth_texture(&device, &sc_desc, "depth_texture");
         Self {
             surface,
             device,
@@ -73,6 +76,7 @@ impl State {
             swap_chain,
             size,
             pipeline,
+            depth_texture,
             memory_manager: mm,
         }
     }
@@ -104,10 +108,17 @@ impl State {
                 strip_index_format: None,
                 front_face: wgpu::FrontFace::Cw,
                 //culling
-                cull_mode: wgpu::CullMode::None,
+                cull_mode: wgpu::CullMode::Back,
                 topology: wgpu::PrimitiveTopology::TriangleList,
             },
-            depth_stencil: None,
+            depth_stencil: Some(wgpu::DepthStencilState {
+                format: texture::Texture::DEPTH_FORMAT,
+                depth_write_enabled: false,
+                depth_compare: wgpu::CompareFunction::Less,
+                stencil: Default::default(),
+                bias: Default::default(),
+                clamp_depth: false
+            }),
             multisample: Default::default(),
             fragment: Some(wgpu::FragmentState {
                 module: &device.create_shader_module(&wgpu::ShaderModuleDescriptor {
@@ -126,11 +137,12 @@ impl State {
         })
     }
 
-    fn resize(&mut self, new_size: winit::dpi::PhysicalSize<u32>) {
+    pub fn resize(&mut self, new_size: winit::dpi::PhysicalSize<u32>) {
         self.size = new_size;
         self.sc_desc.width = new_size.width;
         self.sc_desc.height = new_size.height;
         self.swap_chain = self.device.create_swap_chain(&self.surface, &self.sc_desc);
+        self.depth_texture = texture::Texture::create_depth_texture(&self.device, &self.sc_desc, "depth_texture")
     }
 
 
@@ -173,7 +185,14 @@ impl State {
                         },
                     }
                 ],
-                depth_stencil_attachment: None,
+                depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachmentDescriptor {
+                    attachment: &self.depth_texture.view,
+                    depth_ops: Some(wgpu::Operations{
+                        load: wgpu::LoadOp::Clear(1.0),
+                        store: true
+                    }),
+                    stencil_ops: None
+                }),
             });
             render_pass.set_pipeline(&self.pipeline);
             render_pass.set_index_buffer(

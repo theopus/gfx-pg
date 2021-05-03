@@ -70,7 +70,7 @@ impl Renderer {
     }
 
     pub fn reset_swapchain(&mut self, size: PhysicalSize<u32>) {
-        self.resize_flag = Some(size)
+        self.wpgu_state.resize(size);
     }
 
     pub fn queue(&self) -> (Sender<DrawCmd>, Sender<RenderCommand>) {

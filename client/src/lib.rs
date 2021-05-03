@@ -53,18 +53,18 @@ pub fn start() {
         let obj = loader.load_obj("ico-sphere").expect("");
         storage.load_mesh(api, obj).expect("")
     };
-    //
-    // let _tetrahedron_mesh = {
-    //     let (api, loader, storage) = eng.loader();
-    //     let obj = loader.load_obj("tetrahedron").expect("");
-    //     storage.load_mesh(api, obj).expect("")
-    // };
-    //
-    // let map_mesh_ptr = {
-    //     let (api, _loader, storage) = eng.loader();
-    //     let mesh = map::generate2d();
-    //     storage.load_mesh(api, mesh).expect("")
-    // };
+
+    let _tetrahedron_mesh = {
+        let (api, loader, storage) = eng.loader();
+        let obj = loader.load_obj("tetrahedron").expect("");
+        storage.load_mesh(api, obj).expect("")
+    };
+
+    let map_mesh_ptr = {
+        let (api, _loader, storage) = eng.loader();
+        let mesh = map::generate2d();
+        storage.load_mesh(api, mesh).expect("")
+    };
 
     let (draw, redner) = eng.renderer().queue();
 
@@ -103,20 +103,20 @@ pub fn start() {
                     mesh: ico_mesh.clone(),
                 })
                 .build();
-            // world
-            //     .create_entity()
-            //     .with(Rotation::default())
-            //     .with(Position {
-            //         x: 0.,
-            //         y: -10.,
-            //         z: 0.,
-            //     })
-            //     .with(Transformation::default())
-            //     .with(Render {
-            //         mesh: map_mesh_ptr.clone(),
-            //     })
-            //     .build();
-            // //
+            world
+                .create_entity()
+                .with(Rotation::default())
+                .with(Position {
+                    x: 0.,
+                    y: -10.,
+                    z: 0.,
+                })
+                .with(Transformation::default())
+                .with(Render {
+                    mesh: map_mesh_ptr.clone(),
+                })
+                .build();
+            //
             world.insert(SelectedEntity(Some(selected)));
             world.insert(WinitEvents::default());
             world.insert(CameraTarget(Some(player)));
