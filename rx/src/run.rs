@@ -4,12 +4,13 @@ use std::time::{Duration, Instant};
 use log::{debug, error, info, trace, warn};
 use winit::event::{Event, WindowEvent};
 use winit::event_loop::{ControlFlow, EventLoopWindowTarget};
-
 use crate::assets::{AssetsLoader, AssetsStorage};
 use crate::events::{map_event, MyEvent};
+#[cfg(feature = "hal")]
 use crate::graphics::wrapper::ApiWrapper;
-use crate::render::Renderer;
+use crate::render_w::Renderer;
 use crate::window::WinitState;
+use crate::wgpu_graphics::State;
 
 pub struct Engine {
     winit_state: WinitState,
@@ -39,12 +40,12 @@ impl Engine {
     pub fn loader(
         &mut self,
     ) -> (
-        &mut ApiWrapper<back::Backend>,
+        &mut State,
         &mut AssetsLoader,
         &mut AssetsStorage,
     ) {
         (
-            &mut self.renderer.api,
+            &mut self.renderer.wpgu_state,
             &mut self.renderer.loader,
             &mut self.renderer.storage,
         )
@@ -95,7 +96,9 @@ impl Engine {
                 }
                 Event::RedrawRequested(_w) => {
                     /*Render*/
+                    let start =  Instant::now();
                     renderer.render();
+                    debug!("render took {:?}", Instant::now() - start);
                     if draw_req < 0 {
                         draw_req = 1
                     } else {
@@ -140,7 +143,9 @@ impl Engine {
 
     fn on_update(layers: &mut Vec<Box<dyn Layer>>, events: &mut Vec<MyEvent>, elapsed: Duration) {
         for layer in layers.iter_mut() {
+            let start =  Instant::now();
             layer.on_update(events, elapsed);
+            debug!("{:?} took {:?}", layer.name(), Instant::now() - start)
         }
         events.clear()
     }
@@ -159,6 +164,7 @@ impl Engine {
 
 pub trait Layer {
     fn on_update(&mut self, events: &Vec<MyEvent>, elapsed: Duration);
+    fn name(&self) -> &'static str;
 }
 
 impl<F> Layer for F
@@ -167,5 +173,9 @@ impl<F> Layer for F
 {
     fn on_update(&mut self, events: &Vec<MyEvent>, elapsed: Duration) {
         self(events, elapsed)
+    }
+
+    fn name(&self) -> &'static str {
+        "stub"
     }
 }

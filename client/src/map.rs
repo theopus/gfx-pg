@@ -92,7 +92,7 @@ pub fn generate2d() -> Mesh {
     let mut normals = Vec::with_capacity(positions.len());
     for _i in 0..p_len / 3 {
         normals.push(0.);
-        normals.push(1.);
+        normals.push(-1.);
         normals.push(0.);
     }
     Mesh {

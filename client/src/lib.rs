@@ -18,13 +18,14 @@ use rx::glm;
 use rx::specs::Builder;
 use rx::specs::WorldExt;
 
-use crate::systems::test::Follower;
+use crate::systems::test::{Follower, MoveClickSystem};
 
 mod flowchart;
 mod generatin;
 mod map;
 mod maths;
 mod systems;
+mod arrowdrop;
 
 pub fn init_log() {
     env_logger::from_env(env_logger::Env::default().default_filter_or(
@@ -33,16 +34,23 @@ pub fn init_log() {
          winit::platform_impl::platform::event_loop::runner=error,\
          gfx_backend_vulkan=warn\
          ",
-    ))
-        .init();
+    )).init();
 }
 
 pub fn start() {
+    init_log();
     let mut eng = rx::run::Engine::default();
 
+
+
+    let cube_mesh = {
+        let (api, loader, storage) = eng.loader();
+        let obj = loader.load_obj("cube").expect("");
+        storage.load_mesh(api, obj).expect("")
+    };
     let ico_mesh = {
         let (api, loader, storage) = eng.loader();
-        let obj = loader.load_obj("ico-sphere").expect("");
+        let obj = loader.load_obj("arrow-01").expect("");
         storage.load_mesh(api, obj).expect("")
     };
 
@@ -57,6 +65,7 @@ pub fn start() {
         let mesh = map::generate2d();
         storage.load_mesh(api, mesh).expect("")
     };
+
     let (draw, redner) = eng.renderer().queue();
 
     let render_sys = systems::generic::RenderSubmitSystem::new(draw, redner);
@@ -96,7 +105,11 @@ pub fn start() {
                 .build();
             world
                 .create_entity()
-                .with(Rotation::default())
+                .with(Rotation{
+                    x: 180.0,
+                    y: 0.0,
+                    z: 0.0
+                })
                 .with(Position {
                     x: 0.,
                     y: -10.,
@@ -107,49 +120,22 @@ pub fn start() {
                     mesh: map_mesh_ptr.clone(),
                 })
                 .build();
-
-            // for e in 0..10 {
-            //     let _ = world
-            //         .create_entity()
-            //         .with(Rotation::default())
-            //         .with(Position {
-            //             x: e as f32 * 10. * {
-            //                 if e % 2 == 0 {
-            //                     -1.
-            //                 } else {
-            //                     1.
-            //                 }
-            //             },
-            //             y: 0.0,
-            //             z: 0.0,
-            //         })
-            //         .with(Transformation::default())
-            //         .with(Render {
-            //             mesh: {
-            //                 if e % 2 == 0 {
-            //                     ico_mesh.clone()
-            //                 } else {
-            //                     tetrahedron_mesh.clone()
-            //                 }
-            //             },
-            //         })
-            //         .with(Follower { lead: player })
-            //         .with(Velocity::default())
-            //         .build();
-            // }
-
+            //
             world.insert(SelectedEntity(Some(selected)));
             world.insert(WinitEvents::default());
             world.insert(CameraTarget(Some(player)));
 
+            arrowdrop::create(&mut world, cube_mesh.clone());
             r_dispatcher = r_dispatcher
                 .with(systems::test::FollowingSystem, "follow_sys", &[])
                 //
                 .with(input_sys, "in_tst_sys", &[])
                 .with(move_sys, "move_sys", &[])
-                .with(mouse_sys, "mouse_sys", &[])
-                .with(transform_sys, "tsm_sys", &[]);
-            c_dispatcher = c_dispatcher.with_thread_local(render_sys);
+                .with(mouse_sys, "mouse_sys", &[]);
+
+            c_dispatcher = c_dispatcher
+                .with(transform_sys, "tsm_sys", &[])
+                .with_thread_local(render_sys);
             return (world, r_dispatcher, c_dispatcher);
         },
     );

@@ -20,10 +20,11 @@ impl WinitState {
         let output = WindowBuilder::new()
             .with_title(title)
             .with_inner_size(size);
+        let option  = Some(output.build(&events_loop).unwrap());
         Ok(Self {
             events_loop,
-            window: None,
-            window_builder: Some(output),
+            window: option,
+            window_builder: None,
         })
     }
 }

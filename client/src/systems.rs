@@ -75,17 +75,18 @@ pub mod test {
             if self.pressed {
                 let vec =
                     maths::screen2world((self.x, self.y), (self.w, self.h), &vp.view, &vp.proj);
-                let intersect = maths::intersection(
+                let mut intersect = maths::intersection(
                     &glm::vec3(0., 1., 0.),
                     &glm::vec3(0., 0., 0.),
                     &vec,
                     &cam.cam_pos,
                 )
                     .unwrap();
-                info!("{:?}", &intersect);
+                info!("intersection: {:?}", vec);
+                intersect.y = 0.;
 
                 let dir = &intersect - &sel.as_vec3();
-                sel_vel.v = glm::normalize(&dir);
+                sel_vel.v = glm::normalize(&dir) as glm::Vec3;
             }
         }
     }
@@ -113,14 +114,22 @@ pub mod test {
             self.up || self.down || self.right || self.left
         }
 
-        pub fn as_vec2(&self) -> Vec2 {
+        pub fn as_vec2(&self, invert_up: bool) -> Vec2 {
             let y: f32 = if !(self.up ^ self.down) {
                 0.
             } else {
                 if self.up {
-                    1.
+                    if invert_up {
+                        -1.
+                    } else {
+                        1.
+                    }
                 } else {
-                    -1.
+                    if invert_up {
+                        1.
+                    } else {
+                        -1.
+                    }
                 }
             };
             let x: f32 = if !(self.right ^ self.left) {
@@ -134,9 +143,9 @@ pub mod test {
             };
 
             if !(y == 0. && x == 0.) {
-                glm::normalize(&glm::vec2(y, x))
+                glm::normalize(&glm::vec2(y, x)) as glm::Vec2
             } else {
-                glm::vec2(y, x)
+                glm::vec2(y, x) as glm::Vec2
             }
         }
     }
@@ -274,7 +283,7 @@ pub mod test {
 
             let degree = cam.yaw - 180.;
 
-            let d_vec: Vec2 = self.pad.as_vec2();
+            let d_vec: Vec2 = self.pad.as_vec2(true);
             if self.pad.is_active() {
                 self.speed = 0.5;
 
@@ -308,6 +317,12 @@ pub mod test {
                 };
 
                 v.v = velocity + oposite_vec * SLOW;
+                if v.v.x >= -1.3 && v.v.x <= 1.3 {
+                    v.v.x = 0.;
+                }
+                if v.v.z >= -1.3 && v.v.z <= 1.3 {
+                    v.v.z = 0.;
+                }
             }
         }
     }
@@ -350,7 +365,7 @@ pub mod generic {
         ActiveCamera, TargetedCamera,
     };
     use rx::glm;
-    use rx::render::{DrawCmd, RenderCommand};
+    use rx::graphics_api::{DrawCmd, RenderCommand};
     use rx::specs::{Join, Read, ReadStorage, System, WriteStorage};
 
     pub struct RenderSubmitSystem {

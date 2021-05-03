@@ -27,14 +27,17 @@ pub fn screen2world(
     view: &glm::Mat4,
     proj: &glm::Mat4,
 ) -> glm::Vec3 {
-    let ndc_v2 = screen2ndc(coords.0, coords.1, dimensions.0 as f32, dimensions.1 as f32);
+    //Note: for top left coordinate system
+    let y = (dimensions.1 as f32 - coords.1).abs();
+    let ndc_v2 = screen2ndc(coords.0, y, dimensions.0 as f32, dimensions.1 as f32);
     let clip = glm::vec4(ndc_v2.x, ndc_v2.y, 0., 1.);
     let eye = clip2eye(&clip, proj);
     eye2world(&eye, view)
 }
 
-pub fn intersection(plane_n: &glm::Vec3, _plane_p: &glm::Vec3, line_vec: &glm::Vec3, line_p: &glm::Vec3) -> Option<glm::Vec3> {
-    let d = glm::dot(plane_n, plane_n);
+//maybe bug [plane_p]!
+pub fn intersection(plane_n: &glm::Vec3, plane_p: &glm::Vec3, line_vec: &glm::Vec3, line_p: &glm::Vec3) -> Option<glm::Vec3> {
+    let d = glm::dot(plane_n, plane_p);
 
     if glm::dot(plane_n, line_vec) == 0. {
         return None;

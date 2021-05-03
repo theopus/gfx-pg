@@ -6,12 +6,15 @@ use std::mem::size_of;
 use std::ops::{Deref, Range};
 use std::path::PathBuf;
 
-use hal::Backend;
+use futures::executor::block_on;
 use image::RgbaImage;
 #[allow(unused_imports)]
 use log::{debug, error, info, trace, warn};
 
-use crate::graphics::wrapper::ApiWrapper;
+use crate::graphics_api;
+use crate::graphics_api::v0::Vertex;
+use crate::wgpu_graphics::memory::MemoryManager;
+use crate::wgpu_graphics::State;
 
 #[derive(Debug, Clone)]
 pub struct AssetsStorage {
@@ -39,9 +42,9 @@ impl AssetsStorage {
         })
     }
 
-    pub fn load_mesh<B: Backend>(
+    pub fn load_mesh(
         &mut self,
-        wrapper: &ApiWrapper<B>,
+        api: &mut State,
         mesh: Mesh,
     ) -> Result<MeshPtr, &'static str> {
         unsafe {
@@ -51,7 +54,6 @@ impl AssetsStorage {
                 normals,
                 indices,
             } = mesh;
-            let device: &B::Device = &wrapper.hal_state.device.deref();
 
             if uvs.len() == 0 {
                 uvs = vec![0_f32; positions.len() / 3 * 2];
@@ -69,44 +71,70 @@ impl AssetsStorage {
             assert_eq!(positions.len() / 3, normals.len() / 3);
             {
                 let mesh_len = flatten_mesh_vec.len() * size_of::<f32>();
-                let bundle = &wrapper.storage.mesh_bundle;
                 //hardcoded for vertex 8 (3 + 2 + 3)
-                let offset = self.mesh_offset * size_of::<f32>() as i32 * 8;
-                let align = offset % 64;
-                let range = (offset - align) as u64..((offset - align) + mesh_len as i32) as u64;
-                let mesh_ptr = bundle.map_mem_range(device, range.clone())?;
-                ptr::copy(
-                    flatten_mesh.as_ptr() as *const u8,
-                    mesh_ptr.offset(align as isize),
-                    mesh_len,
+                let offset = self.mesh_offset as usize * size_of::<f32>() * 8;
+                let align = 0;
+                // let align = offset % 64;
+                let mut range = ((offset - align) as u64..((offset - align) + mesh_len) as u64);
+                api.queue.write_buffer(
+                    &api.memory_manager.mesh_buffer,
+                    range.start,
+                    unsafe { std::slice::from_raw_parts(flatten_mesh.as_ptr() as *const u8, mesh_len) },
                 );
-                bundle.flush_mem_range(device, range)?;
-                bundle.unmap(device)?;
+                info!("mesh len {:?}", mesh_len);
+                info!("mesh range {:?}", range);
+                // [WARN] AM I SANE WGPU MAP IS FUCKED UP
+                // range = range.start / 2..range.end / 2;
+                // let slice = api.memory_manager.mesh_buffer.slice(range);
+                // let map_flag = slice.map_async(wgpu::MapMode::Write);
+                // api.device.poll(wgpu::Maintain::Wait);
+                // block_on(map_flag).unwrap();
+                // let mesh_ptr = slice.get_mapped_range_mut().as_mut_ptr();
+                // ptr::copy(
+                //     flatten_mesh.as_ptr() as *const u8,
+                //     mesh_ptr.offset(align as isize),
+                //     mesh_len,
+                // );
+                // api.memory_manager.mesh_buffer.unmap();
             }
             {
                 let idx_len = indices.len() * size_of::<u32>();
-                let bundle = &wrapper.storage.idx_bundle;
                 let offset = self.idx_offset * size_of::<u32>() as u32;
-                let align = offset % 64;
-                let range = (offset - align) as u64..((offset - align) + idx_len as u32) as u64;
-                let idx_ptr = bundle.map_mem_range(device, range.clone())?;
-                ptr::copy(
-                    indices.as_slice().as_ptr() as *const u8,
-                    idx_ptr.offset(align as isize),
-                    idx_len,
+                let align = 0;
+                let mut range = (offset - align) as u64..((offset - align) + idx_len as u32) as u64;
+                info!("idx len {:?}", idx_len);
+                info!("idx range {:?}", range);
+                api.queue.write_buffer(
+                    &api.memory_manager.idx_buffer,
+                    range.start,
+                    unsafe { std::slice::from_raw_parts(indices.as_ptr() as *const u8, indices.len() * 4) },
                 );
-                bundle.flush_mem_range(device, range)?;
-                bundle.unmap(device)?;
+                //[WARN] AM I SANE
+                // range = range.start / 2..range.end / 2;
+                // let slice = api.memory_manager.idx_buffer.slice(range);
+                // let map_flag = slice.map_async(wgpu::MapMode::Write);
+                // api.device.poll(wgpu::Maintain::Wait);
+                // block_on(map_flag).unwrap();
+                // let idx_ptr = slice.get_mapped_range_mut().as_mut_ptr();
+                // ptr::copy(
+                //     indices.as_slice().as_ptr() as *const u8,
+                //     idx_ptr.offset(align as isize),
+                //     idx_len,
+                // );
+                // api.memory_manager.idx_buffer.unmap();
             }
 
             let mesh_ptr = MeshPtr {
                 indices: self.idx_offset..(self.idx_offset + indices.len() as u32),
                 base_vertex: self.mesh_offset,
             };
+
+            info!("mesh_ptr {:?}", mesh_ptr);
             self.mesh_offset += (positions.len() / 3) as i32;
             self.idx_offset += indices.len() as u32;
             info!("mesh_offset{:?}", self.mesh_offset);
             info!("idx_offset{:?}", self.idx_offset);
+
             Ok(mesh_ptr)
         }
     }
@@ -128,11 +156,11 @@ impl AssetsLoader {
     const IMAGE_DIR: &'static str = "images";
     const MODEL_DIR: &'static str = "models";
 
-    pub fn new(dir: &'static str) -> Result<Self, &str> {
-        let dir = PathBuf::from(dir).canonicalize().map_err(|e| {
-            error!("{:?}", e);
-            "Error with assets loader"
-        })?;
+    pub fn new(dir: PathBuf) -> Result<Self, &'static str> {
+        // let dir = PathBuf::from(dir).canonicalize().map_err(|e| {
+        //     error!("{:?}", e);
+        //     "Error with assets loader"
+        // })?;
         info!("Assets location {:?}", dir);
         Ok(AssetsLoader { dir })
     }

@@ -8,48 +8,28 @@ edition = "2018"
 
 [features]
 default = []
-metal = ["gfx-backend-metal"]
-dx12 = ["gfx-backend-dx12"]
-vulkan = ["gfx-backend-vulkan"]
-gl = ["gfx-backend-gl", "gfx-backend-gl/glutin"]
-wgl = ["gfx-backend-gl"]
 
 [dependencies]
 winit = { version = "0.21.0", features = ["web-sys"] }
 log = "0.4.0"
-gfx-hal = "0.5"
-gfx-backend-gl = { version = "0.5", optional = true }
-#gfx-backend-empty = {version = "0.5" }
 arrayvec = "0.4"
 image = "0.22.4"
 tobj = "0.1.8"
 nalgebra = "0.18.0"
 nalgebra-glm = "0.4.0"
-#[PHYS]#ncollide3d = "0.20"
-#nphysics3d = "0.12"
 specs = { version = "0.16", features = ["specs-derive"] }
 specs-derive = "0.4"
 itertools = "0.8.0"
+wgpu = "0.7"
+futures = "0.3"
+bytemuck = { version = "1.4", features = [ "derive" ] }
 
-[target.'cfg(not(target_arch = "wasm32"))'.dependencies.shaderc]
-version = "0.6.1"
+[build-dependencies]
+anyhow = "1.0"
+fs_extra = "1.1"
+glob = "0.3"
+shaderc = "0.7"
 
-[dependencies.gfx-backend-vulkan]
-version = "0.5"
-optional = true
-
-[target.'cfg(target_os = "linux")'.dependencies.gfx-backend-vulkan]
-version = "0.5"
-features = ["x11"]
-optional = true
-
-[target.'cfg(target_os = "macos")'.dependencies.gfx-backend-metal]
-version = "0.5"
-optional = true
-
-[target.'cfg(windows)'.dependencies.gfx-backend-dx12]
-version = "0.5"
-optional = true
 
 [target.'cfg(target_arch = "wasm32")'.dependencies.web-sys]
 version = "0.3.6"
