@@ -7,10 +7,8 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [features]
-default = ["rx", "rx/vulkan"]
-vulkan = ["rx", "rx/vulkan"]
-gl = ["rx", "rx/gl"]
-wgl = ["rx", "rx/wgl"]
+default = []
+
 
 [dependencies]
 env_logger = "0.7.1"

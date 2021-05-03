@@ -2,23 +2,12 @@ use std::ops::Deref;
 use std::sync::mpsc::{channel, Receiver, Sender};
 
 use arrayvec::ArrayVec;
-use gfx_hal::Instance;
-use hal::{
-    command,
-    command::ClearValue,
-    command::CommandBuffer,
-    pso::{Rect, Viewport},
-};
 use itertools::Itertools;
 #[allow(unused_imports)]
 use log::{debug, error, info, trace, warn};
 use winit::dpi::PhysicalSize;
 
-use back;
-
 use crate::assets::{AssetsLoader, AssetsStorage, MeshPtr};
-use crate::hal::buffer::{IndexBufferView, SubRange};
-use crate::hal::IndexType;
 use crate::window::WinitState;
 use crate::wgpu_graphics;
 use futures::executor::block_on;

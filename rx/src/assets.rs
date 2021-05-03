@@ -7,7 +7,6 @@ use std::ops::{Deref, Range};
 use std::path::PathBuf;
 
 use futures::executor::block_on;
-use hal::Backend;
 use image::RgbaImage;
 #[allow(unused_imports)]
 use log::{debug, error, info, trace, warn};
