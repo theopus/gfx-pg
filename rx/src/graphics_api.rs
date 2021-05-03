@@ -1,7 +1,7 @@
 use crate::assets::MeshPtr;
+use crate::graphics_api::v0::VertexInstance;
 
 pub type DrawCmd = (MeshPtr, glm::Mat4, glm::Mat4);
-
 
 pub enum RenderCommand {
     PushView(glm::Mat4),
@@ -10,12 +10,20 @@ pub enum RenderCommand {
     Draw,
 }
 
+impl Into<v0::VertexInstance> for DrawCmd {
+    fn into(self) -> VertexInstance {
+        v0::VertexInstance {
+            mvp: self.1.into(),
+            model: self.2.into()
+        }
+    }
+}
 
 pub mod v0 {
     use std::mem;
 
     #[repr(C)]
-    #[derive(Copy, Clone, Debug)]
+    #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
     pub struct Vertex {
         pub position: [f32; 3],
         pub uv: [f32; 2],
@@ -55,6 +63,7 @@ pub mod v0 {
 
 
     #[repr(C)]
+    #[derive(Debug, Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
     pub struct VertexInstance {
         pub mvp: [[f32; 4]; 4],
         pub model: [[f32; 4]; 4],

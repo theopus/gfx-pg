@@ -14,6 +14,7 @@ pub extern crate shaderc;
 pub extern crate specs;
 pub extern crate winit;
 pub extern crate wgpu;
+extern crate bytemuck;
 
 pub mod window;
 pub mod utils;

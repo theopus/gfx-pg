@@ -50,7 +50,7 @@ pub fn start() {
     };
     let ico_mesh = {
         let (api, loader, storage) = eng.loader();
-        let obj = loader.load_obj("ico-sphere").expect("");
+        let obj = loader.load_obj("arrow-01").expect("");
         storage.load_mesh(api, obj).expect("")
     };
 
@@ -105,7 +105,11 @@ pub fn start() {
                 .build();
             world
                 .create_entity()
-                .with(Rotation::default())
+                .with(Rotation{
+                    x: 180.0,
+                    y: 0.0,
+                    z: 0.0
+                })
                 .with(Position {
                     x: 0.,
                     y: -10.,

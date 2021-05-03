@@ -1,20 +1,23 @@
 use std::mem::size_of;
+use std::ops::Range;
 use std::sync::mpsc;
 
+use futures::executor::block_on;
+use futures::StreamExt;
 use itertools::Itertools;
+#[allow(unused_imports)]
+use log::{debug, error, info, trace, warn};
 use winit::event::WindowEvent;
 use winit::window::Window;
 
 use crate::graphics_api;
 use crate::graphics_api::v0;
+use crate::graphics_api::v0::VertexInstance;
 use crate::utils::file_system;
 use crate::wgpu_graphics::memory::{MemoryManager, MemoryManagerConfig};
 
 pub mod memory;
 pub mod texture;
-
-#[allow(unused_imports)]
-use log::{debug, error, info, trace, warn};
 
 pub struct State {
     surface: wgpu::Surface,
@@ -34,7 +37,7 @@ impl State {
 
         // The instance is a handle to our GPU
         // BackendBit::PRIMARY => Vulkan + Metal + DX12 + Browser WebGPU
-        let instance = wgpu::Instance::new(wgpu::BackendBit::DX12);
+        let instance = wgpu::Instance::new(wgpu::BackendBit::VULKAN);
         let surface = unsafe { instance.create_surface(window) };
 
         let adapter = instance.request_adapter(
@@ -106,18 +109,18 @@ impl State {
             primitive: wgpu::PrimitiveState {
                 polygon_mode: wgpu::PolygonMode::Fill,
                 strip_index_format: None,
-                front_face: wgpu::FrontFace::Cw,
+                front_face: wgpu::FrontFace::Ccw,
                 //culling
                 cull_mode: wgpu::CullMode::Back,
                 topology: wgpu::PrimitiveTopology::TriangleList,
             },
             depth_stencil: Some(wgpu::DepthStencilState {
                 format: texture::Texture::DEPTH_FORMAT,
-                depth_write_enabled: false,
+                depth_write_enabled: true,
                 depth_compare: wgpu::CompareFunction::Less,
                 stencil: Default::default(),
                 bias: Default::default(),
-                clamp_depth: false
+                clamp_depth: false,
             }),
             multisample: Default::default(),
             fragment: Some(wgpu::FragmentState {
@@ -145,20 +148,44 @@ impl State {
         self.depth_texture = texture::Texture::create_depth_texture(&self.device, &self.sc_desc, "depth_texture")
     }
 
+    fn prepare_instances(&mut self, receiver: &mut mpsc::Receiver<graphics_api::DrawCmd>) -> Vec<InstanceDraw> {
+        let mut instances_offset: u32 = 0;
+        let mut grouped_queue = receiver
+            .try_iter()
+            .into_iter()
+            .sorted_by(|(l_ptr, ..), (r_ptr, ..)| {
+                l_ptr.base_vertex.partial_cmp(&r_ptr.base_vertex).unwrap()
+            })
+            .group_by(|ptr| ptr.0.clone());
 
-    fn input(&mut self, event: &WindowEvent) -> bool {
-        false
-    }
+        let mut render_calls = Vec::new();
+        let mut data: Vec<VertexInstance> = grouped_queue.into_iter().flat_map(|(ptr, list)| {
+            let ptr_instances: Vec<VertexInstance> = list.map(|e| {
+                e.into()
+            }).collect_vec();
+            let mut current_count = ptr_instances.len() as u32;
+            render_calls.push(InstanceDraw {
+                indices: ptr.indices.clone(),
+                base_vertex: ptr.base_vertex,
+                instances: instances_offset..instances_offset + current_count,
+            });
+            instances_offset += current_count;
+            ptr_instances
+        }).collect_vec();
 
-    fn update(&mut self) {
-        todo!()
+        self.queue.write_buffer(
+            &self.memory_manager.instanced_buffer,
+            0,
+            bytemuck::cast_slice(&data),
+        );
+        render_calls
     }
 
     pub fn render(
         &mut self,
         recevier: &mut mpsc::Receiver<graphics_api::DrawCmd>,
     ) -> Result<(), wgpu::SwapChainError> {
-        // self.swap_chain.
+        let mut draw_cmds = self.prepare_instances(recevier);
 
         let frame = self
             .swap_chain
@@ -187,11 +214,11 @@ impl State {
                 ],
                 depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachmentDescriptor {
                     attachment: &self.depth_texture.view,
-                    depth_ops: Some(wgpu::Operations{
+                    depth_ops: Some(wgpu::Operations {
                         load: wgpu::LoadOp::Clear(1.0),
-                        store: true
+                        store: true,
                     }),
-                    stencil_ops: None
+                    stencil_ops: None,
                 }),
             });
             render_pass.set_pipeline(&self.pipeline);
@@ -208,44 +235,13 @@ impl State {
                 self.memory_manager.instanced_buffer.slice(..),
             );
 
-            {
-
-                let mut instances_offset: u32 = 0;
-                let mut data_offset = 0;
-                let grouped_queue = recevier
-                    .try_iter()
-                    .into_iter()
-                    .sorted_by(|(l_ptr, ..), (r_ptr, ..)| {
-                        l_ptr.base_vertex.partial_cmp(&r_ptr.base_vertex).unwrap()
-                    })
-                    .group_by(|ptr| ptr.0.clone());
-
-                for (ptr, list) in &grouped_queue {
-                    let mut current_count = 0;
-
-                    let data: Vec<_> = list.flat_map(|(_, mvp, model)| {
-                        current_count += 1;
-                        let mut base = mvp.as_slice().to_owned();
-                        base.append(&mut model.as_slice().to_owned());
-                        base
-                    }).collect::<Vec<f32>>();
-
-                    let data_len = data.len() * 4;
-                    self.queue.write_buffer(
-                        &self.memory_manager.instanced_buffer,
-                        data_offset,
-                        unsafe { std::slice::from_raw_parts(data.as_ptr() as *const u8, data.len() * 4) },
-                    );
-
-                    data_offset += data_len as u64;
-                    render_pass.draw_indexed(
-                        ptr.indices.clone(),
-                        ptr.base_vertex,
-                        instances_offset..instances_offset + current_count,
-                    );
-                    instances_offset += current_count
-                };
-            }
+            draw_cmds.drain(..).for_each(|cmd| {
+                render_pass.draw_indexed(
+                    cmd.indices,
+                    cmd.base_vertex,
+                    cmd.instances,
+                )
+            })
         }
 
         // submit will accept anything that implements IntoIter
@@ -253,4 +249,10 @@ impl State {
 
         Ok(())
     }
+}
+
+struct InstanceDraw {
+    indices: Range<u32>,
+    base_vertex: i32,
+    instances: Range<u32>,
 }

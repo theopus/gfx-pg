@@ -74,14 +74,17 @@ impl AssetsStorage {
                 let mesh_len = flatten_mesh_vec.len() * size_of::<f32>();
                 //hardcoded for vertex 8 (3 + 2 + 3)
                 let offset = self.mesh_offset as usize * size_of::<f32>() * 8;
-                let align = offset % 64;
+                let align = 0;
+                // let align = offset % 64;
                 let mut range = ((offset - align) as u64..((offset - align) + mesh_len) as u64);
                 api.queue.write_buffer(
                     &api.memory_manager.mesh_buffer,
                     range.start,
-                    unsafe { std::slice::from_raw_parts(flatten_mesh.as_ptr() as *const u8, flatten_mesh.len() * 4) },
+                    unsafe { std::slice::from_raw_parts(flatten_mesh.as_ptr() as *const u8, mesh_len) },
                 );
-                //[WARN] AM I SANE WGPU MAP IS FUCKED UP
+                info!("mesh len {:?}", mesh_len);
+                info!("mesh range {:?}", range);
+                // [WARN] AM I SANE WGPU MAP IS FUCKED UP
                 // range = range.start / 2..range.end / 2;
                 // let slice = api.memory_manager.mesh_buffer.slice(range);
                 // let map_flag = slice.map_async(wgpu::MapMode::Write);
@@ -98,15 +101,16 @@ impl AssetsStorage {
             {
                 let idx_len = indices.len() * size_of::<u32>();
                 let offset = self.idx_offset * size_of::<u32>() as u32;
-                let align = offset % 64;
+                let align = 0;
                 let mut range = (offset - align) as u64..((offset - align) + idx_len as u32) as u64;
-
+                info!("idx len {:?}", idx_len);
+                info!("idx range {:?}", range);
                 api.queue.write_buffer(
                     &api.memory_manager.idx_buffer,
                     range.start,
                     unsafe { std::slice::from_raw_parts(indices.as_ptr() as *const u8, indices.len() * 4) },
                 );
-                // //[WARN] AM I SANE
+                //[WARN] AM I SANE
                 // range = range.start / 2..range.end / 2;
                 // let slice = api.memory_manager.idx_buffer.slice(range);
                 // let map_flag = slice.map_async(wgpu::MapMode::Write);
