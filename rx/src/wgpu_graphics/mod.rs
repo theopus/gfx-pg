@@ -160,5 +160,21 @@ impl<'a> FrameState<'a> {
             imgui_ui: None
         }
     }
+    pub fn of_ui(
+        frame: &'a wgpu::SwapChainTexture,
+        encoder: &'a mut wgpu::CommandEncoder,
+        state: &'a mut State,
+        ui: Arc<imgui::Ui<'a>>
+    ) -> FrameState<'a> {
+        Self {
+            frame: frame,
+            encoder: encoder,
+            mem: &mut state.memory_manager,
+            depth_texture: &state.depth_texture,
+            queue: &state.queue,
+            device: &state.device,
+            imgui_ui: Some(ui)
+        }
+    }
 }
 

@@ -16,7 +16,8 @@ pub use base_systems::world3d::{
 
 use crate::assets::MeshPtr;
 use crate::events::MyEvent;
-use std::sync::{Arc, Mutex, Weak};
+use std::sync::{Arc, Mutex, Weak, mpsc};
+use crate::utils::functions::RawFunc;
 
 pub mod base_systems;
 
@@ -35,10 +36,9 @@ pub struct WinitEvents(pub Vec<MyEvent>);
 #[derive(Default)]
 pub struct SelectedEntity(pub Option<Entity>);
 
-// unsafe impl<'a> Sync for Weak<imgui::Ui<'a>> {}
 
-#[derive(Default)]
-pub struct UiFrame<'a>(pub Option<Arc<Mutex<Weak<imgui::Ui<'a>>>>>);
+// #[derive(Default)]
+pub struct UiDraw(pub mpsc::Sender<RawFunc>);
 
 #[derive(Component, Debug)]
 #[storage(VecStorage)]

@@ -6,13 +6,27 @@ use crate::wgpu_graphics::FrameState;
 use crate::wgpu_graphics::pipeline::Pipeline;
 use std::time;
 use std::sync::Arc;
+use crate::window;
 
+#[allow(unused_imports)]
+use log::{debug, error, info, trace, warn};
 pub struct ImGuiRenderer {
     renderer: imgui_wgpu::Renderer,
 }
 
 impl ImGuiRenderer {
-    fn process(&mut self, frame: FrameState) {
+    pub fn new(state: &mut ImGuiState, device: &wgpu::Device, queue: &wgpu::Queue, sc_desc: &wgpu::SwapChainDescriptor) -> Self{
+        let renderer_config = imgui_wgpu::RendererConfig {
+            texture_format: sc_desc.format,
+            ..Default::default()
+        };
+        let renderer =  imgui_wgpu::Renderer::new(&mut state.context, device, queue, renderer_config);
+        Self{
+            renderer
+        }
+    }
+
+    pub fn process(&mut self, frame: FrameState) {
         let FrameState {
             frame,
             encoder,
@@ -46,15 +60,17 @@ impl ImGuiRenderer {
 }
 
 pub struct ImGuiState {
-    context: imgui::Context,
-    platform: imgui_winit_support::WinitPlatform,
+    pub(crate) context: imgui::Context,
+    pub(crate) platform: imgui_winit_support::WinitPlatform,
     last_cursor: Option<imgui::MouseCursor>,
 }
 
 impl ImGuiState {
-    pub fn new(window: &winit::window::Window) -> Self {
+    pub fn new(w: &window::WinitState) -> Self {
+        let window = w.window.as_ref().unwrap();
         let mut imgui = imgui::Context::create();
         let mut platform = imgui_winit_support::WinitPlatform::init(&mut imgui);
+
         platform.attach_window(
             imgui.io_mut(),
             window,
@@ -64,6 +80,7 @@ impl ImGuiState {
 
         let hidpi_factor = window.scale_factor();
         let font_size = (13.0 * hidpi_factor) as f32;
+
         imgui.io_mut().font_global_scale = (1.0 / hidpi_factor) as f32;
         imgui.fonts().add_font(&[FontSource::DefaultFontData {
             config: Some(imgui::FontConfig {
@@ -73,16 +90,19 @@ impl ImGuiState {
                 ..Default::default()
             }),
         }]);
+
+
         ImGuiState { context: imgui, platform: platform, last_cursor: None }
     }
 
-    pub fn new_frame(&mut self, window: &winit::window::Window, dt: time::Duration) -> Arc<Ui> {
+    pub fn new_frame<'a>(&mut self, window: &winit::window::Window, dt: time::Duration) -> Arc<Ui> {
         self.context.io_mut().update_delta_time(dt);
         self.platform.prepare_frame(self.context.io_mut(), window);
         Arc::new(self.context.frame())
     }
 
-    pub fn prepare_render(&mut self, ui: Rc<Ui>, window: &winit::window::Window) {
+    pub fn prepare_render<'b>(&mut self, ui: Arc<Ui>, window: &winit::window::Window) {
+        ui.show_demo_window(&mut true);
         if self.last_cursor != ui.mouse_cursor() {
             self.last_cursor = ui.mouse_cursor();
             self.platform.prepare_render(&ui, window);

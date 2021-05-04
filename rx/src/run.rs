@@ -11,7 +11,7 @@ use crate::graphics::wrapper::ApiWrapper;
 use crate::render_w::Renderer;
 use crate::window::WinitState;
 use crate::wgpu_graphics::{State, FrameState};
-use imgui::FontSource;
+use imgui::{FontSource, Condition};
 use crate::wgpu_graphics::pipeline::Pipeline;
 use crate::gui;
 use std::rc::{Rc};
@@ -36,8 +36,8 @@ impl Pipeline for Test {
 impl Default for Engine {
     fn default() -> Self {
         let mut winit_state: WinitState = Default::default();
-        let renderer = Renderer::new(&mut winit_state).unwrap();
-        let imgui_state = gui::ImGuiState::new(&winit_state.window.unwrap());
+        let mut imgui_state = gui::ImGuiState::new(&mut winit_state);
+        let renderer = Renderer::new(&mut winit_state, &mut imgui_state).unwrap();
         Self {
             winit_state,
             layers: Default::default(),
@@ -84,6 +84,10 @@ impl Engine {
         let mut imgui_state = self.imgui_state;
         let mut events: Vec<MyEvent> = Vec::new();
         let mut last = Instant::now();
+        // epi::backend::FrameBuilder::{
+        //
+        // }
+        let mut last_cursor: Option<imgui::MouseCursor> = None;
 
         events.push(MyEvent::Resized(800, 600));
         use winit::dpi::PhysicalSize;
@@ -117,11 +121,19 @@ impl Engine {
                 Event::MainEventsCleared => {
                     let current = Instant::now();
                     let elapsed = current - last;
-                    let ui_frame = imgui_state.new_frame(&window, elapsed);
+
+                    imgui_state.context.io_mut().update_delta_time(elapsed);
+                    imgui_state.platform.prepare_frame(&mut imgui_state.context.io_mut(), &window);
+                    let ui_frame = Arc::new(imgui_state.context.frame());
+                    ui_frame.show_demo_window(&mut true);
                     Self::on_update(&mut layers, &mut events, elapsed, Arc::downgrade(&ui_frame));
 
                     {
                         let start =  Instant::now();
+                        if last_cursor != ui_frame.mouse_cursor() {
+                            last_cursor = ui_frame.mouse_cursor();
+                            imgui_state.platform.prepare_render(&ui_frame, &window);
+                        }
                         renderer.render(ui_frame);
                         debug!("render took {:?}", Instant::now() - start);
                     }
@@ -135,13 +147,15 @@ impl Engine {
                     info!("{:?}", phys_size);
 
                     renderer.reset_swapchain(phys_size);
-
+                    imgui_state.platform.handle_event(imgui_state.context.io_mut(), &window, &o_event);
                     let owned = map_event(o_event);
                     if let Some(e) = owned {
                         Self::on_event(&mut events, e);
                     }
+
                 }
                 _ => {
+                    imgui_state.platform.handle_event(imgui_state.context.io_mut(), &window, &o_event);
                     let owned = map_event(o_event);
                     if let Some(e) = owned {
                         Self::on_event(&mut events, e);
@@ -160,7 +174,7 @@ impl Engine {
     ) {
         for layer in layers.iter_mut() {
             let start =  Instant::now();
-            layer.on_update(events, elapsed, ui_frame);
+            layer.on_update(events, elapsed, ui_frame.clone());
             debug!("{:?} took {:?}", layer.name(), Instant::now() - start)
         }
         events.clear()

@@ -67,3 +67,23 @@ pub mod variables {
     }
 
 }
+pub mod functions {
+    pub struct RawFunc {
+        data: Box<Fn() + Send + 'static>,
+    }
+
+    impl RawFunc {
+        pub fn new<T>(data: T) -> RawFunc
+            where
+                T: Fn() + Send + 'static,
+        {
+            return RawFunc {
+                data: Box::new(data),
+            };
+        }
+
+        pub fn invoke(self) {
+            (self.data)()
+        }
+    }
+}

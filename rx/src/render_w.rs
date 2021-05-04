@@ -1,23 +1,29 @@
 use std::ops::Deref;
+use std::rc::Rc;
+use std::sync::Arc;
 use std::sync::mpsc::{channel, Receiver, Sender};
 
 use arrayvec::ArrayVec;
+use futures::executor::block_on;
 use itertools::Itertools;
 #[allow(unused_imports)]
 use log::{debug, error, info, trace, warn};
 use winit::dpi::PhysicalSize;
 
+use crate::{gui, wgpu_graphics};
 use crate::assets::{AssetsLoader, AssetsStorage, MeshPtr};
-use crate::window::WinitState;
-use crate::wgpu_graphics;
-use futures::executor::block_on;
 use crate::graphics_api::{DrawCmd, RenderCommand};
+use crate::gui::ImGuiState;
+use crate::utils::file_system;
+use crate::wgpu::SwapChainError;
+use crate::wgpu_graphics::{FrameState, pipeline};
+use crate::wgpu_graphics::pipeline::Pipeline;
+use crate::window::WinitState;
 
 pub struct Renderer {
     pub(crate) wpgu_state: wgpu_graphics::State,
     pub(crate) storage: AssetsStorage,
     pub(crate) loader: AssetsLoader,
-
 
     sender: Sender<DrawCmd>,
     // receiver: Receiver<DrawCmd>,
@@ -26,20 +32,16 @@ pub struct Renderer {
     cmd_r: Receiver<RenderCommand>,
 
     pipeline_v0: pipeline::PipelineV0,
+    imgui_pipeline: gui::ImGuiRenderer,
 
-    pipelines: Vec<Box<dyn Pipeline>>
+    pipelines: Vec<Box<dyn Pipeline>>,
 }
-use crate::utils::file_system;
-use crate::wgpu::SwapChainError;
-use crate::wgpu_graphics::{FrameState, pipeline};
-use crate::wgpu_graphics::pipeline::Pipeline;
-use std::rc::Rc;
-use std::sync::Arc;
 
 impl Renderer {
     pub fn new(
-        window: &mut WinitState
-    ) -> Result<Self, &str>{
+        window: &mut WinitState,
+        imgui: &mut ImGuiState,
+    ) -> Result<Self, &'static str> {
         let mut wpgu_state = block_on(wgpu_graphics::State::new(window.window.as_ref().unwrap()));
 
         let buf = file_system::path_from_root(&["assets"]);
@@ -48,7 +50,7 @@ impl Renderer {
         let (send, recv) = channel();
         let (r_send, r_recv) = channel();
 
-
+        let imgui_pipeline = gui::ImGuiRenderer::new(imgui, &wpgu_state.device, &wpgu_state.queue, &wpgu_state.sc_desc);
         let pipeline = wgpu_graphics::pipeline::PipelineV0::new(&mut wpgu_state.device, &wpgu_state.sc_desc, recv);
         Ok(Self {
             storage,
@@ -58,7 +60,8 @@ impl Renderer {
             cmd_s: r_send,
             cmd_r: r_recv,
             pipeline_v0: pipeline,
-            pipelines: Vec::new()
+            imgui_pipeline,
+            pipelines: Vec::new(),
         })
     }
 
@@ -85,6 +88,7 @@ impl Renderer {
                 for p in self.pipelines.iter_mut() {
                     p.process(FrameState::of(&frame, &mut encoder, &mut self.wpgu_state))
                 }
+                self.imgui_pipeline.process(FrameState::of_ui(&frame, &mut encoder, &mut self.wpgu_state, ui_frame));
                 self.wpgu_state.end_frame(frame, encoder)
             }
             Err(err) => {

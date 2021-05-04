@@ -43,7 +43,7 @@ impl PipelineV0 {
                 ],
             },
             primitive: wgpu::PrimitiveState {
-                polygon_mode: wgpu::PolygonMode::Fill,
+                polygon_mode: wgpu::PolygonMode::Line,
                 strip_index_format: None,
                 front_face: wgpu::FrontFace::Ccw,
                 //culling

@@ -24,6 +24,8 @@ void main() {
     vec3 surface_normal = normalize((model * vec4(normal, 0.0)).xyz);
     vec3 to_light_vector = normalize(l_position - world_coords.xyz);
     light_intensity = intensity.xyz * max(dot(to_light_vector, surface_normal), 0.2);
+
+
     gl_Position = mvp * vec4(position, 1.0);
     frag_uv = vert_uv;
 }
