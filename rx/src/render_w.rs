@@ -13,29 +13,32 @@ use crate::wgpu_graphics;
 use futures::executor::block_on;
 use crate::graphics_api::{DrawCmd, RenderCommand};
 
-
-pub trait Pipeline {
-    fn process(&mut self);
-}
-
 pub struct Renderer {
     pub(crate) wpgu_state: wgpu_graphics::State,
     pub(crate) storage: AssetsStorage,
     pub(crate) loader: AssetsLoader,
-    resize_flag: Option<PhysicalSize<u32>>,
+
 
     sender: Sender<DrawCmd>,
-    receiver: Receiver<DrawCmd>,
+    // receiver: Receiver<DrawCmd>,
 
     cmd_s: Sender<RenderCommand>,
     cmd_r: Receiver<RenderCommand>,
 
-    pipelines: Vec<Box<dyn Pipeline>>,
+    pipeline_v0: pipeline::PipelineV0,
+
+    pipelines: Vec<Box<dyn Pipeline>>
 }
 use crate::utils::file_system;
+use crate::wgpu::SwapChainError;
+use crate::wgpu_graphics::{FrameState, pipeline};
+use crate::wgpu_graphics::pipeline::Pipeline;
+
 impl Renderer {
-    pub fn new(window: &mut WinitState) -> Result<Self, &str> {
-        let wpgu_state = block_on(wgpu_graphics::State::new(window.window.as_ref().unwrap()));
+    pub fn new(
+        window: &mut WinitState
+    ) -> Result<Self, &str>{
+        let mut wpgu_state = block_on(wgpu_graphics::State::new(window.window.as_ref().unwrap()));
 
         let buf = file_system::path_from_root(&["assets"]);
         let loader = AssetsLoader::new(buf)?;
@@ -44,17 +47,16 @@ impl Renderer {
         let (r_send, r_recv) = channel();
 
 
+        let pipeline = wgpu_graphics::pipeline::PipelineV0::new(&mut wpgu_state.device, &wpgu_state.sc_desc, recv);
         Ok(Self {
-            // api,
             storage,
             loader,
             wpgu_state,
-            resize_flag: None,
             sender: send,
-            receiver: recv,
             cmd_s: r_send,
             cmd_r: r_recv,
-            pipelines: vec![],
+            pipeline_v0: pipeline,
+            pipelines: Vec::new()
         })
     }
 
@@ -66,7 +68,25 @@ impl Renderer {
         (self.sender.clone(), self.cmd_s.clone())
     }
 
+    pub fn push_pipelines<P>(&mut self, pipeline: P) where P: Pipeline + 'static {
+        self.pipelines.push(Box::new(pipeline));
+    }
+
     pub fn render(&mut self) {
-        self.wpgu_state.render(&mut self.receiver);
+        let next_frame = self.wpgu_state.start_frame();
+        match next_frame {
+            Ok(mut frame) => {
+                let mut encoder = self.wpgu_state.create_encode();
+
+                self.pipeline_v0.process(FrameState::of(&frame, &mut encoder, &mut self.wpgu_state));
+                for p in self.pipelines.iter_mut() {
+                    p.process(FrameState::of(&frame, &mut encoder, &mut self.wpgu_state))
+                }
+                self.wpgu_state.end_frame(frame, encoder)
+            }
+            Err(err) => {
+                error!("{:?}", err)
+            }
+        };
     }
 }

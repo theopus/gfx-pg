@@ -10,7 +10,7 @@ edition = "2018"
 default = []
 
 [dependencies]
-winit = { version = "0.21.0", features = ["web-sys"] }
+winit = { version = "0.22.0", features = ["web-sys"] }
 log = "0.4.0"
 arrayvec = "0.4"
 image = "0.22.4"
@@ -23,6 +23,9 @@ itertools = "0.8.0"
 wgpu = "0.7"
 futures = "0.3"
 bytemuck = { version = "1.4", features = [ "derive" ] }
+imgui = "0.7"
+imgui-wgpu = "0.14"
+imgui-winit-support = { version="0.7", default-features = false, features = ["winit-22"]}
 
 [build-dependencies]
 anyhow = "1.0"

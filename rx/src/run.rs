@@ -10,12 +10,21 @@ use crate::events::{map_event, MyEvent};
 use crate::graphics::wrapper::ApiWrapper;
 use crate::render_w::Renderer;
 use crate::window::WinitState;
-use crate::wgpu_graphics::State;
+use crate::wgpu_graphics::{State, FrameState};
+use imgui::FontSource;
+use crate::wgpu_graphics::pipeline::Pipeline;
 
 pub struct Engine {
     winit_state: WinitState,
     layers: Vec<Box<dyn Layer>>,
     renderer: Renderer,
+}
+
+struct Test;
+impl Pipeline for Test {
+    fn process(&mut self, frame: FrameState) {
+        info!("test")
+    }
 }
 
 impl Default for Engine {
@@ -60,6 +69,40 @@ impl Engine {
             } = self.winit_state;
             (events_loop, window.unwrap())
         };
+        // {
+        //     let mut imgui = imgui::Context::create();
+        //     let mut platform = imgui_winit_support::WinitPlatform::init(&mut imgui);
+        //     platform.attach_window(
+        //         imgui.io_mut(),
+        //         window,
+        //         imgui_winit_support::HiDpiMode::Default,
+        //     );
+        //     imgui.set_ini_filename(None);
+        //
+        //     let hidpi_factor = display.window.scale_factor();
+        //     let font_size = (13.0 * hidpi_factor) as f32;
+        //     imgui.io_mut().font_global_scale = (1.0 / hidpi_factor) as f32;
+        //     imgui.fonts().add_font(&[FontSource::DefaultFontData {
+        //         config: Some(imgui::FontConfig {
+        //             oversample_h: 1,
+        //             pixel_snap_h: true,
+        //             size_pixels: font_size,
+        //             ..Default::default()
+        //         }),
+        //     }]);
+        //     let renderer_config = imgui_wgpu::RendererConfig {
+        //         texture_format: display.sc_desc.format,
+        //         ..Default::default()
+        //     };
+        //     let renderer = imgui_wgpu::Renderer::new(&mut imgui, &display.device, &display.queue, renderer_config);
+        //     // imgui.io_mut().update_delta_time();
+        //
+        //
+        //     platform.prepare_frame(imgui.io_mut(), window);
+        //     platform.prepare_render()
+        //     let ui = &imgui.frame();
+        //
+        // }
 
         let mut layers = self.layers;
         let mut renderer = self.renderer;
@@ -73,8 +116,6 @@ impl Engine {
             height: 600,
         });
 
-        //[BUG#windows]: winit
-        let mut draw_req = 0;
         info!("Start!");
         let run_loop = move |o_event: Event<()>,
                              _: &EventLoopWindowTarget<()>,
@@ -96,26 +137,19 @@ impl Engine {
                 }
                 Event::RedrawRequested(_w) => {
                     /*Render*/
-                    let start =  Instant::now();
-                    renderer.render();
-                    debug!("render took {:?}", Instant::now() - start);
-                    if draw_req < 0 {
-                        draw_req = 1
-                    } else {
-                        draw_req += 1;
-                    }
                 }
                 Event::MainEventsCleared => {
                     let current = Instant::now();
                     let elapsed = current - last;
                     Self::on_update(&mut layers, &mut events, elapsed);
-                    if draw_req > 1 {
-                        warn!("Subsequent draw requests: {:?}", draw_req);
-                    } else {
-                        window.request_redraw();
+
+                    {
+                        let start =  Instant::now();
+                        renderer.render();
+                        debug!("render took {:?}", Instant::now() - start);
                     }
-                    draw_req -= 1;
-                    last = current
+
+                    last = current;
                 }
                 Event::WindowEvent {
                     event: WindowEvent::Resized(phys_size),
