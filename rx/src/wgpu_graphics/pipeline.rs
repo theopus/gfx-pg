@@ -47,8 +47,10 @@ impl PipelineV0 {
                 strip_index_format: None,
                 front_face: wgpu::FrontFace::Ccw,
                 //culling
-                cull_mode: wgpu::CullMode::Back,
+                cull_mode: Some(wgpu::Face::Back),
                 topology: wgpu::PrimitiveTopology::TriangleList,
+                clamp_depth: false,
+                conservative: false
             },
             depth_stencil: Some(wgpu::DepthStencilState {
                 format: texture::Texture::DEPTH_FORMAT,
@@ -56,7 +58,6 @@ impl PipelineV0 {
                 depth_compare: wgpu::CompareFunction::Less,
                 stencil: Default::default(),
                 bias: Default::default(),
-                clamp_depth: false,
             }),
             multisample: Default::default(),
             fragment: Some(wgpu::FragmentState {
@@ -68,8 +69,7 @@ impl PipelineV0 {
                 entry_point: "main",
                 targets: &[wgpu::ColorTargetState {
                     format: sc_desc.format,
-                    alpha_blend: wgpu::BlendState::REPLACE,
-                    color_blend: wgpu::BlendState::REPLACE,
+                    blend: Some(wgpu::BlendState::REPLACE),
                     write_mask: wgpu::ColorWrite::ALL,
                 }],
             }),
@@ -140,8 +140,8 @@ impl Pipeline for PipelineV0 {
             let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("PipelineV0: renderpass"),
                 color_attachments: &[
-                    wgpu::RenderPassColorAttachmentDescriptor {
-                        attachment: &frame.view,
+                    wgpu::RenderPassColorAttachment {
+                        view: &frame.view,
                         resolve_target: None,
                         ops: wgpu::Operations {
                             load: wgpu::LoadOp::Clear(wgpu::Color {
@@ -154,8 +154,8 @@ impl Pipeline for PipelineV0 {
                         },
                     }
                 ],
-                depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachmentDescriptor {
-                    attachment: &depth_texture.view,
+                depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+                    view: &depth_texture.view,
                     depth_ops: Some(wgpu::Operations {
                         load: wgpu::LoadOp::Clear(1.0),
                         store: true,
