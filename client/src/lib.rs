@@ -74,7 +74,7 @@ pub fn start() {
     let mouse_sys = systems::test::MoveClickSystem::default();
 
     let ecs_layer = rx::ecs::layer::EcsLayer::new(
-        move |(mut world, mut r_dispatcher, mut c_dispatcher, sender): EcsInitTuple<'static>| {
+        move |(mut world, mut r_dispatcher, mut c_dispatcher): EcsInitTuple<'static>| {
             use rx::ecs::{CameraTarget, Position, Rotation};
             world.register::<Render>();
             world.register::<Velocity>();
@@ -136,7 +136,7 @@ pub fn start() {
             c_dispatcher = c_dispatcher
                 .with(transform_sys, "tsm_sys", &[])
                 .with_thread_local(render_sys);
-            return (world, r_dispatcher, c_dispatcher, sender);
+            return (world, r_dispatcher, c_dispatcher);
         },
     );
 

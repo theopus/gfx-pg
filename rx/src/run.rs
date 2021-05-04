@@ -11,9 +11,7 @@ use crate::graphics::wrapper::ApiWrapper;
 use crate::render_w::Renderer;
 use crate::window::WinitState;
 use crate::wgpu_graphics::{State, FrameState};
-use imgui::{FontSource, Condition};
 use crate::wgpu_graphics::pipeline::Pipeline;
-use crate::gui;
 use std::rc::{Rc};
 use std::sync::{
     Arc, Weak
@@ -23,7 +21,6 @@ pub struct Engine {
     winit_state: WinitState,
     layers: Vec<Box<dyn Layer>>,
     renderer: Renderer,
-    imgui_state: gui::ImGuiState
 }
 
 struct Test;
@@ -36,13 +33,11 @@ impl Pipeline for Test {
 impl Default for Engine {
     fn default() -> Self {
         let mut winit_state: WinitState = Default::default();
-        let mut imgui_state = gui::ImGuiState::new(&mut winit_state);
-        let renderer = Renderer::new(&mut winit_state, &mut imgui_state).unwrap();
+        let renderer = Renderer::new(&mut winit_state).unwrap();
         Self {
             winit_state,
             layers: Default::default(),
             renderer,
-            imgui_state
         }
     }
 }
@@ -81,13 +76,11 @@ impl Engine {
         // imgui.io_mut().update_delta_time();
         let mut layers = self.layers;
         let mut renderer = self.renderer;
-        let mut imgui_state = self.imgui_state;
         let mut events: Vec<MyEvent> = Vec::new();
         let mut last = Instant::now();
         // epi::backend::FrameBuilder::{
         //
         // }
-        let mut last_cursor: Option<imgui::MouseCursor> = None;
 
         events.push(MyEvent::Resized(800, 600));
         use winit::dpi::PhysicalSize;
@@ -122,19 +115,10 @@ impl Engine {
                     let current = Instant::now();
                     let elapsed = current - last;
 
-                    imgui_state.context.io_mut().update_delta_time(elapsed);
-                    imgui_state.platform.prepare_frame(&mut imgui_state.context.io_mut(), &window);
-                    let ui_frame = Arc::new(imgui_state.context.frame());
-                    ui_frame.show_demo_window(&mut true);
-                    Self::on_update(&mut layers, &mut events, elapsed, Arc::downgrade(&ui_frame));
-
+                    Self::on_update(&mut layers, &mut events, elapsed);
                     {
                         let start =  Instant::now();
-                        if last_cursor != ui_frame.mouse_cursor() {
-                            last_cursor = ui_frame.mouse_cursor();
-                            imgui_state.platform.prepare_render(&ui_frame, &window);
-                        }
-                        renderer.render(ui_frame);
+                        renderer.render();
                         debug!("render took {:?}", Instant::now() - start);
                     }
 
@@ -147,7 +131,6 @@ impl Engine {
                     info!("{:?}", phys_size);
 
                     renderer.reset_swapchain(phys_size);
-                    imgui_state.platform.handle_event(imgui_state.context.io_mut(), &window, &o_event);
                     let owned = map_event(o_event);
                     if let Some(e) = owned {
                         Self::on_event(&mut events, e);
@@ -155,7 +138,6 @@ impl Engine {
 
                 }
                 _ => {
-                    imgui_state.platform.handle_event(imgui_state.context.io_mut(), &window, &o_event);
                     let owned = map_event(o_event);
                     if let Some(e) = owned {
                         Self::on_event(&mut events, e);
@@ -169,12 +151,11 @@ impl Engine {
     fn on_update(
         layers: &mut Vec<Box<dyn Layer>>,
         events: &mut Vec<MyEvent>,
-        elapsed: Duration,
-        ui_frame: Weak<imgui::Ui>
+        elapsed: Duration
     ) {
         for layer in layers.iter_mut() {
             let start =  Instant::now();
-            layer.on_update(events, elapsed, ui_frame.clone());
+            layer.on_update(events, elapsed);
             debug!("{:?} took {:?}", layer.name(), Instant::now() - start)
         }
         events.clear()
@@ -193,7 +174,7 @@ impl Engine {
 }
 
 pub trait Layer {
-    fn on_update(&mut self, events: &Vec<MyEvent>, elapsed: Duration, ui: Weak<imgui::Ui>);
+    fn on_update(&mut self, events: &Vec<MyEvent>, elapsed: Duration);
     fn name(&self) -> &'static str;
 }
 
@@ -201,7 +182,7 @@ impl<F> Layer for F
     where
         F: FnMut(&Vec<MyEvent>, Duration),
 {
-    fn on_update(&mut self, events: &Vec<MyEvent>, elapsed: Duration, ui: Weak<imgui::Ui>) {
+    fn on_update(&mut self, events: &Vec<MyEvent>, elapsed: Duration) {
         self(events, elapsed)
     }
 

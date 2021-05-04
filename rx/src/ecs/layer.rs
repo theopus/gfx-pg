@@ -7,7 +7,7 @@ use std::time::{Duration, Instant};
 use log::{debug, error, info, trace, warn};
 use specs::{DispatcherBuilder, World, WorldExt};
 
-use crate::ecs::{UiDraw, WinitEvents};
+use crate::ecs::{WinitEvents};
 use crate::events::MyEvent;
 use crate::run::Layer;
 
@@ -15,15 +15,14 @@ pub struct EcsLayer<'a> {
     world: specs::World,
     rated_dispatcher: specs::Dispatcher<'a, 'a>,
     constant_dispatcher: specs::Dispatcher<'a, 'a>,
-    lag: Duration,
-    ui_receiver: Receiver<Box<dyn Fn(&imgui::Ui) + Send>>,
+    lag: Duration
 }
 
 const UPD_60_PER_SEC_NANOS: u64 = 16600000;
 const DURATION_PER_UPD: Duration = Duration::from_nanos(UPD_60_PER_SEC_NANOS);
 
 impl<'a> Layer for EcsLayer<'a> {
-    fn on_update(&mut self, events: &Vec<MyEvent>, elapsed: Duration, ui: Weak<imgui::Ui>) {
+    fn on_update(&mut self, events: &Vec<MyEvent>, elapsed: Duration) {
         self.lag += elapsed;
         {
             let mut events_resource = self.world.write_resource::<WinitEvents>();
@@ -58,7 +57,7 @@ impl<'a> Layer for EcsLayer<'a> {
 }
 
 
-pub type EcsInitTuple<'a> = (World, DispatcherBuilder<'a, 'a>, DispatcherBuilder<'a, 'a>, Sender<Box<dyn Fn(&imgui::Ui) + Send>>);
+pub type EcsInitTuple<'a> = (World, DispatcherBuilder<'a, 'a>, DispatcherBuilder<'a, 'a>);
 
 pub trait EcsInit<'a> {
     fn init(self, tuple: EcsInitTuple<'a>) -> EcsInitTuple<'a>;
@@ -82,14 +81,12 @@ impl<'a> EcsLayer<'a> {
         let world: specs::World = specs::WorldExt::new();
         let rated_dispatcher = specs::DispatcherBuilder::new();
         let constant_dispatcher = specs::DispatcherBuilder::new();
-        let (s, p) = mpsc::channel();
-        let (mut world, rated_dispatcher, constant_dispatcher, s) = i.init((world, rated_dispatcher, constant_dispatcher, s));
+        let (mut world, rated_dispatcher, constant_dispatcher) = i.init((world, rated_dispatcher, constant_dispatcher));
         Self {
             world,
             rated_dispatcher: rated_dispatcher.build(),
             constant_dispatcher: constant_dispatcher.build(),
-            lag: Duration::new(0, 0),
-            ui_receiver: p,
+            lag: Duration::new(0, 0)
         }
     }
 }

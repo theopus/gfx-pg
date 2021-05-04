@@ -10,15 +10,14 @@ use itertools::Itertools;
 use log::{debug, error, info, trace, warn};
 use winit::dpi::PhysicalSize;
 
-use crate::{gui, wgpu_graphics};
 use crate::assets::{AssetsLoader, AssetsStorage, MeshPtr};
 use crate::graphics_api::{DrawCmd, RenderCommand};
-use crate::gui::ImGuiState;
 use crate::utils::file_system;
 use crate::wgpu::SwapChainError;
 use crate::wgpu_graphics::{FrameState, pipeline};
 use crate::wgpu_graphics::pipeline::Pipeline;
 use crate::window::WinitState;
+use crate::wgpu_graphics;
 
 pub struct Renderer {
     pub(crate) wpgu_state: wgpu_graphics::State,
@@ -32,15 +31,13 @@ pub struct Renderer {
     cmd_r: Receiver<RenderCommand>,
 
     pipeline_v0: pipeline::PipelineV0,
-    imgui_pipeline: gui::ImGuiRenderer,
 
     pipelines: Vec<Box<dyn Pipeline>>,
 }
 
 impl Renderer {
     pub fn new(
-        window: &mut WinitState,
-        imgui: &mut ImGuiState,
+        window: &mut WinitState
     ) -> Result<Self, &'static str> {
         let mut wpgu_state = block_on(wgpu_graphics::State::new(window.window.as_ref().unwrap()));
 
@@ -50,7 +47,6 @@ impl Renderer {
         let (send, recv) = channel();
         let (r_send, r_recv) = channel();
 
-        let imgui_pipeline = gui::ImGuiRenderer::new(imgui, &wpgu_state.device, &wpgu_state.queue, &wpgu_state.sc_desc);
         let pipeline = wgpu_graphics::pipeline::PipelineV0::new(&mut wpgu_state.device, &wpgu_state.sc_desc, recv);
         Ok(Self {
             storage,
@@ -60,7 +56,6 @@ impl Renderer {
             cmd_s: r_send,
             cmd_r: r_recv,
             pipeline_v0: pipeline,
-            imgui_pipeline,
             pipelines: Vec::new(),
         })
     }
@@ -77,7 +72,7 @@ impl Renderer {
         self.pipelines.push(Box::new(pipeline));
     }
 
-    pub fn render(&mut self, ui_frame: Arc<imgui::Ui>) {
+    pub fn render(&mut self) {
         let next_frame = self.wpgu_state.start_frame();
         match next_frame {
             Ok(mut frame) => {
@@ -88,7 +83,6 @@ impl Renderer {
                 for p in self.pipelines.iter_mut() {
                     p.process(FrameState::of(&frame, &mut encoder, &mut self.wpgu_state))
                 }
-                self.imgui_pipeline.process(FrameState::of_ui(&frame, &mut encoder, &mut self.wpgu_state, ui_frame));
                 self.wpgu_state.end_frame(frame, encoder)
             }
             Err(err) => {
