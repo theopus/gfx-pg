@@ -33,6 +33,8 @@ use crate::utils::file_system;
 use crate::wgpu::SwapChainError;
 use crate::wgpu_graphics::{FrameState, pipeline};
 use crate::wgpu_graphics::pipeline::Pipeline;
+use std::rc::Rc;
+use std::sync::Arc;
 
 impl Renderer {
     pub fn new(
@@ -72,13 +74,14 @@ impl Renderer {
         self.pipelines.push(Box::new(pipeline));
     }
 
-    pub fn render(&mut self) {
+    pub fn render(&mut self, ui_frame: Arc<imgui::Ui>) {
         let next_frame = self.wpgu_state.start_frame();
         match next_frame {
             Ok(mut frame) => {
                 let mut encoder = self.wpgu_state.create_encode();
 
                 self.pipeline_v0.process(FrameState::of(&frame, &mut encoder, &mut self.wpgu_state));
+
                 for p in self.pipelines.iter_mut() {
                     p.process(FrameState::of(&frame, &mut encoder, &mut self.wpgu_state))
                 }

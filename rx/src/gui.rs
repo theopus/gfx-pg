@@ -1,23 +1,54 @@
-use crate::wgpu_graphics::pipeline::Pipeline;
+use std::rc::Rc;
+
+use imgui::{FontSource, Ui};
+
 use crate::wgpu_graphics::FrameState;
-use imgui::FontSource;
+use crate::wgpu_graphics::pipeline::Pipeline;
+use std::time;
+use std::sync::Arc;
 
 pub struct ImGuiRenderer {
-    renderer: imgui_wgpu::Renderer
+    renderer: imgui_wgpu::Renderer,
 }
 
 impl ImGuiRenderer {
-    fn process(&mut self, f: imgui::Ui) {
-        // f.render();
-        // self.renderer
-        //     .render()
+    fn process(&mut self, frame: FrameState) {
+        let FrameState {
+            frame,
+            encoder,
+            queue,
+            imgui_ui,
+            device,
+            ..
+        } = frame;
+
+        if let Some(ui_rc) = imgui_ui {
+            if let Ok(ui) = Arc::try_unwrap(ui_rc) {
+                let mut rpass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                    label: None,
+                    color_attachments: &[wgpu::RenderPassColorAttachmentDescriptor {
+                        attachment: &frame.view,
+                        resolve_target: None,
+                        ops: wgpu::Operations {
+                            load: wgpu::LoadOp::Load,
+                            store: true,
+                        },
+                    }],
+                    depth_stencil_attachment: None,
+                });
+
+                self.renderer
+                    .render(ui.render(), &queue, &device, &mut rpass)
+                    .expect("Rendering failed");
+            }
+        }
     }
 }
 
-
 pub struct ImGuiState {
     context: imgui::Context,
-    platform: imgui_winit_support::WinitPlatform
+    platform: imgui_winit_support::WinitPlatform,
+    last_cursor: Option<imgui::MouseCursor>,
 }
 
 impl ImGuiState {
@@ -42,7 +73,20 @@ impl ImGuiState {
                 ..Default::default()
             }),
         }]);
-        ImGuiState { context: imgui, platform: platform }
+        ImGuiState { context: imgui, platform: platform, last_cursor: None }
+    }
+
+    pub fn new_frame(&mut self, window: &winit::window::Window, dt: time::Duration) -> Arc<Ui> {
+        self.context.io_mut().update_delta_time(dt);
+        self.platform.prepare_frame(self.context.io_mut(), window);
+        Arc::new(self.context.frame())
+    }
+
+    pub fn prepare_render(&mut self, ui: Rc<Ui>, window: &winit::window::Window) {
+        if self.last_cursor != ui.mouse_cursor() {
+            self.last_cursor = ui.mouse_cursor();
+            self.platform.prepare_render(&ui, window);
+        }
     }
 }
 

@@ -14,5 +14,5 @@ pub mod events;
 pub mod wgpu_graphics;
 pub mod render_w;
 pub mod graphics_api;
-mod gui;
+pub mod gui;
 

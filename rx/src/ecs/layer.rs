@@ -5,9 +5,10 @@ use std::time::{Duration, Instant};
 use log::{debug, error, info, trace, warn};
 use specs::{DispatcherBuilder, World, WorldExt};
 
-use crate::ecs::WinitEvents;
+use crate::ecs::{WinitEvents, UiFrame};
 use crate::events::MyEvent;
 use crate::run::Layer;
+use std::sync::{Arc, Mutex, Weak};
 
 pub struct EcsLayer<'a> {
     world: specs::World,
@@ -20,7 +21,8 @@ const UPD_60_PER_SEC_NANOS: u64 = 16600000;
 const DURATION_PER_UPD: Duration = Duration::from_nanos(UPD_60_PER_SEC_NANOS);
 
 impl<'a> Layer for EcsLayer<'a> {
-    fn on_update(&mut self, events: &Vec<MyEvent>, elapsed: Duration) {
+    fn on_update(&mut self, events: &Vec<MyEvent>, elapsed: Duration, ui: Weak<imgui::Ui>) {
+        self.world.insert(UiFrame(Some(Arc::new(Mutex::new(ui.clone())))));
         self.lag += elapsed;
         {
             let mut events_resource = self.world.write_resource::<WinitEvents>();

@@ -13,11 +13,17 @@ use crate::window::WinitState;
 use crate::wgpu_graphics::{State, FrameState};
 use imgui::FontSource;
 use crate::wgpu_graphics::pipeline::Pipeline;
+use crate::gui;
+use std::rc::{Rc};
+use std::sync::{
+    Arc, Weak
+};
 
 pub struct Engine {
     winit_state: WinitState,
     layers: Vec<Box<dyn Layer>>,
     renderer: Renderer,
+    imgui_state: gui::ImGuiState
 }
 
 struct Test;
@@ -31,10 +37,12 @@ impl Default for Engine {
     fn default() -> Self {
         let mut winit_state: WinitState = Default::default();
         let renderer = Renderer::new(&mut winit_state).unwrap();
+        let imgui_state = gui::ImGuiState::new(&winit_state.window.unwrap());
         Self {
             winit_state,
             layers: Default::default(),
             renderer,
+            imgui_state
         }
     }
 }
@@ -69,43 +77,11 @@ impl Engine {
             } = self.winit_state;
             (events_loop, window.unwrap())
         };
-        // {
-        //     let mut imgui = imgui::Context::create();
-        //     let mut platform = imgui_winit_support::WinitPlatform::init(&mut imgui);
-        //     platform.attach_window(
-        //         imgui.io_mut(),
-        //         window,
-        //         imgui_winit_support::HiDpiMode::Default,
-        //     );
-        //     imgui.set_ini_filename(None);
-        //
-        //     let hidpi_factor = display.window.scale_factor();
-        //     let font_size = (13.0 * hidpi_factor) as f32;
-        //     imgui.io_mut().font_global_scale = (1.0 / hidpi_factor) as f32;
-        //     imgui.fonts().add_font(&[FontSource::DefaultFontData {
-        //         config: Some(imgui::FontConfig {
-        //             oversample_h: 1,
-        //             pixel_snap_h: true,
-        //             size_pixels: font_size,
-        //             ..Default::default()
-        //         }),
-        //     }]);
-        //     let renderer_config = imgui_wgpu::RendererConfig {
-        //         texture_format: display.sc_desc.format,
-        //         ..Default::default()
-        //     };
-        //     let renderer = imgui_wgpu::Renderer::new(&mut imgui, &display.device, &display.queue, renderer_config);
-        //     // imgui.io_mut().update_delta_time();
-        //
-        //
-        //     platform.prepare_frame(imgui.io_mut(), window);
-        //     platform.prepare_render()
-        //     let ui = &imgui.frame();
-        //
-        // }
 
+        // imgui.io_mut().update_delta_time();
         let mut layers = self.layers;
         let mut renderer = self.renderer;
+        let mut imgui_state = self.imgui_state;
         let mut events: Vec<MyEvent> = Vec::new();
         let mut last = Instant::now();
 
@@ -141,11 +117,12 @@ impl Engine {
                 Event::MainEventsCleared => {
                     let current = Instant::now();
                     let elapsed = current - last;
-                    Self::on_update(&mut layers, &mut events, elapsed);
+                    let ui_frame = imgui_state.new_frame(&window, elapsed);
+                    Self::on_update(&mut layers, &mut events, elapsed, Arc::downgrade(&ui_frame));
 
                     {
                         let start =  Instant::now();
-                        renderer.render();
+                        renderer.render(ui_frame);
                         debug!("render took {:?}", Instant::now() - start);
                     }
 
@@ -175,10 +152,15 @@ impl Engine {
         events_loop.run(run_loop);
     }
 
-    fn on_update(layers: &mut Vec<Box<dyn Layer>>, events: &mut Vec<MyEvent>, elapsed: Duration) {
+    fn on_update(
+        layers: &mut Vec<Box<dyn Layer>>,
+        events: &mut Vec<MyEvent>,
+        elapsed: Duration,
+        ui_frame: Weak<imgui::Ui>
+    ) {
         for layer in layers.iter_mut() {
             let start =  Instant::now();
-            layer.on_update(events, elapsed);
+            layer.on_update(events, elapsed, ui_frame);
             debug!("{:?} took {:?}", layer.name(), Instant::now() - start)
         }
         events.clear()
@@ -197,7 +179,7 @@ impl Engine {
 }
 
 pub trait Layer {
-    fn on_update(&mut self, events: &Vec<MyEvent>, elapsed: Duration);
+    fn on_update(&mut self, events: &Vec<MyEvent>, elapsed: Duration, ui: Weak<imgui::Ui>);
     fn name(&self) -> &'static str;
 }
 
@@ -205,7 +187,7 @@ impl<F> Layer for F
     where
         F: FnMut(&Vec<MyEvent>, Duration),
 {
-    fn on_update(&mut self, events: &Vec<MyEvent>, elapsed: Duration) {
+    fn on_update(&mut self, events: &Vec<MyEvent>, elapsed: Duration, ui: Weak<imgui::Ui>) {
         self(events, elapsed)
     }
 

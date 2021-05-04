@@ -1,6 +1,6 @@
 use std::mem::size_of;
 use std::ops::Range;
-use std::sync::mpsc;
+use std::sync::{mpsc, Arc};
 
 use futures::executor::block_on;
 use futures::StreamExt;
@@ -17,6 +17,7 @@ use crate::utils::file_system;
 use crate::wgpu_graphics::memory::{MemoryManager, MemoryManagerConfig};
 use wgpu::SwapChainTexture;
 use crate::wgpu::CommandEncoder;
+use std::rc::Rc;
 
 pub mod memory;
 pub mod texture;
@@ -40,7 +41,7 @@ impl State {
 
         // The instance is a handle to our GPU
         // BackendBit::PRIMARY => Vulkan + Metal + DX12 + Browser WebGPU
-        let instance = wgpu::Instance::new(wgpu::BackendBit::VULKAN);
+        let instance = wgpu::Instance::new(wgpu::BackendBit::PRIMARY);
         let surface = unsafe { instance.create_surface(window) };
 
         let adapter = instance.request_adapter(
@@ -142,7 +143,9 @@ pub struct FrameState<'a> {
     pub encoder: &'a mut wgpu::CommandEncoder,
     pub mem: &'a mut MemoryManager,
     pub depth_texture: &'a texture::Texture,
-    pub queue: &'a wgpu::Queue
+    pub queue: &'a wgpu::Queue,
+    pub device: &'a wgpu::Device,
+    pub imgui_ui: Option<Arc<imgui::Ui<'a>>>
 }
 
 impl<'a> FrameState<'a> {
@@ -152,7 +155,9 @@ impl<'a> FrameState<'a> {
             encoder: encoder,
             mem: &mut state.memory_manager,
             depth_texture: &state.depth_texture,
-            queue: &state.queue
+            queue: &state.queue,
+            device: &state.device,
+            imgui_ui: None
         }
     }
 }
