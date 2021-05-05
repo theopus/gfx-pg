@@ -7,14 +7,16 @@ extern crate rand_pcg;
 extern crate rand_seeder;
 extern crate serde_json;
 
+use std::time::{Duration, Instant};
+
 #[allow(unused_imports)]
 use log::{debug, error, info, trace, warn};
 
 pub use rx;
+use rx::{glm, run};
 use rx::ecs::{Render, SelectedEntity, Transformation, Velocity, WinitEvents};
 use rx::ecs::base_systems::world3d::init;
 use rx::ecs::layer::EcsInitTuple;
-use rx::glm;
 use rx::specs::Builder;
 use rx::specs::WorldExt;
 
@@ -141,5 +143,20 @@ pub fn start() {
     );
 
     eng.push_layer(ecs_layer);
+
+
+    let mut cnt = 0;
+    eng.push_layer(move |upd: run::FrameUpdate<()>| {
+        use rx::egui;
+        if cnt < 3 {
+            egui::Window::new("Info layer: ").show(&upd.egui_ctx, |ui| {
+                ui.label(format!("Frame time: {} ms", upd.elapsed.as_millis()));
+                ui.label(format!("Frames: {:.2} /sec", 1000.0 / upd.elapsed.as_millis() as f32));
+            });
+            cnt = 0;
+        } else {
+            cnt += 1;
+        }
+    });
     eng.run();
 }
