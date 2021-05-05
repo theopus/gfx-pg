@@ -148,7 +148,7 @@ pub fn start() {
     let mut cnt = 0;
     eng.push_layer(move |upd: run::FrameUpdate<()>| {
         use rx::egui;
-        if cnt < 3 {
+        if cnt < 1 {
             egui::Window::new("Info layer: ").show(&upd.egui_ctx, |ui| {
                 ui.label(format!("Frame time: {} ms", upd.elapsed.as_millis()));
                 ui.label(format!("Frames: {:.2} /sec", 1000.0 / upd.elapsed.as_millis() as f32));
