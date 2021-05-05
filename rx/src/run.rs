@@ -1,27 +1,40 @@
+use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 #[allow(unused_imports)]
 use log::{debug, error, info, trace, warn};
 use winit::event::{Event, WindowEvent};
 use winit::event_loop::{ControlFlow, EventLoopWindowTarget};
+
 use crate::assets::{AssetsLoader, AssetsStorage};
-use crate::events::{map_event, MyEvent};
+use crate::events;
+use crate::events::RxEvent;
 #[cfg(feature = "hal")]
 use crate::graphics::wrapper::ApiWrapper;
+use crate::gui::ExampleRepaintSignal;
 use crate::render_w::Renderer;
+use crate::wgpu_graphics::{FrameState, State};
+use crate::wgpu_graphics::pipeline::Pipeline;
 use crate::window::WinitState;
-use crate::wgpu_graphics::State;
 
-pub struct Engine {
-    winit_state: WinitState,
-    layers: Vec<Box<dyn Layer>>,
+pub struct Engine<T: 'static + Send + Clone> {
+    winit_state: WinitState<T>,
+    layers: Vec<Box<dyn Layer<T>>>,
     renderer: Renderer,
 }
 
-impl Default for Engine {
+struct Test;
+
+impl Pipeline for Test {
+    fn process(&mut self, _frame: FrameState) {
+        info!("test")
+    }
+}
+
+impl<T: 'static + Send + Clone> Default for Engine<T> {
     fn default() -> Self {
-        let mut winit_state: WinitState = Default::default();
-        let renderer = Renderer::new(&mut winit_state).unwrap();
+        let winit_state: WinitState<T> = Default::default();
+        let renderer = Renderer::new(winit_state.window.as_ref().unwrap()).unwrap();
         Self {
             winit_state,
             layers: Default::default(),
@@ -30,7 +43,7 @@ impl Default for Engine {
     }
 }
 
-impl Engine {
+impl<T: Send + Clone> Engine<T> {
     pub fn renderer(&self) -> &Renderer {
         &self.renderer
     }
@@ -52,7 +65,7 @@ impl Engine {
     }
 
     pub fn run(self) {
-        let (events_loop, window) = {
+        let (events_loop, window): (winit::event_loop::EventLoop<RxEvent<T>>, winit::window::Window) = {
             let WinitState {
                 events_loop,
                 window,
@@ -61,26 +74,31 @@ impl Engine {
             (events_loop, window.unwrap())
         };
 
+        // imgui.io_mut().update_delta_time();
         let mut layers = self.layers;
         let mut renderer = self.renderer;
-        let mut events: Vec<MyEvent> = Vec::new();
+        let mut events: Vec<events::WinitEvent<T>> = Vec::new();
         let mut last = Instant::now();
 
-        events.push(MyEvent::Resized(800, 600));
-        use winit::dpi::PhysicalSize;
-        renderer.reset_swapchain(PhysicalSize {
-            width: 800,
-            height: 600,
-        });
+        let repaint_signal: Arc<ExampleRepaintSignal<T>> = std::sync::Arc::new(ExampleRepaintSignal(std::sync::Mutex::new(
+            events_loop.create_proxy(),
+        )));
 
-        //[BUG#windows]: winit
-        let mut draw_req = 0;
+        let mut egui_state = crate::gui::EguiState::new(&window, repaint_signal);
+
+
+        // events.push(MyEvent::Resized(800, 600));
+        use winit::dpi::PhysicalSize;
+        let size = window.inner_size();
+        events.push(Event::WindowEvent { window_id: window.id(), event: WindowEvent::Resized(size) });
+
         info!("Start!");
-        let run_loop = move |o_event: Event<()>,
-                             _: &EventLoopWindowTarget<()>,
+        let run_loop = move |o_event: Event<RxEvent<T>>,
+                             _: &EventLoopWindowTarget<RxEvent<T>>,
                              control_flow: &mut ControlFlow| {
             //Always poll
             *control_flow = ControlFlow::Poll;
+            egui_state.handle_event(&o_event);
 
             match o_event {
                 Event::WindowEvent {
@@ -96,55 +114,49 @@ impl Engine {
                 }
                 Event::RedrawRequested(_w) => {
                     /*Render*/
-                    let start =  Instant::now();
-                    renderer.render();
-                    debug!("render took {:?}", Instant::now() - start);
-                    if draw_req < 0 {
-                        draw_req = 1
-                    } else {
-                        draw_req += 1;
-                    }
                 }
                 Event::MainEventsCleared => {
                     let current = Instant::now();
                     let elapsed = current - last;
-                    Self::on_update(&mut layers, &mut events, elapsed);
-                    if draw_req > 1 {
-                        warn!("Subsequent draw requests: {:?}", draw_req);
-                    } else {
-                        window.request_redraw();
+
+                    let ctx = egui_state.frame(window.scale_factor());
+                    Self::on_update(&mut layers, &mut events, elapsed, ctx.clone());
+                    {
+                        let start = Instant::now();
+                        renderer.render(ctx, &mut egui_state);
+                        debug!("render took {:?}", Instant::now() - start);
                     }
-                    draw_req -= 1;
-                    last = current
+
+                    last = current;
                 }
                 Event::WindowEvent {
                     event: WindowEvent::Resized(phys_size),
                     ..
                 } => {
                     info!("{:?}", phys_size);
-
                     renderer.reset_swapchain(phys_size);
-
-                    let owned = map_event(o_event);
-                    if let Some(e) = owned {
-                        Self::on_event(&mut events, e);
-                    }
                 }
-                _ => {
-                    let owned = map_event(o_event);
-                    if let Some(e) = owned {
-                        Self::on_event(&mut events, e);
-                    }
-                }
+                _ => {}
             }
+
+            events::handle_event(&mut events, o_event);
         };
         events_loop.run(run_loop);
     }
 
-    fn on_update(layers: &mut Vec<Box<dyn Layer>>, events: &mut Vec<MyEvent>, elapsed: Duration) {
+    fn on_update(
+        layers: &mut Vec<Box<dyn Layer<T>>>,
+        events: &mut Vec<events::WinitEvent<T>>,
+        elapsed: Duration,
+        egui_ctx: egui::CtxRef,
+    ) {
         for layer in layers.iter_mut() {
-            let start =  Instant::now();
-            layer.on_update(events, elapsed);
+            let start = Instant::now();
+            layer.on_update(FrameUpdate {
+                events: &events,
+                elapsed,
+                egui_ctx: egui_ctx.clone(),
+            });
             debug!("{:?} took {:?}", layer.name(), Instant::now() - start)
         }
         events.clear()
@@ -152,27 +164,30 @@ impl Engine {
 
     pub fn push_layer<L>(&mut self, layer: L)
         where
-            L: Layer + 'static,
+            L: Layer<T> + 'static,
     {
         self.layers.push(Box::new(layer));
     }
-
-    fn on_event(vec: &mut Vec<MyEvent>, event: MyEvent) {
-        vec.push(event);
-    }
 }
 
-pub trait Layer {
-    fn on_update(&mut self, events: &Vec<MyEvent>, elapsed: Duration);
+
+pub struct FrameUpdate<'a, T: 'static + Clone + Send> {
+    pub events: &'a Vec<events::WinitEvent<T>>,
+    pub elapsed: Duration,
+    pub egui_ctx: egui::CtxRef,
+}
+
+pub trait Layer<T: Clone + Send> {
+    fn on_update(&mut self, upd: FrameUpdate<T>);
     fn name(&self) -> &'static str;
 }
 
-impl<F> Layer for F
+impl<F, T: Clone + Send> Layer<T> for F
     where
-        F: FnMut(&Vec<MyEvent>, Duration),
+        F: FnMut(FrameUpdate<T>),
 {
-    fn on_update(&mut self, events: &Vec<MyEvent>, elapsed: Duration) {
-        self(events, elapsed)
+    fn on_update(&mut self, upd: FrameUpdate<T>) {
+        self(upd)
     }
 
     fn name(&self) -> &'static str {

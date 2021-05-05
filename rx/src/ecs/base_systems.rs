@@ -1,7 +1,10 @@
 pub mod world3d {
+    use std::time::Instant;
+
     use glm;
     #[allow(unused_imports)]
     use log::{debug, error, info, trace, warn};
+    
     use specs::{
         Builder, Component, Entity, Join, Read, ReadStorage, System,
         VecStorage, World, WorldExt, Write, WriteStorage,
@@ -10,11 +13,9 @@ pub mod world3d {
     use crate::ecs::base_systems::camera3d::{
         ActiveCamera, CameraTarget, init as init_cam, TargetedCamera, ViewProjection,
     };
-    use std::time::Instant;
-    use na::Rotation3;
 
     ///
-    ///                  camera  system
+        ///                  camera  system
     pub type WorldInit = (Entity, TransformationSystem);
 
     pub fn init(world: &mut World, camera_at: &glm::Vec3) -> WorldInit {
@@ -67,7 +68,7 @@ pub mod world3d {
 
             //bottleneck
             {
-                let start =  Instant::now();
+                let start = Instant::now();
                 for (pos, rot, tsm) in (&pos, &rot, &mut tsm).join() {
                     tsm.model = {
                         let mut mtx: glm::Mat4 = glm::identity();
@@ -162,9 +163,9 @@ pub mod camera3d {
     use specs::{Builder, Component, Entity, VecStorage, World, WorldExt};
 
     ///
-    /// creates targeted camera, places camera to active
-    /// @return Camera Entity
-    ///
+        /// creates targeted camera, places camera to active
+        /// @return Camera Entity
+        ///
     pub fn init(world: &mut World, cam_target: Entity) -> Entity {
         info!("Init camera3d_system");
         world.register::<TargetedCamera>();

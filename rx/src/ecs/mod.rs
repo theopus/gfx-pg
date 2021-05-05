@@ -1,4 +1,6 @@
-use glm::{Vec3};
+
+
+use glm::Vec3;
 #[allow(unused_imports)]
 use log::{debug, error, info, trace, warn};
 use specs::{Component, Entity, VecStorage};
@@ -15,7 +17,8 @@ pub use base_systems::world3d::{
 };
 
 use crate::assets::MeshPtr;
-use crate::events::MyEvent;
+use crate::events;
+
 
 pub mod base_systems;
 
@@ -29,7 +32,7 @@ pub struct Render {
 }
 
 #[derive(Default, Debug)]
-pub struct WinitEvents(pub Vec<MyEvent>);
+pub struct WinitEvents<T: 'static + Clone + Send>(pub Vec<events::WinitEvent<T>>);
 
 #[derive(Default)]
 pub struct SelectedEntity(pub Option<Entity>);

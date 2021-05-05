@@ -1,41 +1,46 @@
-use std::ops::Deref;
+
+
+
 use std::sync::mpsc::{channel, Receiver, Sender};
 
-use arrayvec::ArrayVec;
-use itertools::Itertools;
+
+use futures::executor::block_on;
+
 #[allow(unused_imports)]
 use log::{debug, error, info, trace, warn};
 use winit::dpi::PhysicalSize;
 
-use crate::assets::{AssetsLoader, AssetsStorage, MeshPtr};
-use crate::window::WinitState;
-use crate::wgpu_graphics;
-use futures::executor::block_on;
+use crate::{gui, wgpu_graphics};
+use crate::assets::{AssetsLoader, AssetsStorage};
 use crate::graphics_api::{DrawCmd, RenderCommand};
+use crate::utils::file_system;
 
+use crate::wgpu_graphics::{FrameState, pipeline};
+use crate::wgpu_graphics::pipeline::Pipeline;
 
-pub trait Pipeline {
-    fn process(&mut self);
-}
 
 pub struct Renderer {
     pub(crate) wpgu_state: wgpu_graphics::State,
     pub(crate) storage: AssetsStorage,
     pub(crate) loader: AssetsLoader,
-    resize_flag: Option<PhysicalSize<u32>>,
 
     sender: Sender<DrawCmd>,
-    receiver: Receiver<DrawCmd>,
+    // receiver: Receiver<DrawCmd>,
 
     cmd_s: Sender<RenderCommand>,
     cmd_r: Receiver<RenderCommand>,
 
+    pipeline_v0: pipeline::PipelineV0,
+
     pipelines: Vec<Box<dyn Pipeline>>,
+    egui_pipeline: gui::EguiPipeline,
 }
-use crate::utils::file_system;
+
 impl Renderer {
-    pub fn new(window: &mut WinitState) -> Result<Self, &str> {
-        let wpgu_state = block_on(wgpu_graphics::State::new(window.window.as_ref().unwrap()));
+    pub fn new(
+        window: &winit::window::Window
+    ) -> Result<Self, &'static str> {
+        let mut wpgu_state = block_on(wgpu_graphics::State::new(window));
 
         let buf = file_system::path_from_root(&["assets"]);
         let loader = AssetsLoader::new(buf)?;
@@ -43,18 +48,18 @@ impl Renderer {
         let (send, recv) = channel();
         let (r_send, r_recv) = channel();
 
-
+        let egui_pipeline = gui::EguiPipeline::new(&wpgu_state.device, false);
+        let pipeline = wgpu_graphics::pipeline::PipelineV0::new(&mut wpgu_state.device, &wpgu_state.sc_desc, recv);
         Ok(Self {
-            // api,
             storage,
             loader,
             wpgu_state,
-            resize_flag: None,
             sender: send,
-            receiver: recv,
             cmd_s: r_send,
             cmd_r: r_recv,
-            pipelines: vec![],
+            pipeline_v0: pipeline,
+            pipelines: Vec::new(),
+            egui_pipeline,
         })
     }
 
@@ -66,7 +71,27 @@ impl Renderer {
         (self.sender.clone(), self.cmd_s.clone())
     }
 
-    pub fn render(&mut self) {
-        self.wpgu_state.render(&mut self.receiver);
+    pub fn push_pipelines<P>(&mut self, pipeline: P) where P: Pipeline + 'static {
+        self.pipelines.push(Box::new(pipeline));
+    }
+
+    pub fn render<T: Send + Clone>(&mut self, ctx: egui::CtxRef, egui_state: &mut gui::EguiState<T>) {
+        let next_frame = self.wpgu_state.start_frame();
+        match next_frame {
+            Ok(frame) => {
+                let mut encoder = self.wpgu_state.create_encode();
+
+                self.pipeline_v0.process(FrameState::of(&frame, &mut encoder, &mut self.wpgu_state));
+
+                for p in self.pipelines.iter_mut() {
+                    p.process(FrameState::of(&frame, &mut encoder, &mut self.wpgu_state))
+                }
+                self.egui_pipeline.process(FrameState::of(&frame, &mut encoder, &mut self.wpgu_state), ctx, egui_state);
+                self.wpgu_state.end_frame(frame, encoder)
+            }
+            Err(err) => {
+                error!("{:?}", err)
+            }
+        };
     }
 }

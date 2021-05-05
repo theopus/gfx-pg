@@ -1,7 +1,8 @@
-use anyhow::*;
-use glob::glob;
 use std::fs::{read_to_string, write};
 use std::path::PathBuf;
+
+use anyhow::*;
+use glob::glob;
 
 struct ShaderData {
     src: String,

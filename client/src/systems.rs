@@ -9,7 +9,6 @@ pub mod test {
     use rx::ecs::base_systems::camera3d::{
         ActiveCamera, CameraTarget, TargetedCamera, ViewProjection,
     };
-    use rx::events::MyEvent;
     use rx::glm;
     use rx::glm::{Vec2, Vec3};
     use rx::specs::{Entity, Join, Read, ReadStorage, System, WriteStorage};
@@ -32,7 +31,7 @@ pub mod test {
     impl<'a> System<'a> for MoveClickSystem {
         type SystemData = (
             Read<'a, ViewProjection>,
-            Read<'a, WinitEvents>,
+            Read<'a, WinitEvents<()>>,
             Read<'a, ActiveCamera>,
             ReadStorage<'a, TargetedCamera>,
             Read<'a, CameraTarget>,
@@ -50,24 +49,27 @@ pub mod test {
             let sel: &mut Position = pos.get_mut(selected.0.unwrap()).unwrap();
             let mut sel_vel: &mut Velocity = vel.get_mut(selected.0.unwrap()).unwrap();
 
+            use rx::winit::event::{Event, WindowEvent};
             for e in &events.0 {
                 match e {
-                    MyEvent::CursorMoved { position, .. } => {
+                    Event::WindowEvent {
+                        event: WindowEvent::CursorMoved { position, .. },
+                        ..
+                    } => {
                         self.x = position.x as f32;
                         self.y = position.y as f32;
                     }
-                    MyEvent::Resized(w, h) => {
-                        self.w = *w;
-                        self.h = *h;
+                    Event::WindowEvent { event: WindowEvent::Resized(size), .. } => {
+                        self.w = size.width;
+                        self.h = size.height;
                     }
-                    MyEvent::MouseInput {
-                        state,
-                        button: MouseButton::Middle,
+                    Event::WindowEvent {
+                        event: WindowEvent::MouseInput { state, button: MouseButton::Middle, .. },
                         ..
                     } => match state {
                         ElementState::Pressed => self.pressed = true,
                         ElementState::Released => self.pressed = false,
-                    },
+                    }
                     _ => {}
                 }
             }
@@ -91,18 +93,8 @@ pub mod test {
         }
     }
 
-    #[derive(Default)]
-    pub struct InputTestSystem {
-        pub should_affect_angle: bool,
-        pub should_affect_distance: bool,
-        pub speed: f32,
-        pub vert: f32,
-        pub hor: f32,
-        pad: MovePad,
-    }
-
     #[derive(Default, Debug)]
-    struct MovePad {
+    pub struct MovePad {
         pub up: bool,
         pub down: bool,
         pub right: bool,
@@ -147,152 +139,6 @@ pub mod test {
             } else {
                 glm::vec2(y, x) as glm::Vec2
             }
-        }
-    }
-
-    impl<'a> System<'a> for InputTestSystem {
-        type SystemData = (
-            Read<'a, WinitEvents>,
-            Read<'a, ActiveCamera>,
-            Read<'a, CameraTarget>,
-            WriteStorage<'a, Position>,
-            //        Write<'a, CameraTarget>,
-            WriteStorage<'a, TargetedCamera>,
-            WriteStorage<'a, Velocity>,
-        );
-
-        fn run(&mut self, data: Self::SystemData) {
-            let (events, active, target, mut position, mut camera, mut velocity) = data;
-
-            let events = &events.0;
-            let cam = camera.get_mut(active.0.unwrap()).unwrap();
-            let pos = position.get_mut(target.0.unwrap()).unwrap();
-
-            let mut accum_delta = (0.0, 0.0);
-            let mut accum_dist = 0_f32;
-            for event in events {
-                match event {
-                    MyEvent::MouseMotion { delta } => {
-                        if self.should_affect_angle {
-                            accum_delta.0 += delta.0;
-                            accum_delta.1 += delta.1;
-                        }
-                        if self.should_affect_distance {
-                            accum_dist += delta.1 as f32;
-                        }
-                    }
-                    MyEvent::MouseInput {
-                        state,
-                        button: MouseButton::Left,
-                        ..
-                    } => match state {
-                        ElementState::Pressed => self.should_affect_angle = true,
-                        ElementState::Released => self.should_affect_angle = false,
-                    },
-                    MyEvent::MouseInput {
-                        state,
-                        button: MouseButton::Right,
-                        ..
-                    } => match state {
-                        ElementState::Pressed => self.should_affect_distance = true,
-                        ElementState::Released => self.should_affect_distance = false,
-                    },
-                    //move
-                    MyEvent::KeyboardInput {
-                        input:
-                        KeyboardInput {
-                            state: ElementState::Pressed,
-                            virtual_keycode: Some(VirtualKeyCode::Space),
-                            ..
-                        },
-                        ..
-                    } => pos.y += 1.,
-                    MyEvent::KeyboardInput {
-                        input:
-                        KeyboardInput {
-                            state: ElementState::Pressed,
-                            virtual_keycode: Some(VirtualKeyCode::C),
-                            ..
-                        },
-                        ..
-                    } => pos.y -= 1.,
-                    MyEvent::KeyboardInput {
-                        input:
-                        KeyboardInput {
-                            state,
-                            virtual_keycode: Some(VirtualKeyCode::W),
-                            ..
-                        },
-                        ..
-                    } => {
-                        self.pad.up = match state {
-                            ElementState::Pressed => true,
-                            ElementState::Released => false,
-                        }
-                    }
-                    MyEvent::KeyboardInput {
-                        input:
-                        KeyboardInput {
-                            state,
-                            virtual_keycode: Some(VirtualKeyCode::S),
-                            ..
-                        },
-                        ..
-                    } => {
-                        self.pad.down = match state {
-                            ElementState::Pressed => true,
-                            ElementState::Released => false,
-                        }
-                    }
-                    MyEvent::KeyboardInput {
-                        input:
-                        KeyboardInput {
-                            state,
-                            virtual_keycode: Some(VirtualKeyCode::A),
-                            ..
-                        },
-                        ..
-                    } => {
-                        self.pad.left = match state {
-                            ElementState::Pressed => true,
-                            ElementState::Released => false,
-                        }
-                    }
-                    MyEvent::KeyboardInput {
-                        input:
-                        KeyboardInput {
-                            state,
-                            virtual_keycode: Some(VirtualKeyCode::D),
-                            ..
-                        },
-                        ..
-                    } => {
-                        self.pad.right = match state {
-                            ElementState::Pressed => true,
-                            ElementState::Released => false,
-                        }
-                    }
-                    MyEvent::Resized(w, h) => cam.update_aspect(*w as f32 / *h as f32),
-                    _ => (),
-                };
-            }
-
-            cam.distance += 0.4 * accum_dist;
-            cam.yaw += 0.4 * accum_delta.0 as f32;
-            cam.pitch -= 0.4 * accum_delta.1 as f32;
-
-            let degree = cam.yaw - 180.;
-
-            let d_vec: Vec2 = self.pad.as_vec2(true);
-            if self.pad.is_active() {
-                self.speed = 0.5;
-
-                let d_vec: Vec2 = glm::rotate_vec2(&d_vec, glm::radians(&glm::vec1(degree)).x);
-                let move_vec = self.speed * d_vec;
-
-                let mut v: &mut Velocity = velocity.get_mut(target.0.unwrap()).unwrap();
-                v.v = glm::vec3(move_vec.y, 0., move_vec.x);
-            };
         }
     }
 

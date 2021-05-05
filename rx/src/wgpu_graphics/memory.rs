@@ -1,7 +1,7 @@
 pub struct MemoryManager {
-    pub (crate)mesh_buffer: wgpu::Buffer,
-    pub (crate)idx_buffer: wgpu::Buffer,
-    pub (crate)instanced_buffer: wgpu::Buffer,
+    pub(crate) mesh_buffer: wgpu::Buffer,
+    pub(crate) idx_buffer: wgpu::Buffer,
+    pub(crate) instanced_buffer: wgpu::Buffer,
 }
 
 pub struct MemoryManagerConfig {
@@ -11,7 +11,7 @@ pub struct MemoryManagerConfig {
 }
 
 impl MemoryManager {
-    fn mesh_buffer_desc( config: &MemoryManagerConfig) -> wgpu::BufferDescriptor {
+    fn mesh_buffer_desc(config: &MemoryManagerConfig) -> wgpu::BufferDescriptor {
         wgpu::BufferDescriptor {
             label: Some("mesh_buffer"),
             size: config.mesh_buffer_size,
@@ -23,7 +23,7 @@ impl MemoryManager {
         wgpu::BufferDescriptor {
             label: Some("idx_buffer"),
             size: config.idx_buffer_size,
-            usage: wgpu::BufferUsage::INDEX | wgpu::BufferUsage::MAP_WRITE| wgpu::BufferUsage::MAP_READ | wgpu::BufferUsage::COPY_DST,
+            usage: wgpu::BufferUsage::INDEX | wgpu::BufferUsage::MAP_WRITE | wgpu::BufferUsage::MAP_READ | wgpu::BufferUsage::COPY_DST,
             mapped_at_creation: false,
         }
     }

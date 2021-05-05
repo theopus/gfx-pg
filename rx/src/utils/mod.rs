@@ -1,11 +1,10 @@
-
 pub mod file_system {
     use std::{fs, io};
     use std::fs::File;
     use std::io::{BufRead, BufReader};
     use std::path::PathBuf;
-    use crate::utils::variables::get_str_r;
 
+    use crate::utils::variables::get_str_r;
 
     pub fn read_lines_r(p: &[&str]) -> impl Iterator<Item=Result<String, io::Error>> {
         let root_dir = get_str_r("RX_ROOT");
@@ -13,7 +12,7 @@ pub mod file_system {
         read_lines(&path)
     }
 
-    pub fn path_from_root(p: &[&str]) -> PathBuf{
+    pub fn path_from_root(p: &[&str]) -> PathBuf {
         let root_dir = get_str_r("RX_ROOT");
         path_to(&root_dir, p)
     }
@@ -37,6 +36,7 @@ pub mod file_system {
         reader.lines()
     }
 }
+
 pub mod variables {
     use std::env;
 
@@ -65,5 +65,25 @@ pub mod variables {
             Ok(v) => Some(v),
         };
     }
+}
 
+pub mod functions {
+    pub struct RawFunc {
+        data: Box<dyn Fn() + Send + 'static>,
+    }
+
+    impl RawFunc {
+        pub fn new<T>(data: T) -> RawFunc
+            where
+                T: Fn() + Send + 'static,
+        {
+            return RawFunc {
+                data: Box::new(data),
+            };
+        }
+
+        pub fn invoke(self) {
+            (self.data)()
+        }
+    }
 }

@@ -6,21 +6,23 @@ use winit::{
     window::{Window, WindowBuilder},
 };
 
+use crate::events::RxEvent;
+
 #[derive(Debug)]
-pub struct WinitState {
-    pub events_loop: EventLoop<()>,
+pub struct WinitState<T: 'static + Send + Clone> {
+    pub events_loop: EventLoop<RxEvent<T>>,
     pub window: Option<Window>,
     pub window_builder: Option<WindowBuilder>,
 }
 
-impl WinitState {
-    pub fn new<T: Into<String>>(title: T, size: LogicalSize<u32>) -> Result<Self, OsError> {
-        let events_loop = EventLoop::new();
+impl<T: Send + Clone> WinitState<T> {
+    pub fn new<S: Into<String>>(title: S, size: LogicalSize<u32>) -> Result<Self, OsError> {
+        let events_loop = EventLoop::with_user_event();
 
         let output = WindowBuilder::new()
             .with_title(title)
             .with_inner_size(size);
-        let option  = Some(output.build(&events_loop).unwrap());
+        let option = Some(output.build(&events_loop).unwrap());
         Ok(Self {
             events_loop,
             window: option,
@@ -31,7 +33,7 @@ impl WinitState {
 
 pub const WINDOW_NAME: &str = "Sample window";
 
-impl Default for WinitState {
+impl<T: Send + Clone> Default for WinitState<T> {
     fn default() -> Self {
         Self::new(
             WINDOW_NAME,
