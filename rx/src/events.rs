@@ -1,6 +1,37 @@
 use winit::dpi::PhysicalPosition;
 use winit::event::{DeviceEvent, DeviceId, ElementState, Event, KeyboardInput, MouseButton, WindowEvent};
 
+
+#[derive(Debug, Clone)]
+pub enum RxEvent<T: 'static + Send + Clone> {
+    TestEvent,
+    ClientEvent(T)
+}
+
+pub type WinitEvent<T> = winit::event::Event<'static, RxEvent<T>>;
+
+
+pub fn handle_event<'a, T: Clone + Send>(buffer: &mut Vec<WinitEvent<T>>, event: winit::event::Event<'a, RxEvent<T>>) {
+    match event {
+        //ignore
+        Event::NewEvents(_) => {}
+        Event::UserEvent(_) => {}
+        Event::Suspended => {}
+        Event::Resumed => {}
+        Event::MainEventsCleared => {}
+        Event::RedrawRequested(_) => {}
+        Event::RedrawEventsCleared => {}
+        Event::LoopDestroyed => {}
+        Event::DeviceEvent { .. } => {}
+        //forward
+        Event::WindowEvent { .. } => {
+            if let Some(e) = event.to_static().as_ref() {
+                buffer.push(e.clone());
+            }
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub enum MyEvent {
     Resized(u32, u32),

@@ -37,9 +37,9 @@ pub struct Renderer {
 }
 impl Renderer {
     pub fn new(
-        window: &mut WinitState
+        window: &winit::window::Window
     ) -> Result<Self, &'static str> {
-        let mut wpgu_state = block_on(wgpu_graphics::State::new(window.window.as_ref().unwrap()));
+        let mut wpgu_state = block_on(wgpu_graphics::State::new(window));
 
         let buf = file_system::path_from_root(&["assets"]);
         let loader = AssetsLoader::new(buf)?;
@@ -74,7 +74,7 @@ impl Renderer {
         self.pipelines.push(Box::new(pipeline));
     }
 
-    pub fn render(&mut self, ctx: egui::CtxRef, egui_state: &mut gui::EguiState) {
+    pub fn render<T: Send + Clone>(&mut self, ctx: egui::CtxRef, egui_state: &mut gui::EguiState<T>) {
         let next_frame = self.wpgu_state.start_frame();
         match next_frame {
             Ok(mut frame) => {

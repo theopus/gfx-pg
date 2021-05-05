@@ -14,7 +14,7 @@ use winit::event::{Event, WindowEvent};
 use winit::event_loop::{ControlFlow, EventLoopWindowTarget};
 
 use crate::assets::{AssetsLoader, AssetsStorage};
-use crate::events::{map_event, MyEvent};
+use crate::events::{map_event, MyEvent, RxEvent};
 #[cfg(feature = "hal")]
 use crate::graphics::wrapper::ApiWrapper;
 use crate::gui::ExampleRepaintSignal;
@@ -23,9 +23,9 @@ use crate::wgpu_graphics::{FrameState, State};
 use crate::wgpu_graphics::pipeline::Pipeline;
 use crate::window::WinitState;
 
-pub struct Engine {
-    winit_state: WinitState,
-    layers: Vec<Box<dyn Layer>>,
+pub struct Engine<T: 'static + Send + Clone> {
+    winit_state: WinitState<T>,
+    layers: Vec<Box<dyn Layer<T>>>,
     renderer: Renderer,
 }
 
@@ -36,10 +36,10 @@ impl Pipeline for Test {
     }
 }
 
-impl Default for Engine {
+impl<T: 'static + Send + Clone> Default for Engine<T> {
     fn default() -> Self {
-        let mut winit_state: WinitState = Default::default();
-        let renderer = Renderer::new(&mut winit_state).unwrap();
+        let mut winit_state: WinitState<T> = Default::default();
+        let renderer = Renderer::new(winit_state.window.as_ref().unwrap()).unwrap();
         Self {
             winit_state,
             layers: Default::default(),
@@ -48,7 +48,7 @@ impl Default for Engine {
     }
 }
 
-impl Engine {
+impl<T: Send + Clone> Engine<T> {
     pub fn renderer(&self) -> &Renderer {
         &self.renderer
     }
@@ -82,17 +82,17 @@ impl Engine {
         // imgui.io_mut().update_delta_time();
         let mut layers = self.layers;
         let mut renderer = self.renderer;
-        let mut events: Vec<MyEvent> = Vec::new();
+        let mut events: Vec<events::WinitEvent<T>> = Vec::new();
         let mut last = Instant::now();
 
-        let repaint_signal = std::sync::Arc::new(ExampleRepaintSignal(std::sync::Mutex::new(
+        let repaint_signal: Arc<ExampleRepaintSignal<T>> = std::sync::Arc::new(ExampleRepaintSignal(std::sync::Mutex::new(
             events_loop.create_proxy(),
         )));
 
         let mut egui_state = crate::gui::EguiState::new(&window, repaint_signal);
 
 
-        events.push(MyEvent::Resized(800, 600));
+        // events.push(MyEvent::Resized(800, 600));
         use winit::dpi::PhysicalSize;
         renderer.reset_swapchain(PhysicalSize {
             width: 800,
@@ -100,8 +100,8 @@ impl Engine {
         });
 
         info!("Start!");
-        let run_loop = move |o_event: Event<()>,
-                             _: &EventLoopWindowTarget<()>,
+        let run_loop = move |o_event: Event<RxEvent<T>>,
+                             _: &EventLoopWindowTarget<RxEvent<T>>,
                              control_flow: &mut ControlFlow| {
             //Always poll
             *control_flow = ControlFlow::Poll;
@@ -127,7 +127,6 @@ impl Engine {
                     let elapsed = current - last;
 
                     let ctx = egui_state.frame(window.scale_factor());
-                    let size = window.inner_size(); 
                     Self::on_update(&mut layers, &mut events, elapsed);
                     {
                         let start = Instant::now();
@@ -142,28 +141,19 @@ impl Engine {
                     ..
                 } => {
                     info!("{:?}", phys_size);
-
                     renderer.reset_swapchain(phys_size);
-                    let owned = map_event(o_event);
-                    if let Some(e) = owned {
-                        Self::on_event(&mut events, e);
-                    }
-
                 }
-                _ => {
-                    let owned = map_event(o_event);
-                    if let Some(e) = owned {
-                        Self::on_event(&mut events, e);
-                    }
-                }
+                _ => {}
             }
+
+            events::handle_event(&mut events, o_event);
         };
         events_loop.run(run_loop);
     }
 
     fn on_update(
-        layers: &mut Vec<Box<dyn Layer>>,
-        events: &mut Vec<MyEvent>,
+        layers: &mut Vec<Box<dyn Layer<T>>>,
+        events: &mut Vec<events::WinitEvent<T>>,
         elapsed: Duration
     ) {
         for layer in layers.iter_mut() {
@@ -176,7 +166,7 @@ impl Engine {
 
     pub fn push_layer<L>(&mut self, layer: L)
         where
-            L: Layer + 'static,
+            L: Layer<T> + 'static,
     {
         self.layers.push(Box::new(layer));
     }
@@ -186,16 +176,18 @@ impl Engine {
     }
 }
 
-pub trait Layer {
-    fn on_update(&mut self, events: &Vec<MyEvent>, elapsed: Duration);
+use crate::events;
+
+pub trait Layer<T: Clone + Send> {
+    fn on_update(&mut self, events: &Vec<events::WinitEvent<T>>, elapsed: Duration);
     fn name(&self) -> &'static str;
 }
 
-impl<F> Layer for F
+impl<F, T: Clone + Send> Layer<T> for F
     where
-        F: FnMut(&Vec<MyEvent>, Duration),
+        F: FnMut(&Vec<events::WinitEvent<T>>, Duration),
 {
-    fn on_update(&mut self, events: &Vec<MyEvent>, elapsed: Duration) {
+    fn on_update(&mut self, events: &Vec<events::WinitEvent<T>>, elapsed: Duration) {
         self(events, elapsed)
     }
 

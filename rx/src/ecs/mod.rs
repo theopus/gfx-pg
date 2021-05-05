@@ -18,6 +18,7 @@ use crate::assets::MeshPtr;
 use crate::events::MyEvent;
 use std::sync::{Arc, Mutex, Weak, mpsc};
 use crate::utils::functions::RawFunc;
+use crate::events;
 
 pub mod base_systems;
 
@@ -31,7 +32,7 @@ pub struct Render {
 }
 
 #[derive(Default, Debug)]
-pub struct WinitEvents(pub Vec<MyEvent>);
+pub struct WinitEvents<T: 'static + Clone + Send>(pub Vec<events::WinitEvent<T>>);
 
 #[derive(Default)]
 pub struct SelectedEntity(pub Option<Entity>);

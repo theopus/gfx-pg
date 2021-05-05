@@ -10,6 +10,7 @@ use specs::{DispatcherBuilder, World, WorldExt};
 use crate::ecs::{WinitEvents};
 use crate::events::MyEvent;
 use crate::run::Layer;
+use crate::events;
 
 pub struct EcsLayer<'a> {
     world: specs::World,
@@ -21,11 +22,11 @@ pub struct EcsLayer<'a> {
 const UPD_60_PER_SEC_NANOS: u64 = 16600000;
 const DURATION_PER_UPD: Duration = Duration::from_nanos(UPD_60_PER_SEC_NANOS);
 
-impl<'a> Layer for EcsLayer<'a> {
-    fn on_update(&mut self, events: &Vec<MyEvent>, elapsed: Duration) {
+impl<'a, T: Clone + Send + Sync> Layer<T> for EcsLayer<'a> {
+    fn on_update(&mut self, events: &Vec<events::WinitEvent<T>>, elapsed: Duration) {
         self.lag += elapsed;
         {
-            let mut events_resource = self.world.write_resource::<WinitEvents>();
+            let mut events_resource = self.world.write_resource::<WinitEvents<T>>();
             for e in events.iter() {
                 events_resource.0.push((*e).clone());
             }
@@ -36,7 +37,7 @@ impl<'a> Layer for EcsLayer<'a> {
             let mut count = 0;
             while self.lag >= DURATION_PER_UPD {
                 self.rated_dispatcher.dispatch(&self.world);
-                let mut events_resource = self.world.write_resource::<WinitEvents>();
+                let mut events_resource = self.world.write_resource::<WinitEvents<T>>();
                 events_resource.0.clear();
                 self.lag -= DURATION_PER_UPD;
                 count += 1;

@@ -26,6 +26,7 @@ mod map;
 mod maths;
 mod systems;
 mod arrowdrop;
+mod input_sys;
 
 pub fn init_log() {
     env_logger::from_env(env_logger::Env::default().default_filter_or(
@@ -39,7 +40,7 @@ pub fn init_log() {
 
 pub fn start() {
     init_log();
-    let mut eng = rx::run::Engine::default();
+    let mut eng: rx::run::Engine<()> = rx::run::Engine::default();
 
 
 
@@ -69,7 +70,7 @@ pub fn start() {
     let (draw, redner) = eng.renderer().queue();
 
     let render_sys = systems::generic::RenderSubmitSystem::new(draw, redner);
-    let input_sys = systems::test::InputTestSystem::default();
+    let input_sys = input_sys::InputTestSystem::default();
     let move_sys = systems::test::MoveSystem;
     let mouse_sys = systems::test::MoveClickSystem::default();
 
@@ -122,7 +123,7 @@ pub fn start() {
                 .build();
             //
             world.insert(SelectedEntity(Some(selected)));
-            world.insert(WinitEvents::default());
+            world.insert(WinitEvents::default() as WinitEvents<()>);
             world.insert(CameraTarget(Some(player)));
 
             arrowdrop::create(&mut world, cube_mesh.clone());

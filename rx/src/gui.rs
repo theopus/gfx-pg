@@ -4,11 +4,12 @@ use egui_wgpu_backend::epi;
 use crate::egui::CtxRef;
 use egui_wgpu_backend::epi::App;
 use std::sync::{Arc, Mutex};
+use crate::events::RxEvent;
 
-pub struct EguiState {
+pub struct EguiState<T: 'static + Send + Clone> {
     platform: egui_winit_platform::Platform,
     scale_factor: f64,
-    repaint_signal: Arc<ExampleRepaintSignal>
+    repaint_signal: Arc<ExampleRepaintSignal<T>>
 
 }
 
@@ -22,11 +23,11 @@ enum Event {
     RequestRedraw,
 }
 
-pub struct ExampleRepaintSignal(pub std::sync::Mutex<winit::event_loop::EventLoopProxy<()>>);
+pub struct ExampleRepaintSignal<T: 'static + Send + Clone>(pub std::sync::Mutex<winit::event_loop::EventLoopProxy<RxEvent<T>>>);
 
-impl epi::RepaintSignal for ExampleRepaintSignal {
+impl<T: 'static + Send + Clone> epi::RepaintSignal for ExampleRepaintSignal<T> {
     fn request_repaint(&self) {
-        self.0.lock().unwrap().send_event(()).ok();
+        self.0.lock().unwrap().send_event(RxEvent::TestEvent).ok();
     }
 }
 
@@ -38,7 +39,7 @@ impl EguiPipeline {
     }
 
 
-    pub fn process(&mut self, state: FrameState, ctx: CtxRef, egui_state: &mut EguiState) {
+    pub fn process<T: Send + Clone>(&mut self, state: FrameState, ctx: CtxRef, egui_state: &mut EguiState<T>) {
         let FrameState {
             frame,
             encoder,
@@ -92,7 +93,7 @@ impl EguiPipeline {
     }
 }
 
-impl EguiState {
+impl<T: Send + Clone> EguiState<T> {
 
 
     pub fn frame(&mut self, scale_factor: f64) -> egui::CtxRef {
@@ -101,7 +102,7 @@ impl EguiState {
         self.platform.context().clone()
     }
 
-    pub fn handle_event(&mut self, e: &winit::event::Event<()>) {
+    pub fn handle_event(&mut self, e: &winit::event::Event<RxEvent<T>>) {
         self.platform.handle_event(e);
     }
 
@@ -109,7 +110,7 @@ impl EguiState {
         let (_output, paint_commands) = self.platform.end_frame();
         paint_commands
     }
-    pub fn new(window: &winit::window::Window, loop_proxy: Arc<ExampleRepaintSignal>) -> Self {
+    pub fn new(window: &winit::window::Window, loop_proxy: Arc<ExampleRepaintSignal<T>>) -> Self {
         let size = window.inner_size();
         let mut platform = egui_winit_platform::Platform::new(egui_winit_platform::PlatformDescriptor {
             physical_width: size.width as u32,
