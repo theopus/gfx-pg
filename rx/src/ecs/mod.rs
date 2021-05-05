@@ -36,10 +36,6 @@ pub struct WinitEvents(pub Vec<MyEvent>);
 #[derive(Default)]
 pub struct SelectedEntity(pub Option<Entity>);
 
-
-// #[derive(Default)]
-pub struct UiDraw(pub mpsc::Sender<RawFunc>);
-
 #[derive(Component, Debug)]
 #[storage(VecStorage)]
 pub struct Velocity {

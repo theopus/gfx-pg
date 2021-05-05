@@ -17,7 +17,7 @@ use crate::wgpu::SwapChainError;
 use crate::wgpu_graphics::{FrameState, pipeline};
 use crate::wgpu_graphics::pipeline::Pipeline;
 use crate::window::WinitState;
-use crate::wgpu_graphics;
+use crate::{wgpu_graphics, gui};
 
 pub struct Renderer {
     pub(crate) wpgu_state: wgpu_graphics::State,
@@ -33,8 +33,8 @@ pub struct Renderer {
     pipeline_v0: pipeline::PipelineV0,
 
     pipelines: Vec<Box<dyn Pipeline>>,
+    egui_pipeline: gui::EguiPipeline
 }
-
 impl Renderer {
     pub fn new(
         window: &mut WinitState
@@ -47,6 +47,7 @@ impl Renderer {
         let (send, recv) = channel();
         let (r_send, r_recv) = channel();
 
+        let egui_pipeline = gui::EguiPipeline::new(&wpgu_state.device, false);
         let pipeline = wgpu_graphics::pipeline::PipelineV0::new(&mut wpgu_state.device, &wpgu_state.sc_desc, recv);
         Ok(Self {
             storage,
@@ -57,6 +58,7 @@ impl Renderer {
             cmd_r: r_recv,
             pipeline_v0: pipeline,
             pipelines: Vec::new(),
+            egui_pipeline
         })
     }
 
@@ -72,7 +74,7 @@ impl Renderer {
         self.pipelines.push(Box::new(pipeline));
     }
 
-    pub fn render(&mut self) {
+    pub fn render(&mut self, ctx: egui::CtxRef, egui_state: &mut gui::EguiState) {
         let next_frame = self.wpgu_state.start_frame();
         match next_frame {
             Ok(mut frame) => {
@@ -83,6 +85,7 @@ impl Renderer {
                 for p in self.pipelines.iter_mut() {
                     p.process(FrameState::of(&frame, &mut encoder, &mut self.wpgu_state))
                 }
+                self.egui_pipeline.process(FrameState::of(&frame, &mut encoder, &mut self.wpgu_state), ctx, egui_state);
                 self.wpgu_state.end_frame(frame, encoder)
             }
             Err(err) => {

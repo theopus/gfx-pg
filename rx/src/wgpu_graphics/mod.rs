@@ -145,6 +145,7 @@ pub struct FrameState<'a> {
     pub depth_texture: &'a texture::Texture,
     pub queue: &'a wgpu::Queue,
     pub device: &'a wgpu::Device,
+    pub sc_desc: &'a wgpu::SwapChainDescriptor
 }
 
 impl<'a> FrameState<'a> {
@@ -155,7 +156,8 @@ impl<'a> FrameState<'a> {
             mem: &mut state.memory_manager,
             depth_texture: &state.depth_texture,
             queue: &state.queue,
-            device: &state.device
+            device: &state.device,
+            sc_desc: &state.sc_desc
         }
     }
     pub fn of_ui(
@@ -169,7 +171,8 @@ impl<'a> FrameState<'a> {
             mem: &mut state.memory_manager,
             depth_texture: &state.depth_texture,
             queue: &state.queue,
-            device: &state.device
+            device: &state.device,
+            sc_desc: &state.sc_desc
         }
     }
 }

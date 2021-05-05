@@ -4,6 +4,7 @@ pub extern crate specs;
 pub extern crate winit;
 pub extern crate wgpu;
 extern crate bytemuck;
+pub extern crate egui;
 // extern crate epi;
 
 pub mod window;
@@ -15,3 +16,4 @@ pub mod events;
 pub mod wgpu_graphics;
 pub mod render_w;
 pub mod graphics_api;
+mod gui;
