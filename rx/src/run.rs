@@ -1,12 +1,5 @@
-
-use std::sync::{
-    Arc,
-};
+use std::sync::Arc;
 use std::time::{Duration, Instant};
-
-
-
-use egui_wgpu_backend::epi::App;
 
 #[allow(unused_imports)]
 use log::{debug, error, info, trace, warn};
@@ -14,8 +7,8 @@ use winit::event::{Event, WindowEvent};
 use winit::event_loop::{ControlFlow, EventLoopWindowTarget};
 
 use crate::assets::{AssetsLoader, AssetsStorage};
-use crate::events::RxEvent;
 use crate::events;
+use crate::events::RxEvent;
 #[cfg(feature = "hal")]
 use crate::graphics::wrapper::ApiWrapper;
 use crate::gui::ExampleRepaintSignal;
@@ -72,7 +65,7 @@ impl<T: Send + Clone> Engine<T> {
     }
 
     pub fn run(self) {
-        let (events_loop, window) = {
+        let (events_loop, window): (winit::event_loop::EventLoop<RxEvent<T>>, winit::window::Window) = {
             let WinitState {
                 events_loop,
                 window,
@@ -96,10 +89,8 @@ impl<T: Send + Clone> Engine<T> {
 
         // events.push(MyEvent::Resized(800, 600));
         use winit::dpi::PhysicalSize;
-        renderer.reset_swapchain(PhysicalSize {
-            width: 800,
-            height: 600,
-        });
+        let size = window.inner_size();
+        events.push(Event::WindowEvent { window_id: window.id(), event: WindowEvent::Resized(size) });
 
         info!("Start!");
         let run_loop = move |o_event: Event<RxEvent<T>>,
@@ -157,14 +148,14 @@ impl<T: Send + Clone> Engine<T> {
         layers: &mut Vec<Box<dyn Layer<T>>>,
         events: &mut Vec<events::WinitEvent<T>>,
         elapsed: Duration,
-        egui_ctx: egui::CtxRef
+        egui_ctx: egui::CtxRef,
     ) {
         for layer in layers.iter_mut() {
             let start = Instant::now();
             layer.on_update(FrameUpdate {
                 events: &events,
                 elapsed,
-                egui_ctx: egui_ctx.clone()
+                egui_ctx: egui_ctx.clone(),
             });
             debug!("{:?} took {:?}", layer.name(), Instant::now() - start)
         }
@@ -183,7 +174,7 @@ impl<T: Send + Clone> Engine<T> {
 pub struct FrameUpdate<'a, T: 'static + Clone + Send> {
     pub events: &'a Vec<events::WinitEvent<T>>,
     pub elapsed: Duration,
-    pub egui_ctx: egui::CtxRef
+    pub egui_ctx: egui::CtxRef,
 }
 
 pub trait Layer<T: Clone + Send> {

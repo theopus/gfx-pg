@@ -20,10 +20,6 @@ pub struct EguiPipeline {
     show_demo: bool,
 }
 
-enum Event {
-    RequestRedraw,
-}
-
 pub struct ExampleRepaintSignal<T: 'static + Send + Clone>(pub std::sync::Mutex<winit::event_loop::EventLoopProxy<RxEvent<T>>>);
 
 impl<T: 'static + Send + Clone> epi::RepaintSignal for ExampleRepaintSignal<T> {
@@ -74,7 +70,7 @@ impl EguiPipeline {
         };
 
         let paint_commands = egui_state.end_frame();
-        let paint_jobs = ctx.tessellate(paint_commands);
+        let paint_jobs = egui_state.platform.context().tessellate(paint_commands);
 
         self.render_pass.update_texture(&device, &queue, &ctx.texture());
         self.render_pass.update_user_textures(&device, &queue);

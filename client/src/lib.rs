@@ -8,7 +8,6 @@ extern crate rand_seeder;
 extern crate serde_json;
 
 
-
 #[allow(unused_imports)]
 use log::{debug, error, info, trace, warn};
 
@@ -20,7 +19,10 @@ use rx::ecs::layer::EcsInitTuple;
 use rx::specs::Builder;
 use rx::specs::WorldExt;
 
-use crate::systems::test::{Follower};
+use crate::systems::test::Follower;
+use rx::winit::dpi::PhysicalSize;
+use rx::winit::event::Event;
+use rx::events::RxEvent;
 
 mod flowchart;
 mod generatin;
@@ -50,9 +52,14 @@ pub fn start() {
         let obj = loader.load_obj("cube").expect("");
         storage.load_mesh(api, obj).expect("")
     };
-    let ico_mesh = {
+    let arrow_01 = {
         let (api, loader, storage) = eng.loader();
         let obj = loader.load_obj("arrow-01").expect("");
+        storage.load_mesh(api, obj).expect("")
+    };
+    let arrow_02 = {
+        let (api, loader, storage) = eng.loader();
+        let obj = loader.load_obj("arrow-02").expect("");
         storage.load_mesh(api, obj).expect("")
     };
 
@@ -91,7 +98,7 @@ pub fn start() {
                 .with(Transformation::default())
                 .with(Velocity::default())
                 .with(Render {
-                    mesh: ico_mesh.clone(),
+                    mesh: arrow_02.clone(),
                 })
                 .build();
 
@@ -102,7 +109,7 @@ pub fn start() {
                 .with(Transformation::default())
                 .with(Velocity::default())
                 .with(Render {
-                    mesh: ico_mesh.clone(),
+                    mesh: arrow_01.clone(),
                 })
                 .build();
             world
@@ -144,19 +151,35 @@ pub fn start() {
 
     eng.push_layer(ecs_layer);
 
-
-    let mut cnt = 0;
+    let mut frames = 0;
+    let mut frame_rate = 0.0;
+    let mut elapsed = std::time::Duration::from_millis(0);
+    let mut size_d: PhysicalSize<u32> = PhysicalSize { width: 0, height: 0 };
     eng.push_layer(move |upd: run::FrameUpdate<()>| {
         use rx::egui;
-        if cnt < 1 {
-            egui::Window::new("Info layer: ").show(&upd.egui_ctx, |ui| {
-                ui.label(format!("Frame time: {} ms", upd.elapsed.as_millis()));
-                ui.label(format!("Frames: {:.2} /sec", 1000.0 / upd.elapsed.as_millis() as f32));
-            });
-            cnt = 0;
-        } else {
-            cnt += 1;
+        use rx::winit::event;
+        for e in upd.events {
+            match e {
+                event::Event::WindowEvent { event: event::WindowEvent::Resized(size),.. } => {
+                    size_d = *size
+                }
+                _ => {}
+            }
         }
+
+        elapsed += upd.elapsed;
+        frames+=1;
+        if elapsed >= std::time::Duration::from_millis(100) {
+            frame_rate = (frames as f32 * 0.5 + frame_rate * 0.5);
+            frames = 0;
+            elapsed -= std::time::Duration::from_millis(100)
+        }
+
+        egui::Window::new("info").show(&upd.egui_ctx, |ui| {
+            ui.label(format!("Frame time: {} ms", upd.elapsed.as_millis()));
+            ui.label(format!("Frames: {:.2} /sec", frame_rate * 10.));
+            ui.label(format!("Size: {}x{}",size_d.width,size_d.height));
+        });
     });
     eng.run();
 }

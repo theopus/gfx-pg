@@ -79,7 +79,7 @@ impl AssetsStorage {
                 api.queue.write_buffer(
                     &api.memory_manager.mesh_buffer,
                     range.start,
-                    unsafe { std::slice::from_raw_parts(flatten_mesh.as_ptr() as *const u8, mesh_len) },
+                    std::slice::from_raw_parts(flatten_mesh.as_ptr() as *const u8, mesh_len),
                 );
                 info!("mesh len {:?}", mesh_len);
                 info!("mesh range {:?}", range);
@@ -107,7 +107,7 @@ impl AssetsStorage {
                 api.queue.write_buffer(
                     &api.memory_manager.idx_buffer,
                     range.start,
-                    unsafe { std::slice::from_raw_parts(indices.as_ptr() as *const u8, indices.len() * 4) },
+                    std::slice::from_raw_parts(indices.as_ptr() as *const u8, indices.len() * 4),
                 );
                 //[WARN] AM I SANE
                 // range = range.start / 2..range.end / 2;

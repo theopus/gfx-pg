@@ -1,7 +1,6 @@
 use std::ops::Range;
 use std::sync::mpsc;
 
-use futures::StreamExt;
 use itertools::Itertools;
 
 use crate::graphics_api::{DrawCmd, v0};
@@ -45,7 +44,7 @@ impl PipelineV0 {
                 ],
             },
             primitive: wgpu::PrimitiveState {
-                polygon_mode: wgpu::PolygonMode::Line,
+                polygon_mode: wgpu::PolygonMode::Fill,
                 strip_index_format: None,
                 front_face: wgpu::FrontFace::Ccw,
                 //culling
@@ -165,6 +164,7 @@ impl Pipeline for PipelineV0 {
                     stencil_ops: None,
                 }),
             });
+            render_pass.push_debug_group("PipelineV0: renderpass");
             render_pass.set_pipeline(&self.pipeline);
             render_pass.set_index_buffer(
                 mem.idx_buffer.slice(..),
@@ -185,7 +185,8 @@ impl Pipeline for PipelineV0 {
                     cmd.base_vertex,
                     cmd.instances,
                 )
-            })
+            });
+            render_pass.pop_debug_group();
         }
     }
 }

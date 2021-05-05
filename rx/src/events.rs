@@ -1,5 +1,5 @@
 
-use winit::event::{DeviceEvent, DeviceId, ElementState, Event, KeyboardInput, MouseButton, WindowEvent};
+use winit::event::{DeviceEvent, Event};
 
 #[derive(Debug, Clone)]
 pub enum RxEvent<T: 'static + Send + Clone> {
