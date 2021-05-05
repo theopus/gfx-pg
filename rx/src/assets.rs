@@ -1,19 +1,19 @@
-use core::ptr;
+
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::BufReader;
 use std::mem::size_of;
-use std::ops::{Deref, Range};
+use std::ops::{Range};
 use std::path::PathBuf;
 
-use futures::executor::block_on;
+
 use image::RgbaImage;
 #[allow(unused_imports)]
 use log::{debug, error, info, trace, warn};
 
-use crate::graphics_api;
-use crate::graphics_api::v0::Vertex;
-use crate::wgpu_graphics::memory::MemoryManager;
+
+
+
 use crate::wgpu_graphics::State;
 
 #[derive(Debug, Clone)]
@@ -75,7 +75,7 @@ impl AssetsStorage {
                 let offset = self.mesh_offset as usize * size_of::<f32>() * 8;
                 let align = 0;
                 // let align = offset % 64;
-                let mut range = ((offset - align) as u64..((offset - align) + mesh_len) as u64);
+                let range = (offset - align) as u64..((offset - align) + mesh_len) as u64;
                 api.queue.write_buffer(
                     &api.memory_manager.mesh_buffer,
                     range.start,
@@ -101,7 +101,7 @@ impl AssetsStorage {
                 let idx_len = indices.len() * size_of::<u32>();
                 let offset = self.idx_offset * size_of::<u32>() as u32;
                 let align = 0;
-                let mut range = (offset - align) as u64..((offset - align) + idx_len as u32) as u64;
+                let range = (offset - align) as u64..((offset - align) + idx_len as u32) as u64;
                 info!("idx len {:?}", idx_len);
                 info!("idx range {:?}", range);
                 api.queue.write_buffer(

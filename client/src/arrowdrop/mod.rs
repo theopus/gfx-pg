@@ -1,5 +1,5 @@
 use rx::assets::MeshPtr;
-use rx::ecs::{Position, Render, Rotation, Transformation, Velocity};
+use rx::ecs::{Position, Render, Rotation, Transformation};
 use rx::specs::Builder;
 use rx::specs::World;
 use rx::specs::WorldExt;

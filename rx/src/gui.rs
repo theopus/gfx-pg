@@ -1,4 +1,4 @@
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc};
 
 use egui_wgpu_backend::epi;
 use egui_wgpu_backend::epi::App;
@@ -6,7 +6,7 @@ use egui_wgpu_backend::epi::App;
 use crate::egui::CtxRef;
 use crate::events::RxEvent;
 use crate::wgpu_graphics::FrameState;
-use crate::wgpu_graphics::pipeline::Pipeline;
+
 
 pub struct EguiState<T: 'static + Send + Clone> {
     platform: egui_winit_platform::Platform,
@@ -34,8 +34,8 @@ impl<T: 'static + Send + Clone> epi::RepaintSignal for ExampleRepaintSignal<T> {
 
 impl EguiPipeline {
     pub fn new(device: &wgpu::Device, show_demo: bool) -> Self {
-        let mut egui_rpass = egui_wgpu_backend::RenderPass::new(device, wgpu::TextureFormat::Bgra8UnormSrgb);
-        let mut demo_app = egui_demo_lib::WrapApp::default();
+        let egui_rpass = egui_wgpu_backend::RenderPass::new(device, wgpu::TextureFormat::Bgra8UnormSrgb);
+        let demo_app = egui_demo_lib::WrapApp::default();
         EguiPipeline { render_pass: egui_rpass, demo_app, show_demo }
     }
 
@@ -108,7 +108,7 @@ impl<T: Send + Clone> EguiState<T> {
     }
     pub fn new(window: &winit::window::Window, loop_proxy: Arc<ExampleRepaintSignal<T>>) -> Self {
         let size = window.inner_size();
-        let mut platform = egui_winit_platform::Platform::new(egui_winit_platform::PlatformDescriptor {
+        let platform = egui_winit_platform::Platform::new(egui_winit_platform::PlatformDescriptor {
             physical_width: size.width as u32,
             physical_height: size.height as u32,
             scale_factor: window.scale_factor(),

@@ -4,7 +4,7 @@ pub mod world3d {
     use glm;
     #[allow(unused_imports)]
     use log::{debug, error, info, trace, warn};
-    use na::Rotation3;
+    
     use specs::{
         Builder, Component, Entity, Join, Read, ReadStorage, System,
         VecStorage, World, WorldExt, Write, WriteStorage,

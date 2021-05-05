@@ -1,23 +1,23 @@
-use std::ops::Deref;
-use std::rc::Rc;
-use std::sync::Arc;
+
+
+
 use std::sync::mpsc::{channel, Receiver, Sender};
 
-use arrayvec::ArrayVec;
+
 use futures::executor::block_on;
-use itertools::Itertools;
+
 #[allow(unused_imports)]
 use log::{debug, error, info, trace, warn};
 use winit::dpi::PhysicalSize;
 
 use crate::{gui, wgpu_graphics};
-use crate::assets::{AssetsLoader, AssetsStorage, MeshPtr};
+use crate::assets::{AssetsLoader, AssetsStorage};
 use crate::graphics_api::{DrawCmd, RenderCommand};
 use crate::utils::file_system;
-use crate::wgpu::SwapChainError;
+
 use crate::wgpu_graphics::{FrameState, pipeline};
 use crate::wgpu_graphics::pipeline::Pipeline;
-use crate::window::WinitState;
+
 
 pub struct Renderer {
     pub(crate) wpgu_state: wgpu_graphics::State,
@@ -78,7 +78,7 @@ impl Renderer {
     pub fn render<T: Send + Clone>(&mut self, ctx: egui::CtxRef, egui_state: &mut gui::EguiState<T>) {
         let next_frame = self.wpgu_state.start_frame();
         match next_frame {
-            Ok(mut frame) => {
+            Ok(frame) => {
                 let mut encoder = self.wpgu_state.create_encode();
 
                 self.pipeline_v0.process(FrameState::of(&frame, &mut encoder, &mut self.wpgu_state));

@@ -5,12 +5,12 @@ use futures::StreamExt;
 use itertools::Itertools;
 
 use crate::graphics_api::{DrawCmd, v0};
-use crate::graphics_api;
+
 use crate::graphics_api::v0::VertexInstance;
 use crate::utils::file_system;
-use crate::wgpu::{CommandEncoder, SwapChainTexture};
+
 use crate::wgpu_graphics::{FrameState, texture};
-use crate::wgpu_graphics::memory::MemoryManager;
+
 
 pub trait Pipeline {
     fn process(&mut self, frame: FrameState);
@@ -95,7 +95,7 @@ impl PipelineV0 {
     ) -> Vec<InstanceDraw> {
         let receiver = &mut self.receiver;
         let mut instances_offset: u32 = 0;
-        let mut grouped_queue = receiver
+        let grouped_queue = receiver
             .try_iter()
             .into_iter()
             .sorted_by(|(l_ptr, ..), (r_ptr, ..)| {
@@ -104,11 +104,11 @@ impl PipelineV0 {
             .group_by(|ptr| ptr.0.clone());
 
         let mut render_calls = Vec::new();
-        let mut data: Vec<VertexInstance> = grouped_queue.into_iter().flat_map(|(ptr, list)| {
+        let data: Vec<VertexInstance> = grouped_queue.into_iter().flat_map(|(ptr, list)| {
             let ptr_instances: Vec<VertexInstance> = list.map(|e| {
                 e.into()
             }).collect_vec();
-            let mut current_count = ptr_instances.len() as u32;
+            let current_count = ptr_instances.len() as u32;
             render_calls.push(InstanceDraw {
                 indices: ptr.indices.clone(),
                 base_vertex: ptr.base_vertex,

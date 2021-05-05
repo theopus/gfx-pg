@@ -1,21 +1,21 @@
-use std::mem::size_of;
-use std::ops::Range;
-use std::rc::Rc;
-use std::sync::{Arc, mpsc};
 
-use futures::executor::block_on;
-use futures::StreamExt;
-use itertools::Itertools;
+
+
+use std::sync::{mpsc};
+
+
+
+
 #[allow(unused_imports)]
 use log::{debug, error, info, trace, warn};
 use wgpu::SwapChainTexture;
-use winit::event::WindowEvent;
+
 use winit::window::Window;
 
 use crate::graphics_api;
-use crate::graphics_api::v0;
-use crate::graphics_api::v0::VertexInstance;
-use crate::utils::file_system;
+
+
+
 use crate::wgpu::CommandEncoder;
 use crate::wgpu_graphics::memory::{MemoryManager, MemoryManagerConfig};
 
@@ -117,7 +117,7 @@ impl State {
 
     pub fn render(
         &mut self,
-        recevier: &mut mpsc::Receiver<graphics_api::DrawCmd>,
+        _recevier: &mut mpsc::Receiver<graphics_api::DrawCmd>,
     ) -> Result<(), wgpu::SwapChainError> {
         // let mut draw_cmds = self.prepare_instances(recevier);
         //

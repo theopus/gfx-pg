@@ -1,6 +1,6 @@
 use std::convert::identity;
-use std::sync::{Arc, mpsc, Mutex, Weak};
-use std::sync::mpsc::{Receiver, Sender};
+
+
 use std::time::{Duration, Instant};
 
 #[allow(unused_imports)]
@@ -8,7 +8,7 @@ use log::{debug, error, info, trace, warn};
 use specs::{DispatcherBuilder, World, WorldExt};
 
 use crate::ecs::WinitEvents;
-use crate::events;
+
 use crate::run::{Layer, FrameUpdate};
 
 pub struct EcsLayer<'a> {
@@ -81,7 +81,7 @@ impl<'a> EcsLayer<'a> {
         let world: specs::World = specs::WorldExt::new();
         let rated_dispatcher = specs::DispatcherBuilder::new();
         let constant_dispatcher = specs::DispatcherBuilder::new();
-        let (mut world, rated_dispatcher, constant_dispatcher) = i.init((world, rated_dispatcher, constant_dispatcher));
+        let (world, rated_dispatcher, constant_dispatcher) = i.init((world, rated_dispatcher, constant_dispatcher));
         Self {
             world,
             rated_dispatcher: rated_dispatcher.build(),

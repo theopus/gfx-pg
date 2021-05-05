@@ -69,7 +69,7 @@ pub mod variables {
 
 pub mod functions {
     pub struct RawFunc {
-        data: Box<Fn() + Send + 'static>,
+        data: Box<dyn Fn() + Send + 'static>,
     }
 
     impl RawFunc {

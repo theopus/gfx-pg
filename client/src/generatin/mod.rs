@@ -3,12 +3,13 @@ use std::fmt;
 #[allow(unused_imports)]
 use log::{debug, error, info, trace, warn};
 use rand;
-use rand::{Rng, SeedableRng};
+use rand::{Rng};
 use rand::distributions::Distribution;
 use rand_distr;
 use rand_distr::Normal;
 
 use rx::utils::file_system;
+use rand_seeder::rand_core::SeedableRng;
 
 struct Person {
     first_name: String,

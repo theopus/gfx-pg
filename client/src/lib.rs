@@ -7,7 +7,7 @@ extern crate rand_pcg;
 extern crate rand_seeder;
 extern crate serde_json;
 
-use std::time::{Duration, Instant};
+
 
 #[allow(unused_imports)]
 use log::{debug, error, info, trace, warn};
@@ -20,7 +20,7 @@ use rx::ecs::layer::EcsInitTuple;
 use rx::specs::Builder;
 use rx::specs::WorldExt;
 
-use crate::systems::test::{Follower, MoveClickSystem};
+use crate::systems::test::{Follower};
 
 mod flowchart;
 mod generatin;

@@ -1,13 +1,13 @@
-use std::rc::Rc;
+
 use std::sync::{
-    Arc, Weak,
+    Arc,
 };
 use std::time::{Duration, Instant};
 
-use egui::FontDefinitions;
-use egui_wgpu_backend::{epi, RenderPass};
+
+
 use egui_wgpu_backend::epi::App;
-use egui_winit_platform::PlatformDescriptor;
+
 #[allow(unused_imports)]
 use log::{debug, error, info, trace, warn};
 use winit::event::{Event, WindowEvent};
@@ -33,14 +33,14 @@ pub struct Engine<T: 'static + Send + Clone> {
 struct Test;
 
 impl Pipeline for Test {
-    fn process(&mut self, frame: FrameState) {
+    fn process(&mut self, _frame: FrameState) {
         info!("test")
     }
 }
 
 impl<T: 'static + Send + Clone> Default for Engine<T> {
     fn default() -> Self {
-        let mut winit_state: WinitState<T> = Default::default();
+        let winit_state: WinitState<T> = Default::default();
         let renderer = Renderer::new(winit_state.window.as_ref().unwrap()).unwrap();
         Self {
             winit_state,
