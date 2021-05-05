@@ -16,6 +16,10 @@ use std::rc::{Rc};
 use std::sync::{
     Arc, Weak
 };
+use egui::FontDefinitions;
+use egui_wgpu_backend::{RenderPass, epi};
+use egui_winit_platform::PlatformDescriptor;
+use egui_wgpu_backend::epi::App;
 
 pub struct Engine {
     winit_state: WinitState,
@@ -78,8 +82,40 @@ impl Engine {
         let mut renderer = self.renderer;
         let mut events: Vec<MyEvent> = Vec::new();
         let mut last = Instant::now();
-        // epi::backend::FrameBuilder::{
-        //
+
+        let size = window.inner_size();
+
+        // {
+            const OUTPUT_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Bgra8UnormSrgb;
+            // let repaint_signal = std::sync::Arc::new(egui_winit_platform::ExampleRepaintSignal(std::sync::Mutex::new(
+            //     event_loop.create_proxy(),
+            // )));
+
+            let mut platform = egui_winit_platform::Platform::new(PlatformDescriptor {
+                physical_width: size.width as u32,
+                physical_height: size.height as u32,
+                scale_factor: window.scale_factor(),
+                font_definitions: FontDefinitions::default(),
+                style: Default::default(),
+            });
+            let mut egui_rpass = RenderPass::new(&renderer.wpgu_state.device, OUTPUT_FORMAT);
+            let mut demo_app = egui_demo_lib::WrapApp::default();
+        demo_app.update()
+        egui::Window::new("wow").show()
+
+        let mut frame = epi::backend::FrameBuilder {
+            info: epi::IntegrationInfo {
+                web_info: None,
+                cpu_usage: previous_fra me_time,
+                seconds_since_midnight: Some(seconds_since_midnight()),
+                native_pixels_per_point: Some(window.scale_factor() as _),
+            },
+            tex_allocator: Some(&mut egui_rpass),
+            output: &mut app_output,
+            repaint_signal: repaint_signal.clone(),
+        }
+            .build();
+        frame.se
         // }
 
         events.push(MyEvent::Resized(800, 600));
@@ -95,6 +131,7 @@ impl Engine {
                              control_flow: &mut ControlFlow| {
             //Always poll
             *control_flow = ControlFlow::Poll;
+            platform.handle_event(&o_event);
 
             match o_event {
                 Event::WindowEvent {
