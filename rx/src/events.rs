@@ -22,7 +22,11 @@ pub fn handle_event<'a, T: Clone + Send>(buffer: &mut Vec<WinitEvent<T>>, event:
         Event::RedrawRequested(_) => {}
         Event::RedrawEventsCleared => {}
         Event::LoopDestroyed => {}
-        Event::DeviceEvent { .. } => {}
+        Event::DeviceEvent { .. } => {
+            if let Some(e) = event.to_static().as_ref() {
+                buffer.push(e.clone());
+            }
+        }
         //forward
         Event::WindowEvent { .. } => {
             if let Some(e) = event.to_static().as_ref() {
