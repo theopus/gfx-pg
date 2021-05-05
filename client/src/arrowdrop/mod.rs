@@ -5,8 +5,8 @@ use rx::specs::World;
 use rx::specs::WorldExt;
 
 pub fn create(world: &mut World, mesh_ptr: MeshPtr) {
-    for v in 0..5 {
-        for h in 0..3 {
+    for v in 0..7 {
+        for h in 0..7 {
             world.
                 create_entity()
                 .with(Rotation {

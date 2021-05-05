@@ -129,7 +129,7 @@ pub fn start() {
                     mesh: map_mesh_ptr.clone(),
                 })
                 .build();
-            //
+
             world.insert(SelectedEntity(Some(selected)));
             world.insert(WinitEvents::default() as WinitEvents<()>);
             world.insert(CameraTarget(Some(player)));
@@ -166,7 +166,6 @@ pub fn start() {
                 _ => {}
             }
         }
-
         elapsed += upd.elapsed;
         frames+=1;
         if elapsed >= std::time::Duration::from_millis(100) {
@@ -175,11 +174,11 @@ pub fn start() {
             elapsed -= std::time::Duration::from_millis(100)
         }
 
-        egui::Window::new("info").show(&upd.egui_ctx, |ui| {
+        let mut focus = egui::Window::new("info").show(&upd.egui_ctx, |ui| {
             ui.label(format!("Frame time: {} ms", upd.elapsed.as_millis()));
             ui.label(format!("Frames: {:.2} /sec", frame_rate * 10.));
             ui.label(format!("Size: {}x{}",size_d.width,size_d.height));
-        });
+        }).unwrap().hovered();
     });
     eng.run();
 }

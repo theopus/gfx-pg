@@ -20,6 +20,9 @@ impl<T: Send + Clone> WinitState<T> {
         let events_loop = EventLoop::with_user_event();
 
         let output = WindowBuilder::new()
+            .with_decorations(true)
+            .with_resizable(true)
+            .with_transparent(false)
             .with_title(title)
             .with_inner_size(size);
         let option = Some(output.build(&events_loop).unwrap());

@@ -20,13 +20,13 @@ nalgebra-glm = "0.4.0"
 specs = { version = "0.16", features = ["specs-derive"] }
 specs-derive = "0.4"
 itertools = "0.8.0"
-wgpu = "0.8"
+wgpu = "0.7"
 futures = "0.3"
 bytemuck = { version = "1.4", features = ["derive"] }
 
 #egui
 egui = "0.11.0"
-egui_wgpu_backend = "0.7.0"
+egui_wgpu_backend = "0.6.0"
 egui_demo_lib = "0.11.0"
 egui_winit_platform = "0.6.0"
 

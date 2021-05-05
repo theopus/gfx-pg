@@ -78,6 +78,7 @@ impl<T: Send + Clone> Engine<T> {
         let mut layers = self.layers;
         let mut renderer = self.renderer;
         let mut events: Vec<events::WinitEvent<T>> = Vec::new();
+        let mut run_start = Instant::now();
         let mut last = Instant::now();
 
         let repaint_signal: Arc<ExampleRepaintSignal<T>> = std::sync::Arc::new(ExampleRepaintSignal(std::sync::Mutex::new(
@@ -119,7 +120,7 @@ impl<T: Send + Clone> Engine<T> {
                     let current = Instant::now();
                     let elapsed = current - last;
 
-                    let ctx = egui_state.frame(window.scale_factor());
+                    let ctx = egui_state.frame(window.scale_factor(), &run_start);
                     Self::on_update(&mut layers, &mut events, elapsed, ctx.clone());
                     {
                         let start = Instant::now();

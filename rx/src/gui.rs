@@ -1,4 +1,4 @@
-use std::sync::{Arc};
+use std::sync::Arc;
 
 use egui_wgpu_backend::epi;
 use egui_wgpu_backend::epi::App;
@@ -6,7 +6,9 @@ use egui_wgpu_backend::epi::App;
 use crate::egui::CtxRef;
 use crate::events::RxEvent;
 use crate::wgpu_graphics::FrameState;
-
+use itertools::Itertools;
+use egui::style::{DebugOptions, Selection};
+use egui::Stroke;
 
 pub struct EguiState<T: 'static + Send + Clone> {
     platform: egui_winit_platform::Platform,
@@ -69,12 +71,21 @@ impl EguiPipeline {
             scale_factor: scale as f32,
         };
 
-        let paint_commands = egui_state.end_frame();
-        let paint_jobs = egui_state.platform.context().tessellate(paint_commands);
 
-        self.render_pass.update_texture(&device, &queue, &ctx.texture());
-        self.render_pass.update_user_textures(&device, &queue);
-        self.render_pass.update_buffers(device, queue, &paint_jobs, &screen_descriptor);
+        let paint_commands = egui_state.end_frame();
+        let mut paint_jobs = egui_state.platform.context().tessellate(paint_commands);
+
+        // paint_jobs = paint_jobs.into_iter().take(4).collect_vec();
+        #[allow(unused_imports)]
+        use log::{debug, error, info, trace, warn};
+
+        encoder.push_debug_group("egui_update");
+        {
+            self.render_pass.update_texture(&device, &queue, &ctx.texture());
+            self.render_pass.update_user_textures(&device, &queue);
+            self.render_pass.update_buffers(device, queue, &paint_jobs, &screen_descriptor);
+        }
+
 
         // Record all render passes.
         self.render_pass.execute(
@@ -83,13 +94,21 @@ impl EguiPipeline {
             &paint_jobs,
             &screen_descriptor,
             None,
+            // Some(wgpu::Color {
+            //     r: 0.1,
+            //     g: 0.2,
+            //     b: 0.3,
+            //     a: 0.0
+            // }
         );
+        encoder.pop_debug_group();
     }
 }
 
 impl<T: Send + Clone> EguiState<T> {
-    pub fn frame(&mut self, scale_factor: f64) -> egui::CtxRef {
+    pub fn frame(&mut self, scale_factor: f64, start: &std::time::Instant) -> egui::CtxRef {
         self.scale_factor = scale_factor;
+        self.platform.update_time(start.elapsed().as_secs_f64());
         self.platform.begin_frame();
         self.platform.context().clone()
     }

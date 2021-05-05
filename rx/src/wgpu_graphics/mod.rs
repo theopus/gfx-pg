@@ -32,6 +32,7 @@ pub struct State {
     size: winit::dpi::PhysicalSize<u32>,
     // pipeline: wgpu::RenderPipeline,
     depth_texture: texture::Texture,
+    pub(crate)target_texture: texture::Texture,
     pub(crate) memory_manager: memory::MemoryManager,
 }
 
@@ -41,7 +42,7 @@ impl State {
 
         // The instance is a handle to our GPU
         // BackendBit::PRIMARY => Vulkan + Metal + DX12 + Browser WebGPU
-        let instance = wgpu::Instance::new(wgpu::BackendBit::PRIMARY);
+        let instance = wgpu::Instance::new(wgpu::BackendBit::VULKAN);
         let surface = unsafe { instance.create_surface(window) };
 
         let adapter = instance.request_adapter(
@@ -62,7 +63,7 @@ impl State {
 
         let sc_desc = wgpu::SwapChainDescriptor {
             usage: wgpu::TextureUsage::RENDER_ATTACHMENT,
-            format: adapter.get_swap_chain_preferred_format(&surface).unwrap(),
+            format: adapter.get_swap_chain_preferred_format(&surface),
             width: size.width,
             height: size.height,
             present_mode: wgpu::PresentMode::Mailbox,
@@ -75,6 +76,7 @@ impl State {
             instanced_buffer_size: (64 * 2) * 50_000,
         });
         let depth_texture = texture::Texture::create_depth_texture(&device, &sc_desc, "depth_texture");
+        let target_texture = texture::Texture::create_target_texture(&device, &sc_desc, "target_texture");
         Self {
             surface,
             device,
@@ -84,6 +86,7 @@ impl State {
             size,
             // pipeline,
             depth_texture,
+            target_texture,
             memory_manager: mm,
         }
     }
@@ -94,7 +97,8 @@ impl State {
         self.sc_desc.width = new_size.width;
         self.sc_desc.height = new_size.height;
         self.swap_chain = self.device.create_swap_chain(&self.surface, &self.sc_desc);
-        self.depth_texture = texture::Texture::create_depth_texture(&self.device, &self.sc_desc, "depth_texture")
+        self.depth_texture = texture::Texture::create_depth_texture(&self.device, &self.sc_desc, "depth_texture");
+        self.target_texture = texture::Texture::create_target_texture(&self.device, &self.sc_desc, "target_texture");
     }
 
     pub fn start_frame(&mut self) -> Result<SwapChainTexture, wgpu::SwapChainError> {
@@ -143,6 +147,7 @@ pub struct FrameState<'a> {
     pub encoder: &'a mut wgpu::CommandEncoder,
     pub mem: &'a mut MemoryManager,
     pub depth_texture: &'a texture::Texture,
+    pub target_texture: &'a texture::Texture,
     pub queue: &'a wgpu::Queue,
     pub device: &'a wgpu::Device,
     pub sc_desc: &'a wgpu::SwapChainDescriptor,
@@ -155,6 +160,7 @@ impl<'a> FrameState<'a> {
             encoder: encoder,
             mem: &mut state.memory_manager,
             depth_texture: &state.depth_texture,
+            target_texture: &state.target_texture,
             queue: &state.queue,
             device: &state.device,
             sc_desc: &state.sc_desc,
@@ -170,6 +176,7 @@ impl<'a> FrameState<'a> {
             encoder: encoder,
             mem: &mut state.memory_manager,
             depth_texture: &state.depth_texture,
+            target_texture: &state.target_texture,
             queue: &state.queue,
             device: &state.device,
             sc_desc: &state.sc_desc,

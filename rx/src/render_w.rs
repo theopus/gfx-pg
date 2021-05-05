@@ -80,12 +80,10 @@ impl Renderer {
         match next_frame {
             Ok(frame) => {
                 let mut encoder = self.wpgu_state.create_encode();
-
                 self.pipeline_v0.process(FrameState::of(&frame, &mut encoder, &mut self.wpgu_state));
-
-                for p in self.pipelines.iter_mut() {
-                    p.process(FrameState::of(&frame, &mut encoder, &mut self.wpgu_state))
-                }
+                // for p in self.pipelines.iter_mut() {
+                //     p.process(FrameState::of(&frame, &mut encoder, &mut self.wpgu_state))
+                // }
                 self.egui_pipeline.process(FrameState::of(&frame, &mut encoder, &mut self.wpgu_state), ctx, egui_state);
                 self.wpgu_state.end_frame(frame, encoder)
             }
