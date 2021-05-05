@@ -9,7 +9,7 @@ use rand_distr;
 use rand_distr::Normal;
 
 use rx::utils::file_system;
-use rand_seeder::rand_core::SeedableRng;
+
 
 struct Person {
     first_name: String,
@@ -131,19 +131,19 @@ mod spc {
 
 #[test]
 fn test() {
-    use itertools::Itertools;
-    use rand_pcg::Pcg64;
-    use rand_seeder::Seeder;
-
-    crate::init_log();
-
-
-    let mut rng = Pcg64::from_seed(Seeder::from("ira").make_seed());
-    // let mut rng = Pcg64::from_entropy();
-
-    for p in (1..100)
-        .map(|_n| Person::from_rng(&mut rng))
-        .sorted_by(|a, b| Ord::cmp(&a.last_name, &b.last_name)) {
-        info!("{:?}", p);
-    }
+    // use itertools::Itertools;
+    // use rand_pcg::Pcg64;
+    // use rand_seeder::Seeder;
+    // 
+    // crate::init_log();
+    //
+    //
+    // let mut rng = Pcg64::from_seed(Seeder::from("ira").make_seed());
+    // // let mut rng = Pcg64::from_entropy();
+    //
+    // for p in (1..100)
+    //     .map(|_n| Person::from_rng(&mut rng))
+    //     .sorted_by(|a, b| Ord::cmp(&a.last_name, &b.last_name)) {
+    //     info!("{:?}", p);
+    // }
 }
