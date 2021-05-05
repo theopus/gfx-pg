@@ -10,6 +10,7 @@ use itertools::Itertools;
 use log::{debug, error, info, trace, warn};
 use winit::dpi::PhysicalSize;
 
+use crate::{gui, wgpu_graphics};
 use crate::assets::{AssetsLoader, AssetsStorage, MeshPtr};
 use crate::graphics_api::{DrawCmd, RenderCommand};
 use crate::utils::file_system;
@@ -17,7 +18,6 @@ use crate::wgpu::SwapChainError;
 use crate::wgpu_graphics::{FrameState, pipeline};
 use crate::wgpu_graphics::pipeline::Pipeline;
 use crate::window::WinitState;
-use crate::{wgpu_graphics, gui};
 
 pub struct Renderer {
     pub(crate) wpgu_state: wgpu_graphics::State,
@@ -33,8 +33,9 @@ pub struct Renderer {
     pipeline_v0: pipeline::PipelineV0,
 
     pipelines: Vec<Box<dyn Pipeline>>,
-    egui_pipeline: gui::EguiPipeline
+    egui_pipeline: gui::EguiPipeline,
 }
+
 impl Renderer {
     pub fn new(
         window: &winit::window::Window
@@ -58,7 +59,7 @@ impl Renderer {
             cmd_r: r_recv,
             pipeline_v0: pipeline,
             pipelines: Vec::new(),
-            egui_pipeline
+            egui_pipeline,
         })
     }
 

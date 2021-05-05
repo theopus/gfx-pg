@@ -14,7 +14,8 @@ use winit::event::{Event, WindowEvent};
 use winit::event_loop::{ControlFlow, EventLoopWindowTarget};
 
 use crate::assets::{AssetsLoader, AssetsStorage};
-use crate::events::{map_event, MyEvent, RxEvent};
+use crate::events::RxEvent;
+use crate::events;
 #[cfg(feature = "hal")]
 use crate::graphics::wrapper::ApiWrapper;
 use crate::gui::ExampleRepaintSignal;
@@ -30,6 +31,7 @@ pub struct Engine<T: 'static + Send + Clone> {
 }
 
 struct Test;
+
 impl Pipeline for Test {
     fn process(&mut self, frame: FrameState) {
         info!("test")
@@ -127,7 +129,7 @@ impl<T: Send + Clone> Engine<T> {
                     let elapsed = current - last;
 
                     let ctx = egui_state.frame(window.scale_factor());
-                    Self::on_update(&mut layers, &mut events, elapsed);
+                    Self::on_update(&mut layers, &mut events, elapsed, ctx.clone());
                     {
                         let start = Instant::now();
                         renderer.render(ctx, &mut egui_state);
@@ -154,11 +156,16 @@ impl<T: Send + Clone> Engine<T> {
     fn on_update(
         layers: &mut Vec<Box<dyn Layer<T>>>,
         events: &mut Vec<events::WinitEvent<T>>,
-        elapsed: Duration
+        elapsed: Duration,
+        egui_ctx: egui::CtxRef
     ) {
         for layer in layers.iter_mut() {
-            let start =  Instant::now();
-            layer.on_update(events, elapsed);
+            let start = Instant::now();
+            layer.on_update(FrameUpdate {
+                events: &events,
+                elapsed,
+                egui_ctx: egui_ctx.clone()
+            });
             debug!("{:?} took {:?}", layer.name(), Instant::now() - start)
         }
         events.clear()
@@ -170,25 +177,26 @@ impl<T: Send + Clone> Engine<T> {
     {
         self.layers.push(Box::new(layer));
     }
-
-    fn on_event(vec: &mut Vec<MyEvent>, event: MyEvent) {
-        vec.push(event);
-    }
 }
 
-use crate::events;
+
+pub struct FrameUpdate<'a, T: 'static + Clone + Send> {
+    pub events: &'a Vec<events::WinitEvent<T>>,
+    pub elapsed: Duration,
+    pub egui_ctx: egui::CtxRef
+}
 
 pub trait Layer<T: Clone + Send> {
-    fn on_update(&mut self, events: &Vec<events::WinitEvent<T>>, elapsed: Duration);
+    fn on_update(&mut self, upd: FrameUpdate<T>);
     fn name(&self) -> &'static str;
 }
 
 impl<F, T: Clone + Send> Layer<T> for F
     where
-        F: FnMut(&Vec<events::WinitEvent<T>>, Duration),
+        F: FnMut(FrameUpdate<T>),
 {
-    fn on_update(&mut self, events: &Vec<events::WinitEvent<T>>, elapsed: Duration) {
-        self(events, elapsed)
+    fn on_update(&mut self, upd: FrameUpdate<T>) {
+        self(upd)
     }
 
     fn name(&self) -> &'static str {

@@ -1,4 +1,6 @@
-use glm::{Vec3};
+use std::sync::{Arc, mpsc, Mutex, Weak};
+
+use glm::Vec3;
 #[allow(unused_imports)]
 use log::{debug, error, info, trace, warn};
 use specs::{Component, Entity, VecStorage};
@@ -15,10 +17,8 @@ pub use base_systems::world3d::{
 };
 
 use crate::assets::MeshPtr;
-use crate::events::MyEvent;
-use std::sync::{Arc, Mutex, Weak, mpsc};
-use crate::utils::functions::RawFunc;
 use crate::events;
+use crate::utils::functions::RawFunc;
 
 pub mod base_systems;
 

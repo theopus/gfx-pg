@@ -12,7 +12,7 @@ pub fn create(world: &mut World, mesh_ptr: MeshPtr) {
                 .with(Rotation {
                     x: 0.0,
                     y: 0.0,
-                    z: 0.0
+                    z: 0.0,
                 })
                 .with(Position {
                     x: h as f32 * 3.0,

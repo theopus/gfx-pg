@@ -9,7 +9,6 @@ pub mod test {
     use rx::ecs::base_systems::camera3d::{
         ActiveCamera, CameraTarget, TargetedCamera, ViewProjection,
     };
-    use rx::events::MyEvent;
     use rx::glm;
     use rx::glm::{Vec2, Vec3};
     use rx::specs::{Entity, Join, Read, ReadStorage, System, WriteStorage};

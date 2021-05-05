@@ -14,7 +14,7 @@ impl Into<v0::VertexInstance> for DrawCmd {
     fn into(self) -> VertexInstance {
         v0::VertexInstance {
             mvp: self.1.into(),
-            model: self.2.into()
+            model: self.2.into(),
         }
     }
 }
@@ -122,6 +122,4 @@ pub mod v0 {
 }
 
 
-pub struct EngRenderer {
-
-}
+pub struct EngRenderer {}

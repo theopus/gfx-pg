@@ -1,14 +1,16 @@
-use crate::utils::file_system;
-use crate::graphics_api::{v0, DrawCmd};
-use crate::wgpu_graphics::{texture, FrameState};
-use crate::wgpu::{SwapChainTexture, CommandEncoder};
-use crate::wgpu_graphics::memory::MemoryManager;
-use std::sync::mpsc;
-use crate::graphics_api;
 use std::ops::Range;
-use itertools::Itertools;
-use crate::graphics_api::v0::VertexInstance;
+use std::sync::mpsc;
+
 use futures::StreamExt;
+use itertools::Itertools;
+
+use crate::graphics_api::{DrawCmd, v0};
+use crate::graphics_api;
+use crate::graphics_api::v0::VertexInstance;
+use crate::utils::file_system;
+use crate::wgpu::{CommandEncoder, SwapChainTexture};
+use crate::wgpu_graphics::{FrameState, texture};
+use crate::wgpu_graphics::memory::MemoryManager;
 
 pub trait Pipeline {
     fn process(&mut self, frame: FrameState);
@@ -16,7 +18,7 @@ pub trait Pipeline {
 
 pub struct PipelineV0 {
     pipeline: wgpu::RenderPipeline,
-    receiver: mpsc::Receiver<DrawCmd>
+    receiver: mpsc::Receiver<DrawCmd>,
 }
 
 impl PipelineV0 {
@@ -50,7 +52,7 @@ impl PipelineV0 {
                 cull_mode: Some(wgpu::Face::Back),
                 topology: wgpu::PrimitiveTopology::TriangleList,
                 clamp_depth: false,
-                conservative: false
+                conservative: false,
             },
             depth_stencil: Some(wgpu::DepthStencilState {
                 format: texture::Texture::DEPTH_FORMAT,
@@ -79,17 +81,17 @@ impl PipelineV0 {
     pub fn new(
         device: &mut wgpu::Device,
         sc_desc: &wgpu::SwapChainDescriptor,
-        receiver: mpsc::Receiver<DrawCmd>
+        receiver: mpsc::Receiver<DrawCmd>,
     ) -> Self {
         PipelineV0 {
             pipeline: Self::pipeline(device, sc_desc),
-            receiver
+            receiver,
         }
     }
 
     fn prepare_instances(&mut self,
                          queue: &wgpu::Queue,
-                         buffer: &wgpu::Buffer
+                         buffer: &wgpu::Buffer,
     ) -> Vec<InstanceDraw> {
         let receiver = &mut self.receiver;
         let mut instances_offset: u32 = 0;
@@ -135,7 +137,7 @@ struct InstanceDraw {
 impl Pipeline for PipelineV0 {
     fn process(&mut self, state: FrameState) {
         {
-            let FrameState {frame, encoder, depth_texture, mem, queue,..} = state;
+            let FrameState { frame, encoder, depth_texture, mem, queue, .. } = state;
             let mut draw_cmds = self.prepare_instances(queue, &mem.instanced_buffer);
             let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("PipelineV0: renderpass"),

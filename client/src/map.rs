@@ -40,7 +40,7 @@ pub fn generate2d() -> Mesh {
         info!("{:?}", line);
         for char in line.trim().chars() {
             let value
-                 = char.to_digit(RADIX).unwrap();
+                = char.to_digit(RADIX).unwrap();
             if value > 0 {
                 let (lu, ld, ru, rd) =
                     (

@@ -1,12 +1,14 @@
 use std::mem::size_of;
 use std::ops::Range;
-use std::sync::{mpsc, Arc};
+use std::rc::Rc;
+use std::sync::{Arc, mpsc};
 
 use futures::executor::block_on;
 use futures::StreamExt;
 use itertools::Itertools;
 #[allow(unused_imports)]
 use log::{debug, error, info, trace, warn};
+use wgpu::SwapChainTexture;
 use winit::event::WindowEvent;
 use winit::window::Window;
 
@@ -14,10 +16,8 @@ use crate::graphics_api;
 use crate::graphics_api::v0;
 use crate::graphics_api::v0::VertexInstance;
 use crate::utils::file_system;
-use crate::wgpu_graphics::memory::{MemoryManager, MemoryManagerConfig};
-use wgpu::SwapChainTexture;
 use crate::wgpu::CommandEncoder;
-use std::rc::Rc;
+use crate::wgpu_graphics::memory::{MemoryManager, MemoryManagerConfig};
 
 pub mod memory;
 pub mod texture;
@@ -145,7 +145,7 @@ pub struct FrameState<'a> {
     pub depth_texture: &'a texture::Texture,
     pub queue: &'a wgpu::Queue,
     pub device: &'a wgpu::Device,
-    pub sc_desc: &'a wgpu::SwapChainDescriptor
+    pub sc_desc: &'a wgpu::SwapChainDescriptor,
 }
 
 impl<'a> FrameState<'a> {
@@ -157,13 +157,13 @@ impl<'a> FrameState<'a> {
             depth_texture: &state.depth_texture,
             queue: &state.queue,
             device: &state.device,
-            sc_desc: &state.sc_desc
+            sc_desc: &state.sc_desc,
         }
     }
     pub fn of_ui(
         frame: &'a wgpu::SwapChainTexture,
         encoder: &'a mut wgpu::CommandEncoder,
-        state: &'a mut State
+        state: &'a mut State,
     ) -> FrameState<'a> {
         Self {
             frame: frame,
@@ -172,7 +172,7 @@ impl<'a> FrameState<'a> {
             depth_texture: &state.depth_texture,
             queue: &state.queue,
             device: &state.device,
-            sc_desc: &state.sc_desc
+            sc_desc: &state.sc_desc,
         }
     }
 }

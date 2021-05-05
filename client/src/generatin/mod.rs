@@ -7,6 +7,7 @@ use rand::{Rng, SeedableRng};
 use rand::distributions::Distribution;
 use rand_distr;
 use rand_distr::Normal;
+
 use rx::utils::file_system;
 
 struct Person {

@@ -5,6 +5,7 @@ use winit::{
     event_loop::EventLoop,
     window::{Window, WindowBuilder},
 };
+
 use crate::events::RxEvent;
 
 #[derive(Debug)]
@@ -21,7 +22,7 @@ impl<T: Send + Clone> WinitState<T> {
         let output = WindowBuilder::new()
             .with_title(title)
             .with_inner_size(size);
-        let option  = Some(output.build(&events_loop).unwrap());
+        let option = Some(output.build(&events_loop).unwrap());
         Ok(Self {
             events_loop,
             window: option,

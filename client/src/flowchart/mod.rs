@@ -23,6 +23,7 @@ struct Grid {
     cells_width: f32,
     origin: glm::Vec2,
 }
+
 #[allow(dead_code)]
 const BLOCKED: u32 = u32::max_value();
 #[allow(dead_code)]

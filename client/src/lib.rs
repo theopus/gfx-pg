@@ -43,7 +43,6 @@ pub fn start() {
     let mut eng: rx::run::Engine<()> = rx::run::Engine::default();
 
 
-
     let cube_mesh = {
         let (api, loader, storage) = eng.loader();
         let obj = loader.load_obj("cube").expect("");
@@ -106,10 +105,10 @@ pub fn start() {
                 .build();
             world
                 .create_entity()
-                .with(Rotation{
+                .with(Rotation {
                     x: 180.0,
                     y: 0.0,
-                    z: 0.0
+                    z: 0.0,
                 })
                 .with(Position {
                     x: 0.,

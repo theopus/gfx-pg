@@ -1,22 +1,23 @@
-use crate::wgpu_graphics::pipeline::Pipeline;
-use crate::wgpu_graphics::FrameState;
-use egui_wgpu_backend::epi;
-use crate::egui::CtxRef;
-use egui_wgpu_backend::epi::App;
 use std::sync::{Arc, Mutex};
+
+use egui_wgpu_backend::epi;
+use egui_wgpu_backend::epi::App;
+
+use crate::egui::CtxRef;
 use crate::events::RxEvent;
+use crate::wgpu_graphics::FrameState;
+use crate::wgpu_graphics::pipeline::Pipeline;
 
 pub struct EguiState<T: 'static + Send + Clone> {
     platform: egui_winit_platform::Platform,
     scale_factor: f64,
-    repaint_signal: Arc<ExampleRepaintSignal<T>>
-
+    repaint_signal: Arc<ExampleRepaintSignal<T>>,
 }
 
 pub struct EguiPipeline {
     render_pass: egui_wgpu_backend::RenderPass,
     demo_app: egui_demo_lib::WrapApp,
-    show_demo: bool
+    show_demo: bool,
 }
 
 enum Event {
@@ -35,7 +36,7 @@ impl EguiPipeline {
     pub fn new(device: &wgpu::Device, show_demo: bool) -> Self {
         let mut egui_rpass = egui_wgpu_backend::RenderPass::new(device, wgpu::TextureFormat::Bgra8UnormSrgb);
         let mut demo_app = egui_demo_lib::WrapApp::default();
-        EguiPipeline {render_pass: egui_rpass, demo_app, show_demo}
+        EguiPipeline { render_pass: egui_rpass, demo_app, show_demo }
     }
 
 
@@ -72,15 +73,12 @@ impl EguiPipeline {
             scale_factor: scale as f32,
         };
 
-
-        let paint_commands= egui_state.end_frame();
+        let paint_commands = egui_state.end_frame();
         let paint_jobs = ctx.tessellate(paint_commands);
-
 
         self.render_pass.update_texture(&device, &queue, &ctx.texture());
         self.render_pass.update_user_textures(&device, &queue);
         self.render_pass.update_buffers(device, queue, &paint_jobs, &screen_descriptor);
-
 
         // Record all render passes.
         self.render_pass.execute(
@@ -94,8 +92,6 @@ impl EguiPipeline {
 }
 
 impl<T: Send + Clone> EguiState<T> {
-
-
     pub fn frame(&mut self, scale_factor: f64) -> egui::CtxRef {
         self.scale_factor = scale_factor;
         self.platform.begin_frame();
@@ -119,7 +115,7 @@ impl<T: Send + Clone> EguiState<T> {
             font_definitions: egui::FontDefinitions::default(),
             style: Default::default(),
         });
-        EguiState { platform, scale_factor:  window.scale_factor(), repaint_signal: loop_proxy }
+        EguiState { platform, scale_factor: window.scale_factor(), repaint_signal: loop_proxy }
     }
 }
 

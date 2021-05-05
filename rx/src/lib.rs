@@ -1,10 +1,10 @@
+extern crate bytemuck;
+pub extern crate egui;
 pub extern crate nalgebra as na;
 pub extern crate nalgebra_glm as glm;
 pub extern crate specs;
-pub extern crate winit;
 pub extern crate wgpu;
-extern crate bytemuck;
-pub extern crate egui;
+pub extern crate winit;
 // extern crate epi;
 
 pub mod window;

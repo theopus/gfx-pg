@@ -7,27 +7,26 @@ use std::time::{Duration, Instant};
 use log::{debug, error, info, trace, warn};
 use specs::{DispatcherBuilder, World, WorldExt};
 
-use crate::ecs::{WinitEvents};
-use crate::events::MyEvent;
-use crate::run::Layer;
+use crate::ecs::WinitEvents;
 use crate::events;
+use crate::run::{Layer, FrameUpdate};
 
 pub struct EcsLayer<'a> {
     world: specs::World,
     rated_dispatcher: specs::Dispatcher<'a, 'a>,
     constant_dispatcher: specs::Dispatcher<'a, 'a>,
-    lag: Duration
+    lag: Duration,
 }
 
 const UPD_60_PER_SEC_NANOS: u64 = 16600000;
 const DURATION_PER_UPD: Duration = Duration::from_nanos(UPD_60_PER_SEC_NANOS);
 
 impl<'a, T: Clone + Send + Sync> Layer<T> for EcsLayer<'a> {
-    fn on_update(&mut self, events: &Vec<events::WinitEvent<T>>, elapsed: Duration) {
-        self.lag += elapsed;
+    fn on_update(&mut self, frame: FrameUpdate<T>) {
+        self.lag += frame.elapsed;
         {
             let mut events_resource = self.world.write_resource::<WinitEvents<T>>();
-            for e in events.iter() {
+            for e in frame.events.iter() {
                 events_resource.0.push((*e).clone());
             }
         }
@@ -87,7 +86,7 @@ impl<'a> EcsLayer<'a> {
             world,
             rated_dispatcher: rated_dispatcher.build(),
             constant_dispatcher: constant_dispatcher.build(),
-            lag: Duration::new(0, 0)
+            lag: Duration::new(0, 0),
         }
     }
 }
