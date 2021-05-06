@@ -25,12 +25,6 @@ pub mod base_systems;
 pub mod layer;
 
 
-#[derive(Component, Debug)]
-#[storage(VecStorage)]
-pub struct Render {
-    pub mesh: MeshPtr,
-}
-
 #[derive(Default, Debug)]
 pub struct WinitEvents<T: 'static + Clone + Send>(pub Vec<events::WinitEvent<T>>);
 

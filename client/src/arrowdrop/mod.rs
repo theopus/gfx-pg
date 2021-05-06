@@ -1,29 +1,45 @@
-use rx::assets::MeshPtr;
-use rx::ecs::{Position, Render, Rotation, Transformation};
-use rx::specs::Builder;
-use rx::specs::World;
-use rx::specs::WorldExt;
+use rx::glm;
+use rx::specs::{Component, prelude::*};
 
-pub fn create(world: &mut World, mesh_ptr: MeshPtr) {
-    for v in 0..7 {
-        for h in 0..7 {
-            world.
-                create_entity()
-                .with(Rotation {
-                    x: 0.0,
-                    y: 0.0,
-                    z: 0.0,
-                })
-                .with(Position {
-                    x: h as f32 * 3.0,
-                    y: 5.0,
-                    z: -50.0 - (v as f32 * 3.0),
-                })
-                .with(Transformation::default())
-                .with(Render {
-                    mesh: mesh_ptr.clone(),
-                })
-                .build();
-        }
+#[derive(Component, Debug)]
+#[storage(VecStorage)]
+pub struct Normal {
+    vec: glm::Vec3,
+}
+
+impl Default for Normal {
+    fn default() -> Self {
+        Self { vec: glm::vec3(0., 0., 0.) }
     }
+}
+
+
+#[derive(Component, Debug)]
+#[storage(VecStorage)]
+pub struct Grid {
+    cells: Vec<Vec<bool>>,
+}
+
+impl Grid {
+    // pub fn get_hit(
+    //     self,
+    //     point_vec: glm::Vec3,
+    //     plane_normal: glm::Vec3
+    // ) -> (usize, usize) {
+    //
+    // }
+}
+
+
+pub fn create((mut world, mut r, mut c): rx::EcsInitTuple) -> rx::EcsInitTuple {
+    world.register::<Normal>();
+    world.register::<Grid>();
+    world.create_entity()
+        .with(rx::Position::default())
+        .with(rx::Rotation::default())
+        .with(Normal::default())
+        .build();
+
+
+    (world, r, c)
 }

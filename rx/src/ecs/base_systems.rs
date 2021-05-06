@@ -13,13 +13,63 @@ pub mod world3d {
     use crate::ecs::base_systems::camera3d::{
         ActiveCamera, CameraTarget, init as init_cam, TargetedCamera, ViewProjection,
     };
+    use crate::assets::MeshPtr;
+    use std::sync::mpsc::Sender;
+    use crate::graphics_api::{DrawCmd, RenderCommand};
+
+
+    #[derive(Component, Debug)]
+    #[storage(VecStorage)]
+    pub struct Render {
+        pub mesh: MeshPtr,
+    }
+
+    pub struct RenderSubmitSystem {
+        send_draw: Sender<DrawCmd>,
+        send_render: Sender<RenderCommand>,
+    }
+
+    impl RenderSubmitSystem {
+        pub fn new(send_draw: Sender<DrawCmd>, send_render: Sender<RenderCommand>) -> Self {
+            Self {
+                send_draw,
+                send_render,
+            }
+        }
+    }
+
+    impl<'a> System<'a> for RenderSubmitSystem {
+        type SystemData = (
+            Read<'a, ActiveCamera>,
+            ReadStorage<'a, TargetedCamera>,
+            ReadStorage<'a, Transformation>,
+            WriteStorage<'a, Render>,
+        );
+
+        fn run(&mut self, (active, camera, transformation, mut render): Self::SystemData) {
+            let cam = camera.get(active.0.unwrap()).unwrap();
+            self.send_render
+                .send(RenderCommand::PushView(cam.view.clone() as glm::Mat4)).unwrap();
+            for (transformation, render) in (&transformation, &mut render).join() {
+                self.send_draw
+                    .send((
+                        render.mesh.clone(),
+                        transformation.mvp.clone() as glm::Mat4,
+                        transformation.model.clone() as glm::Mat4,
+                    ))
+                    .expect("not able to submit");
+            }
+        }
+    }
+
 
     ///
-        ///                  camera  system
+    ///                  camera  system
     pub type WorldInit = (Entity, TransformationSystem);
 
     pub fn init(world: &mut World, camera_at: &glm::Vec3) -> WorldInit {
         info!("Init world3d_system");
+        world.register::<Render>();
         world.register::<Rotation>();
         world.register::<Position>();
         world.register::<Transformation>();

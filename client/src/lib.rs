@@ -12,9 +12,9 @@ extern crate serde_json;
 use log::{debug, error, info, trace, warn};
 
 pub use rx;
-use rx::{glm, run};
-use rx::ecs::{Render, SelectedEntity, Transformation, Velocity, WinitEvents};
-use rx::ecs::base_systems::world3d::init;
+pub use rx::*;
+pub use rx::{glm, run};
+use rx::ecs::base_systems::world3d::{init};
 use rx::ecs::layer::EcsInitTuple;
 use rx::specs::Builder;
 use rx::specs::WorldExt;
@@ -77,7 +77,6 @@ pub fn start() {
 
     let (draw, redner) = eng.renderer().queue();
 
-    let render_sys = systems::generic::RenderSubmitSystem::new(draw, redner);
     let input_sys = input_sys::InputTestSystem::default();
     let move_sys = systems::test::MoveSystem;
     let mouse_sys = systems::test::MoveClickSystem::default();
@@ -85,7 +84,6 @@ pub fn start() {
     let ecs_layer = rx::ecs::layer::EcsLayer::new(
         move |(mut world, mut r_dispatcher, mut c_dispatcher): EcsInitTuple<'static>| {
             use rx::ecs::{CameraTarget, Position, Rotation};
-            world.register::<Render>();
             world.register::<Velocity>();
             world.register::<Follower>();
 
@@ -134,7 +132,6 @@ pub fn start() {
             world.insert(WinitEvents::default() as WinitEvents<()>);
             world.insert(CameraTarget(Some(player)));
 
-            arrowdrop::create(&mut world, cube_mesh.clone());
             r_dispatcher = r_dispatcher
                 .with(systems::test::FollowingSystem, "follow_sys", &[])
                 //
@@ -144,8 +141,9 @@ pub fn start() {
 
             c_dispatcher = c_dispatcher
                 .with(transform_sys, "tsm_sys", &[])
-                .with_thread_local(render_sys);
-            return (world, r_dispatcher, c_dispatcher);
+                .with_thread_local(rx::RenderSubmitSystem::new(draw, redner));
+
+            return arrowdrop::create((world, r_dispatcher, c_dispatcher));
         },
     );
 
