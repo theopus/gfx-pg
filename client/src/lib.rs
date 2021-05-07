@@ -82,7 +82,7 @@ pub fn start() {
     let mouse_sys = systems::test::MoveClickSystem::default();
 
     let ecs_layer = rx::ecs::layer::EcsLayer::new(
-        move |(mut world, mut r_dispatcher, mut c_dispatcher): EcsInitTuple<'static>| {
+        Box::new(move |(mut world, mut r_dispatcher, mut c_dispatcher): EcsInitTuple| {
             use rx::ecs::{CameraTarget, Position, Rotation};
             world.register::<Velocity>();
             world.register::<Follower>();
@@ -132,19 +132,16 @@ pub fn start() {
             world.insert(WinitEvents::default() as WinitEvents<()>);
             world.insert(CameraTarget(Some(player)));
 
-            r_dispatcher = r_dispatcher
-                .with(systems::test::FollowingSystem, "follow_sys", &[])
+            r_dispatcher.add(systems::test::FollowingSystem, "follow_sys", &[]);
                 //
-                .with(input_sys, "in_tst_sys", &[])
-                .with(move_sys, "move_sys", &[])
-                .with(mouse_sys, "mouse_sys", &[])
-                .with(transform_sys, "tsm_sys", &[]);
+            r_dispatcher.add(input_sys, "in_tst_sys", &[]);
+            r_dispatcher.add(move_sys, "move_sys", &[]);
+            r_dispatcher.add(mouse_sys, "mouse_sys", &[]);
+            r_dispatcher.add(transform_sys, "tsm_sys", &[]);
 
-            c_dispatcher = c_dispatcher
-                .with_thread_local(rx::RenderSubmitSystem::new(draw, redner));
-
-            return arrowdrop::create((world, r_dispatcher, c_dispatcher));
-        },
+            c_dispatcher.add_thread_local(rx::RenderSubmitSystem::new(draw, redner));
+            arrowdrop::create((world, r_dispatcher, c_dispatcher));
+        })
     );
 
     eng.push_layer(ecs_layer);
@@ -172,7 +169,7 @@ pub fn start() {
             elapsed -= std::time::Duration::from_millis(100)
         }
 
-        let _focus = egui::Window::new("info").show(&upd.egui_ctx, |ui| {
+        egui::Window::new("info").show(&upd.egui_ctx, |ui| {
             ui.label(format!("Frame time: {} ms", upd.elapsed.as_millis()));
             ui.label(format!("Frames: {:.2} /sec", frame_rate * 10.));
             ui.label(format!("Size: {}x{}",size_d.width,size_d.height));
@@ -180,3 +177,4 @@ pub fn start() {
     });
     eng.run();
 }
+

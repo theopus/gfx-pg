@@ -1,6 +1,4 @@
 use std::convert::identity;
-
-
 use std::time::{Duration, Instant};
 
 #[allow(unused_imports)]
@@ -8,8 +6,7 @@ use log::{debug, error, info, trace, warn};
 use specs::{DispatcherBuilder, World, WorldExt};
 
 use crate::ecs::WinitEvents;
-
-use crate::run::{Layer, FrameUpdate};
+use crate::run::{FrameUpdate, Layer};
 
 pub struct EcsLayer<'a> {
     world: specs::World,
@@ -56,32 +53,21 @@ impl<'a, T: Clone + Send + Sync> Layer<T> for EcsLayer<'a> {
     }
 }
 
-
-pub type EcsInitTuple<'a> = (World, DispatcherBuilder<'a, 'a>, DispatcherBuilder<'a, 'a>);
-
-pub trait EcsInit<'a> {
-    fn init(self, tuple: EcsInitTuple<'a>) -> EcsInitTuple<'a>;
-}
-
-impl<'a, F> EcsInit<'a> for F where F: FnOnce(EcsInitTuple<'a>) -> EcsInitTuple<'a> {
-    fn init(self, tuple: EcsInitTuple<'a>) -> EcsInitTuple<'a> {
-        self(tuple)
-    }
-}
-
 impl<'a> Default for EcsLayer<'a> {
     fn default() -> Self {
-        EcsLayer::new(identity)
+        EcsLayer::new(Box::new(|_| {}))
     }
 }
 
+pub type EcsInitTuple<'a, 'r> = (&'r mut World, &'r mut DispatcherBuilder<'a, 'a>, &'r mut DispatcherBuilder<'a, 'a>);
+pub type EcsInit<'a> = Box<dyn FnOnce(EcsInitTuple)>;
 
 impl<'a> EcsLayer<'a> {
-    pub fn new<I>(i: I) -> Self where I: EcsInit<'a> {
-        let world: specs::World = specs::WorldExt::new();
-        let rated_dispatcher = specs::DispatcherBuilder::new();
-        let constant_dispatcher = specs::DispatcherBuilder::new();
-        let (world, rated_dispatcher, constant_dispatcher) = i.init((world, rated_dispatcher, constant_dispatcher));
+    pub fn new<'b>(i: EcsInit<'a>) -> Self {
+        let mut world: specs::World = specs::WorldExt::new();
+        let mut rated_dispatcher: DispatcherBuilder<'a, 'a> = specs::DispatcherBuilder::new();
+        let mut constant_dispatcher: DispatcherBuilder<'a, 'a> = specs::DispatcherBuilder::new();
+        i((&mut world, &mut rated_dispatcher, &mut constant_dispatcher));
         Self {
             world,
             rated_dispatcher: rated_dispatcher.build(),
