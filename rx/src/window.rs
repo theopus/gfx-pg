@@ -6,11 +6,11 @@ use winit::{
     window::{Window, WindowBuilder},
 };
 
-use crate::events::RxEvent;
+use crate::events::EngEvent;
 
 #[derive(Debug)]
 pub struct WinitState<T: 'static + Send + Clone> {
-    pub events_loop: EventLoop<RxEvent<T>>,
+    pub events_loop: EventLoop<T>,
     pub window: Option<Window>,
     pub window_builder: Option<WindowBuilder>,
 }

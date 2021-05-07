@@ -31,7 +31,7 @@ pub mod test {
     impl<'a> System<'a> for MoveClickSystem {
         type SystemData = (
             Read<'a, ViewProjection>,
-            Read<'a, WinitEvents<()>>,
+            Read<'a, WinitEvents>,
             Read<'a, ActiveCamera>,
             ReadStorage<'a, TargetedCamera>,
             Read<'a, CameraTarget>,

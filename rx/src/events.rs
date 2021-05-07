@@ -2,14 +2,21 @@
 use winit::event::{DeviceEvent, Event};
 
 #[derive(Debug, Clone)]
-pub enum RxEvent<T: 'static + Send + Clone> {
+pub enum EngEvent<T: 'static + Send + Clone> {
     TestEvent,
     ClientEvent(T),
 }
 
-pub type WinitEvent<T> = winit::event::Event<'static, RxEvent<T>>;
+#[derive(Debug, Clone)]
+pub enum RxEvent<T: 'static + Send + Clone> {
+    TestEvent,
+    ClientEvent(T),
+    WinitEvent(WinitEvent)
+}
 
-pub fn handle_event<T: Clone + Send>(buffer: &mut Vec<WinitEvent<T>>, event: winit::event::Event<RxEvent<T>>) {
+pub type WinitEvent = winit::event::Event<'static, ()>;
+
+pub fn handle_event(buffer: &mut Vec<winit::event::Event<()>>, event: winit::event::Event<()>) {
     match event {
         //forward
         Event::WindowEvent { .. } => { wrap(buffer, event) }
@@ -28,7 +35,7 @@ pub fn handle_event<T: Clone + Send>(buffer: &mut Vec<WinitEvent<T>>, event: win
     }
 }
 
-fn wrap<T: Clone + Send>(buffer: &mut Vec<Event<RxEvent<T>>>, event: Event<RxEvent<T>>) {
+fn wrap(buffer: &mut Vec<winit::event::Event<()>>, event: winit::event::Event<()>) {
     if let Some(e) = event.to_static().as_ref() {
         buffer.push(e.clone());
     }

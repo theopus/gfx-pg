@@ -129,7 +129,7 @@ pub fn start() {
                 .build();
 
             world.insert(SelectedEntity(Some(selected)));
-            world.insert(WinitEvents::default() as WinitEvents<()>);
+            world.insert(WinitEvents::default() as WinitEvents);
             world.insert(CameraTarget(Some(player)));
 
             r_dispatcher.add(systems::test::FollowingSystem, "follow_sys", &[]);
@@ -150,7 +150,7 @@ pub fn start() {
     let mut frame_rate = 0.0;
     let mut elapsed = std::time::Duration::from_millis(0);
     let mut size_d: PhysicalSize<u32> = PhysicalSize { width: 0, height: 0 };
-    eng.push_layer(move |upd: run::FrameUpdate<()>| {
+    eng.push_layer(move |upd: run::FrameUpdate| {
         use rx::egui;
         use rx::winit::event;
         for e in upd.events {

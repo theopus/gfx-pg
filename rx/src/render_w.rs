@@ -75,7 +75,7 @@ impl Renderer {
         self.pipelines.push(Box::new(pipeline));
     }
 
-    pub fn render<T: Send + Clone>(&mut self, ctx: egui::CtxRef, egui_state: &mut gui::EguiState<T>) {
+    pub fn render(&mut self, ctx: egui::CtxRef, egui_state: &mut gui::EguiState) {
         let next_frame = self.wpgu_state.start_frame();
         match next_frame {
             Ok(frame) => {

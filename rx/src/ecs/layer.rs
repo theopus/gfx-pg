@@ -18,11 +18,11 @@ pub struct EcsLayer<'a> {
 const UPD_60_PER_SEC_NANOS: u64 = 16600000;
 const DURATION_PER_UPD: Duration = Duration::from_nanos(UPD_60_PER_SEC_NANOS);
 
-impl<'a, T: Clone + Send + Sync> Layer<T> for EcsLayer<'a> {
-    fn on_update(&mut self, frame: FrameUpdate<T>) {
+impl<'a> Layer for EcsLayer<'a> {
+    fn on_update(&mut self, frame: FrameUpdate) {
         self.lag += frame.elapsed;
         {
-            let mut events_resource = self.world.write_resource::<WinitEvents<T>>();
+            let mut events_resource = self.world.write_resource::<WinitEvents>();
             for e in frame.events.iter() {
                 events_resource.0.push((*e).clone());
             }
@@ -33,7 +33,7 @@ impl<'a, T: Clone + Send + Sync> Layer<T> for EcsLayer<'a> {
             let mut count = 0;
             while self.lag >= DURATION_PER_UPD {
                 self.rated_dispatcher.dispatch(&self.world);
-                let mut events_resource = self.world.write_resource::<WinitEvents<T>>();
+                let mut events_resource = self.world.write_resource::<WinitEvents>();
                 events_resource.0.clear();
                 self.lag -= DURATION_PER_UPD;
                 count += 1;

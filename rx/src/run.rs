@@ -7,8 +7,8 @@ use winit::event::{Event, WindowEvent};
 use winit::event_loop::{ControlFlow, EventLoopWindowTarget};
 
 use crate::assets::{AssetsLoader, AssetsStorage};
-use crate::events;
-use crate::events::RxEvent;
+use crate::{events, WinitEvent};
+use crate::events::{EngEvent, RxEvent};
 #[cfg(feature = "hal")]
 use crate::graphics::wrapper::ApiWrapper;
 use crate::gui::ExampleRepaintSignal;
@@ -18,9 +18,10 @@ use crate::wgpu_graphics::pipeline::Pipeline;
 use crate::window::WinitState;
 
 pub struct Engine<T: 'static + Send + Clone> {
-    winit_state: WinitState<T>,
-    layers: Vec<Box<dyn Layer<T>>>,
+    winit_state: WinitState<()>,
+    layers: Vec<Box<dyn Layer>>,
     renderer: Renderer,
+    channel: (crossbeam_channel::Sender<RxEvent<T>>, crossbeam_channel::Receiver<RxEvent<T>>)
 }
 
 struct Test;
@@ -33,12 +34,14 @@ impl Pipeline for Test {
 
 impl<T: 'static + Send + Clone> Default for Engine<T> {
     fn default() -> Self {
-        let winit_state: WinitState<T> = Default::default();
+        let winit_state: WinitState<()> = Default::default();
         let renderer = Renderer::new(winit_state.window.as_ref().unwrap()).unwrap();
+        let channel = crossbeam_channel::unbounded();
         Self {
             winit_state,
             layers: Default::default(),
             renderer,
+            channel
         }
     }
 }
@@ -65,7 +68,7 @@ impl<T: Send + Clone> Engine<T> {
     }
 
     pub fn run(self) {
-        let (events_loop, window): (winit::event_loop::EventLoop<RxEvent<T>>, winit::window::Window) = {
+        let (events_loop, window): (winit::event_loop::EventLoop<()>, winit::window::Window) = {
             let WinitState {
                 events_loop,
                 window,
@@ -77,25 +80,22 @@ impl<T: Send + Clone> Engine<T> {
         // imgui.io_mut().update_delta_time();
         let mut layers = self.layers;
         let mut renderer = self.renderer;
-        let mut events: Vec<events::WinitEvent<T>> = Vec::new();
+        let mut events: Vec<events::WinitEvent> = Vec::new();
         let run_start = Instant::now();
         let mut last = Instant::now();
 
-        let repaint_signal: Arc<ExampleRepaintSignal<T>> = std::sync::Arc::new(ExampleRepaintSignal(std::sync::Mutex::new(
+        let repaint_signal: Arc<ExampleRepaintSignal<()>> = std::sync::Arc::new(ExampleRepaintSignal(std::sync::Mutex::new(
             events_loop.create_proxy(),
         )));
 
         let mut egui_state = crate::gui::EguiState::new(&window, repaint_signal);
 
-
-        // events.push(MyEvent::Resized(800, 600));
-        
         let size = window.inner_size();
         events.push(Event::WindowEvent { window_id: window.id(), event: WindowEvent::Resized(size) });
 
         info!("Start!");
-        let run_loop = move |o_event: Event<RxEvent<T>>,
-                             _: &EventLoopWindowTarget<RxEvent<T>>,
+        let run_loop = move |o_event: Event<()>,
+                             _: &EventLoopWindowTarget<()>,
                              control_flow: &mut ControlFlow| {
             //Always poll
             *control_flow = ControlFlow::Poll;
@@ -146,8 +146,8 @@ impl<T: Send + Clone> Engine<T> {
     }
 
     fn on_update(
-        layers: &mut Vec<Box<dyn Layer<T>>>,
-        events: &mut Vec<events::WinitEvent<T>>,
+        layers: &mut Vec<Box<dyn Layer>>,
+        events: &mut Vec<events::WinitEvent>,
         elapsed: Duration,
         egui_ctx: egui::CtxRef,
     ) {
@@ -165,29 +165,28 @@ impl<T: Send + Clone> Engine<T> {
 
     pub fn push_layer<L>(&mut self, layer: L)
         where
-            L: Layer<T> + 'static,
+            L: Layer + 'static,
     {
         self.layers.push(Box::new(layer));
     }
 }
 
 
-pub struct FrameUpdate<'a, T: 'static + Clone + Send> {
-    pub events: &'a Vec<events::WinitEvent<T>>,
+pub struct FrameUpdate<'a> {
+    pub events: &'a Vec<events::WinitEvent>,
     pub elapsed: Duration,
     pub egui_ctx: egui::CtxRef,
 }
 
-pub trait Layer<T: Clone + Send> {
-    fn on_update(&mut self, upd: FrameUpdate<T>);
+pub trait Layer {
+    fn on_update(&mut self, upd: FrameUpdate);
     fn name(&self) -> &'static str;
 }
 
-impl<F, T: Clone + Send> Layer<T> for F
-    where
-        F: FnMut(FrameUpdate<T>),
+impl<F> Layer for F
+    where F: FnMut(FrameUpdate)
 {
-    fn on_update(&mut self, upd: FrameUpdate<T>) {
+    fn on_update(&mut self, upd: FrameUpdate) {
         self(upd)
     }
 

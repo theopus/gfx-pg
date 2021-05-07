@@ -5,6 +5,7 @@ pub extern crate nalgebra_glm as glm;
 pub extern crate specs;
 pub extern crate wgpu;
 pub extern crate winit;
+pub extern crate crossbeam_channel;
 
 pub mod window;
 pub mod utils;
@@ -40,5 +41,5 @@ pub use ecs::{
 
 pub use events::{
     WinitEvent,
-    RxEvent
+    EngEvent
 };

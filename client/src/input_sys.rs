@@ -27,7 +27,7 @@ pub struct InputTestSystem {
 
 impl<'a> System<'a> for InputTestSystem {
     type SystemData = (
-        Read<'a, WinitEvents<()>>,
+        Read<'a, WinitEvents>,
         Read<'a, ActiveCamera>,
         Read<'a, CameraTarget>,
         WriteStorage<'a, Position>,

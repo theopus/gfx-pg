@@ -4,16 +4,16 @@ use egui_wgpu_backend::epi;
 use egui_wgpu_backend::epi::App;
 
 use crate::egui::CtxRef;
-use crate::events::RxEvent;
+use crate::events::EngEvent;
 use crate::wgpu_graphics::FrameState;
 use itertools::Itertools;
 
 
 
-pub struct EguiState<T: 'static + Send + Clone> {
+pub struct EguiState {
     platform: egui_winit_platform::Platform,
     scale_factor: f64,
-    repaint_signal: Arc<ExampleRepaintSignal<T>>,
+    repaint_signal: Arc<ExampleRepaintSignal<()>>,
 }
 
 pub struct EguiPipeline {
@@ -22,11 +22,11 @@ pub struct EguiPipeline {
     show_demo: bool,
 }
 
-pub struct ExampleRepaintSignal<T: 'static + Send + Clone>(pub std::sync::Mutex<winit::event_loop::EventLoopProxy<RxEvent<T>>>);
+pub struct ExampleRepaintSignal<T: 'static + Send + Clone>(pub std::sync::Mutex<winit::event_loop::EventLoopProxy<T>>);
 
-impl<T: 'static + Send + Clone> epi::RepaintSignal for ExampleRepaintSignal<T> {
+impl epi::RepaintSignal for ExampleRepaintSignal<()> {
     fn request_repaint(&self) {
-        self.0.lock().unwrap().send_event(RxEvent::TestEvent).ok();
+        self.0.lock().unwrap().send_event(()).ok();
     }
 }
 
@@ -38,7 +38,7 @@ impl EguiPipeline {
     }
 
 
-    pub fn process<T: Send + Clone>(&mut self, state: FrameState, ctx: CtxRef, egui_state: &mut EguiState<T>) {
+    pub fn process(&mut self, state: FrameState, ctx: CtxRef, egui_state: &mut EguiState) {
         let FrameState {
             frame,
             encoder,
@@ -105,7 +105,7 @@ impl EguiPipeline {
     }
 }
 
-impl<T: Send + Clone> EguiState<T> {
+impl EguiState {
     pub fn frame(&mut self, scale_factor: f64, start: &std::time::Instant) -> egui::CtxRef {
         self.scale_factor = scale_factor;
         self.platform.update_time(start.elapsed().as_secs_f64());
@@ -113,7 +113,7 @@ impl<T: Send + Clone> EguiState<T> {
         self.platform.context().clone()
     }
 
-    pub fn handle_event(&mut self, e: &winit::event::Event<RxEvent<T>>) {
+    pub fn handle_event(&mut self, e: &winit::event::Event<()>) {
         self.platform.handle_event(e);
     }
 
@@ -121,7 +121,7 @@ impl<T: Send + Clone> EguiState<T> {
         let (_output, paint_commands) = self.platform.end_frame();
         paint_commands
     }
-    pub fn new(window: &winit::window::Window, loop_proxy: Arc<ExampleRepaintSignal<T>>) -> Self {
+    pub fn new(window: &winit::window::Window, loop_proxy: Arc<ExampleRepaintSignal<()>>) -> Self {
         let size = window.inner_size();
         let platform = egui_winit_platform::Platform::new(egui_winit_platform::PlatformDescriptor {
             physical_width: size.width as u32,

@@ -22,7 +22,7 @@ pub mod layer;
 
 
 #[derive(Default, Debug)]
-pub struct WinitEvents<T: 'static + Clone + Send>(pub Vec<events::WinitEvent<T>>);
+pub struct WinitEvents(pub Vec<events::WinitEvent>);
 
 #[derive(Default)]
 pub struct Egui(pub Option<egui::CtxRef>);
