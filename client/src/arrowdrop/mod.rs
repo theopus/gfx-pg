@@ -31,7 +31,7 @@ impl Grid {
 }
 
 
-pub fn create((mut world, mut r, mut c): rx::EcsInitTuple) -> rx::EcsInitTuple {
+pub fn create((mut world, r, c): rx::EcsInitTuple) -> rx::EcsInitTuple {
     world.register::<Normal>();
     world.register::<Grid>();
     world.create_entity()

@@ -7,8 +7,8 @@ use crate::egui::CtxRef;
 use crate::events::RxEvent;
 use crate::wgpu_graphics::FrameState;
 use itertools::Itertools;
-use egui::style::{DebugOptions, Selection};
-use egui::Stroke;
+
+
 
 pub struct EguiState<T: 'static + Send + Clone> {
     platform: egui_winit_platform::Platform,
@@ -73,7 +73,7 @@ impl EguiPipeline {
 
 
         let paint_commands = egui_state.end_frame();
-        let mut paint_jobs = egui_state.platform.context().tessellate(paint_commands);
+        let paint_jobs = egui_state.platform.context().tessellate(paint_commands);
 
         // paint_jobs = paint_jobs.into_iter().take(4).collect_vec();
         #[allow(unused_imports)]

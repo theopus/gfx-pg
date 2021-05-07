@@ -16,7 +16,7 @@ pub use base_systems::world3d::{
     Transformation,
 };
 
-use crate::assets::MeshPtr;
+
 use crate::events;
 
 

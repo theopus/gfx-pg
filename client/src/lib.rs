@@ -21,8 +21,8 @@ use rx::specs::WorldExt;
 
 use crate::systems::test::Follower;
 use rx::winit::dpi::PhysicalSize;
-use rx::winit::event::Event;
-use rx::events::RxEvent;
+
+
 
 mod flowchart;
 mod generatin;
@@ -47,7 +47,7 @@ pub fn start() {
     let mut eng: rx::run::Engine<()> = rx::run::Engine::default();
 
 
-    let cube_mesh = {
+    let _cube_mesh = {
         let (api, loader, storage) = eng.loader();
         let obj = loader.load_obj("cube").expect("");
         storage.load_mesh(api, obj).expect("")
@@ -137,10 +137,10 @@ pub fn start() {
                 //
                 .with(input_sys, "in_tst_sys", &[])
                 .with(move_sys, "move_sys", &[])
-                .with(mouse_sys, "mouse_sys", &[]);
+                .with(mouse_sys, "mouse_sys", &[])
+                .with(transform_sys, "tsm_sys", &[]);
 
             c_dispatcher = c_dispatcher
-                .with(transform_sys, "tsm_sys", &[])
                 .with_thread_local(rx::RenderSubmitSystem::new(draw, redner));
 
             return arrowdrop::create((world, r_dispatcher, c_dispatcher));
@@ -167,12 +167,12 @@ pub fn start() {
         elapsed += upd.elapsed;
         frames+=1;
         if elapsed >= std::time::Duration::from_millis(100) {
-            frame_rate = (frames as f32 * 0.5 + frame_rate * 0.5);
+            frame_rate = frames as f32 * 0.5 + frame_rate * 0.5;
             frames = 0;
             elapsed -= std::time::Duration::from_millis(100)
         }
 
-        let mut focus = egui::Window::new("info").show(&upd.egui_ctx, |ui| {
+        let _focus = egui::Window::new("info").show(&upd.egui_ctx, |ui| {
             ui.label(format!("Frame time: {} ms", upd.elapsed.as_millis()));
             ui.label(format!("Frames: {:.2} /sec", frame_rate * 10.));
             ui.label(format!("Size: {}x{}",size_d.width,size_d.height));

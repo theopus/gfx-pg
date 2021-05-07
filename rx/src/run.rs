@@ -78,7 +78,7 @@ impl<T: Send + Clone> Engine<T> {
         let mut layers = self.layers;
         let mut renderer = self.renderer;
         let mut events: Vec<events::WinitEvent<T>> = Vec::new();
-        let mut run_start = Instant::now();
+        let run_start = Instant::now();
         let mut last = Instant::now();
 
         let repaint_signal: Arc<ExampleRepaintSignal<T>> = std::sync::Arc::new(ExampleRepaintSignal(std::sync::Mutex::new(
@@ -89,7 +89,7 @@ impl<T: Send + Clone> Engine<T> {
 
 
         // events.push(MyEvent::Resized(800, 600));
-        use winit::dpi::PhysicalSize;
+        
         let size = window.inner_size();
         events.push(Event::WindowEvent { window_id: window.id(), event: WindowEvent::Resized(size) });
 

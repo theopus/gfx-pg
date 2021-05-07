@@ -132,7 +132,7 @@ struct InstanceDraw {
 
 impl Pipeline for PipelineV0 {
     fn process(&mut self, state: FrameState) {
-        let FrameState { target_texture, frame, encoder, depth_texture, mem, queue, .. } = state;
+        let FrameState { target_texture: _, frame, encoder, depth_texture, mem, queue, .. } = state;
         encoder.push_debug_group("pipeline_v0");
         let mut draw_cmds = self.prepare_instances(queue, &mem.instanced_buffer);
         {
