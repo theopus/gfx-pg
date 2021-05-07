@@ -15,6 +15,7 @@ pub use base_systems::world3d::{
 };
 
 use crate::events;
+use crate::events::RxEvent;
 
 pub mod base_systems;
 
@@ -26,6 +27,33 @@ pub struct WinitEvents(pub Vec<events::WinitEvent>);
 
 #[derive(Default)]
 pub struct Egui(pub Option<egui::CtxRef>);
+
+pub type EventSender<T> = Option<crossbeam_channel::Sender<RxEvent<T>>>;
+pub type EventReceiver<T> = Option<crossbeam_channel::Receiver<RxEvent<T>>>;
+
+#[derive(Default)]
+pub struct EventChannel<T: 'static + Send + Clone> {
+    pub s: EventSender<T>,
+    pub r: EventReceiver<T>,
+}
+
+/*
+    Events setup
+
+    fn setup(&mut self, world: &mut specs::World) {
+        use rx::specs::SystemData;
+        Self::SystemData::setup(world);
+        let rs = rx::ecs::fetch_events_channel::<()>(world);
+    }
+ */
+
+pub fn fetch_events_channel<T: 'static + Send + Clone>(world: &mut specs::World) -> (EventSender<T>, EventReceiver<T>) {
+    if let Some(channel) = world.try_fetch::<EventChannel<T>>() {
+        return (channel.s.clone(), channel.r.clone());
+    }
+    (None, None)
+}
+
 
 #[derive(Default)]
 pub struct SelectedEntity(pub Option<Entity>);

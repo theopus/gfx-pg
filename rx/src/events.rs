@@ -1,5 +1,11 @@
 
 use winit::event::{DeviceEvent, Event};
+use crossbeam_channel::Sender;
+use crate::crossbeam_channel::TrySendError;
+
+#[allow(unused_imports)]
+use log::{debug, error, info, trace, warn};
+
 
 #[derive(Debug, Clone)]
 pub enum EngEvent<T: 'static + Send + Clone> {
@@ -16,27 +22,31 @@ pub enum RxEvent<T: 'static + Send + Clone> {
 
 pub type WinitEvent = winit::event::Event<'static, ()>;
 
-pub fn handle_event(buffer: &mut Vec<winit::event::Event<()>>, event: winit::event::Event<()>) {
-    match event {
+pub fn handle_event<T: 'static + Send + Clone>(sender: &Sender<RxEvent<T>>, buffer: &mut Vec<winit::event::Event<()>>, event: winit::event::Event<()>) {
+    let e = match event {
         //forward
-        Event::WindowEvent { .. } => { wrap(buffer, event) }
+        Event::WindowEvent { .. } => { wrap(event) }
         //for raw mouse move
-        Event::DeviceEvent { event: DeviceEvent::MouseMotion { .. }, .. } => { wrap(buffer, event) }
-        Event::UserEvent(_) => { wrap(buffer, event) }
+        Event::DeviceEvent { event: DeviceEvent::MouseMotion { .. }, .. } => { wrap(event) }
+        Event::UserEvent(_) => { wrap(event)}
         //skip
-        Event::NewEvents(_) => {}
-        Event::Suspended => {}
-        Event::Resumed => {}
-        Event::MainEventsCleared => {}
-        Event::RedrawRequested(_) => {}
-        Event::RedrawEventsCleared => {}
-        Event::LoopDestroyed => {}
-        _ => {}
+        Event::NewEvents(_) => None,
+        Event::Suspended => None,
+        Event::Resumed => None,
+        Event::MainEventsCleared => None,
+        Event::RedrawRequested(_) => None,
+        Event::RedrawEventsCleared => None,
+        Event::LoopDestroyed => None,
+        _ => None
+    };
+    if let Some(w_e) = e {
+        match sender.try_send(RxEvent::WinitEvent(w_e)) {
+            Err(_) => warn!("Throttled event."),
+            _ => {}
+        }
     }
 }
 
-fn wrap(buffer: &mut Vec<winit::event::Event<()>>, event: winit::event::Event<()>) {
-    if let Some(e) = event.to_static().as_ref() {
-        buffer.push(e.clone());
-    }
+fn wrap(event: winit::event::Event<()>) -> Option<Event<'static, ()>> {
+    event.to_static().clone()
 }

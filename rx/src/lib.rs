@@ -36,10 +36,14 @@ pub use ecs::{
     CameraTarget,
     ActiveCamera,
     SelectedEntity,
-    WinitEvents
+    WinitEvents,
+    EventChannel,
+    EventReceiver,
+    EventSender,
 };
 
 pub use events::{
     WinitEvent,
-    EngEvent
+    EngEvent,
+    RxEvent
 };

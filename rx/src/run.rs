@@ -7,7 +7,7 @@ use winit::event::{Event, WindowEvent};
 use winit::event_loop::{ControlFlow, EventLoopWindowTarget};
 
 use crate::assets::{AssetsLoader, AssetsStorage};
-use crate::{events, WinitEvent};
+use crate::{events, WinitEvent, EventSender, EventReceiver};
 use crate::events::{EngEvent, RxEvent};
 #[cfg(feature = "hal")]
 use crate::graphics::wrapper::ApiWrapper;
@@ -77,8 +77,11 @@ impl<T: Send + Clone> Engine<T> {
             (events_loop, window.unwrap())
         };
 
-        // imgui.io_mut().update_delta_time();
+        let (mut sender, mut receiver) = self.channel;
         let mut layers = self.layers;
+        for l in &layers {
+            l.setup(sender, receiver);
+        }
         let mut renderer = self.renderer;
         let mut events: Vec<events::WinitEvent> = Vec::new();
         let run_start = Instant::now();
@@ -140,7 +143,7 @@ impl<T: Send + Clone> Engine<T> {
                 _ => {}
             }
 
-            events::handle_event(&mut events, o_event);
+            events::handle_event(&mut sender,&mut events, o_event);
         };
         events_loop.run(run_loop);
     }
@@ -178,9 +181,12 @@ pub struct FrameUpdate<'a> {
     pub egui_ctx: egui::CtxRef,
 }
 
-pub trait Layer {
+pub trait Layer<T> {
     fn on_update(&mut self, upd: FrameUpdate);
-    fn name(&self) -> &'static str;
+    fn setup(&mut self, sender: EventSender<T>, receiver: EventReceiver<T>){}
+    fn name(&self) -> &'static str  {
+        "stub"
+    }
 }
 
 impl<F> Layer for F

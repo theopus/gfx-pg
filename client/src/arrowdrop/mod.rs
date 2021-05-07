@@ -1,9 +1,10 @@
 use rx::{
+    crossbeam_channel,
     glm,
     specs,
-    specs::{Component, prelude::*}
+    specs::{Accessor, Builder, Component, EntityBuilder, Join, VecStorage, WorldExt},
 };
-use crate::specs::shred::DynamicSystemData;
+use rx::events::RxEvent;
 
 #[derive(Component, Debug)]
 #[storage(VecStorage)]
@@ -24,23 +25,31 @@ pub struct Grid {
     cells: Vec<Vec<bool>>,
 }
 
-struct GridSystem;
+struct GridSystem {
+    sender: Option<crossbeam_channel::Sender<RxEvent<()>>>,
+    receiver: Option<crossbeam_channel::Receiver<RxEvent<()>>>,
+}
+
 
 impl<'a> specs::System<'a> for GridSystem {
     type SystemData = (
-        WriteStorage<'a, Grid>,
-        ReadStorage<'a, Normal>,
-        ReadStorage<'a, rx::Rotation>
+        specs::WriteStorage<'a, Grid>,
+        specs::ReadStorage<'a, Normal>,
+        specs::ReadStorage<'a, rx::Rotation>
     );
 
     fn run(&mut self, (mut grid_st, normal_st, rot_st): Self::SystemData) {
-        for i in (&mut grid_st, &normal_st, &rot_st).join() {
+        for i in (&mut grid_st, &normal_st, &rot_st).join() {}
+    }
 
-        }
+    fn setup(&mut self, world: &mut specs::World) {
+        use rx::specs::SystemData;
+        Self::SystemData::setup(world);
+        let rs = rx::ecs::fetch_events_channel::<()>(world);
     }
 }
 
-pub fn create((mut world, r, c): rx::EcsInitTuple){
+pub fn create((mut world, r, c): rx::EcsInitTuple) {
     world.register::<Normal>();
     world.register::<Grid>();
 
