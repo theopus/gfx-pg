@@ -140,8 +140,7 @@ pub fn start() {
             r_dispatcher.add(transform_sys, "tsm_sys", &[]);
 
             c_dispatcher.add_thread_local(rx::RenderSubmitSystem::new(draw, redner));
-
-            // return arrowdrop::create((world, r_dispatcher, c_dispatcher));
+            arrowdrop::create((world, r_dispatcher, c_dispatcher));
         })
     );
 
@@ -170,7 +169,7 @@ pub fn start() {
             elapsed -= std::time::Duration::from_millis(100)
         }
 
-        let _focus = egui::Window::new("info").show(&upd.egui_ctx, |ui| {
+        egui::Window::new("info").show(&upd.egui_ctx, |ui| {
             ui.label(format!("Frame time: {} ms", upd.elapsed.as_millis()));
             ui.label(format!("Frames: {:.2} /sec", frame_rate * 10.));
             ui.label(format!("Size: {}x{}",size_d.width,size_d.height));
@@ -178,3 +177,4 @@ pub fn start() {
     });
     eng.run();
 }
+

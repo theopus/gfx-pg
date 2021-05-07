@@ -1,6 +1,4 @@
 use std::convert::identity;
-
-
 use std::time::{Duration, Instant};
 
 #[allow(unused_imports)]
@@ -8,8 +6,7 @@ use log::{debug, error, info, trace, warn};
 use specs::{DispatcherBuilder, World, WorldExt};
 
 use crate::ecs::WinitEvents;
-
-use crate::run::{Layer, FrameUpdate};
+use crate::run::{FrameUpdate, Layer};
 
 pub struct EcsLayer<'a> {
     world: specs::World,
@@ -58,14 +55,15 @@ impl<'a, T: Clone + Send + Sync> Layer<T> for EcsLayer<'a> {
 
 impl<'a> Default for EcsLayer<'a> {
     fn default() -> Self {
-        EcsLayer::new( Box::new(|_|{}))
+        EcsLayer::new(Box::new(|_| {}))
     }
 }
 
 pub type EcsInitTuple<'a, 'r> = (&'r mut World, &'r mut DispatcherBuilder<'a, 'a>, &'r mut DispatcherBuilder<'a, 'a>);
 pub type EcsInit<'a> = Box<dyn FnOnce(EcsInitTuple)>;
+
 impl<'a> EcsLayer<'a> {
-    pub fn new<'b>(i: EcsInit<'a>) -> Self  {
+    pub fn new<'b>(i: EcsInit<'a>) -> Self {
         let mut world: specs::World = specs::WorldExt::new();
         let mut rated_dispatcher: DispatcherBuilder<'a, 'a> = specs::DispatcherBuilder::new();
         let mut constant_dispatcher: DispatcherBuilder<'a, 'a> = specs::DispatcherBuilder::new();

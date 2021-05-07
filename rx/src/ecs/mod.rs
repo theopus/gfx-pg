@@ -1,5 +1,3 @@
-
-
 use glm::Vec3;
 #[allow(unused_imports)]
 use log::{debug, error, info, trace, warn};
@@ -16,9 +14,7 @@ pub use base_systems::world3d::{
     Transformation,
 };
 
-
 use crate::events;
-
 
 pub mod base_systems;
 
@@ -27,6 +23,9 @@ pub mod layer;
 
 #[derive(Default, Debug)]
 pub struct WinitEvents<T: 'static + Clone + Send>(pub Vec<events::WinitEvent<T>>);
+
+#[derive(Default)]
+pub struct Egui(pub Option<egui::CtxRef>);
 
 #[derive(Default)]
 pub struct SelectedEntity(pub Option<Entity>);
