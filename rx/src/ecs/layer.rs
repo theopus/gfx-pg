@@ -3,11 +3,13 @@ use std::time::{Duration, Instant};
 
 #[allow(unused_imports)]
 use log::{debug, error, info, trace, warn};
-use specs::{DispatcherBuilder, World, WorldExt};
+use specs::{DispatcherBuilder, shrev::EventChannel, World, WorldExt};
 
 use crate::ecs::WinitEvents;
-use crate::run::{FrameUpdate, Layer};
 use crate::glm::e;
+use crate::run::{FrameUpdate, Layer};
+use crate::RxEvent;
+use crate::winit::event_loop::EventLoopProxy;
 
 pub struct EcsLayer<'a> {
     world: specs::World,
@@ -19,53 +21,38 @@ pub struct EcsLayer<'a> {
 const UPD_60_PER_SEC_NANOS: u64 = 16600000;
 const DURATION_PER_UPD: Duration = Duration::from_nanos(UPD_60_PER_SEC_NANOS);
 
-impl<'a, T: Clone + Send + Sync> Layer<T> for EcsLayer<'a> {
+impl<'a, T: 'static + Clone + Send + Sync> Layer<T> for EcsLayer<'a> {
     fn on_update(&mut self, frame: FrameUpdate<T>) {
         self.lag += frame.elapsed;
 
         {
-
-            let mut events_resource = &mut self.world.write_resource::<WinitEvents<T>>().0;
-            if events_resource.is_none() {
-                info!("None");
-                events_resource.replace(Vec::new());
-            }
-
-            for e in frame.events.iter() {
-                events_resource.as_mut().unwrap().push((*e).clone());
-            }
+            self.world.write_resource::<EventChannel<RxEvent<T>>>()
+                .iter_write(frame.events
+                    .into_iter()
+                    .map(|e| { e.clone() }))
         }
         //rated
-
-        let mut tmp = None;
-
         {
             let start = Instant::now();
             let mut count = 0;
             while self.lag >= DURATION_PER_UPD {
                 self.rated_dispatcher.dispatch(&self.world);
-                let mut events_resource = &mut self.world.write_resource::<WinitEvents<T>>().0;
-                if tmp.is_none() {
-                    tmp = events_resource.take()
-                }
                 self.lag -= DURATION_PER_UPD;
                 count += 1;
             }
             debug!("rated dispatch took {:?}, {:?} times", Instant::now() - start, count);
-        }
-        let mut flag = false;
-        if tmp.is_some() {
-            self.world.write_resource::<WinitEvents<T>>().0 = tmp;
-            flag = true;
         }
         {
             let start = Instant::now();
             self.constant_dispatcher.dispatch(&self.world);
             debug!("constant dispatcher took {:?}", Instant::now() - start);
         }
-        if flag {
-            self.world.write_resource::<WinitEvents<T>>().0.as_mut().unwrap().clear();
-        }
+    }
+
+    fn setup(&mut self) {
+        self.world.insert(specs::shrev::EventChannel::new() as specs::shrev::EventChannel<RxEvent<T>>);
+        self.rated_dispatcher.setup(&mut self.world);
+        self.constant_dispatcher.setup(&mut self.world);
     }
 
     fn name(&self) -> &'static str {

@@ -40,9 +40,31 @@ impl<'a> specs::System<'a> for GridSystem {
     }
 }
 
-pub fn create((mut world, r, c): rx::EcsInitTuple){
+pub fn create((mut world, r, c): rx::EcsInitTuple, mesh_ptr: rx::MeshPtr){
     world.register::<Normal>();
     world.register::<Grid>();
+
+    for v in 0..7 {
+        for h in 0..7 {
+            world.
+                create_entity()
+                .with(rx::Rotation {
+                    x: 0.0,
+                    y: 0.0,
+                    z: 0.0,
+                })
+                .with(rx::Position {
+                    x: h as f32 * 3.0,
+                    y: 5.0,
+                    z: -50.0 - (v as f32 * 3.0),
+                })
+                .with(rx::Transformation::default())
+                .with(rx::Render {
+                    mesh: mesh_ptr.clone(),
+                })
+                .build();
+        }
+    }
 
     world.create_entity()
         .with(rx::Position::default())

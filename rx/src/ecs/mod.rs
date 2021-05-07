@@ -1,7 +1,7 @@
 use glm::Vec3;
 #[allow(unused_imports)]
 use log::{debug, error, info, trace, warn};
-use specs::{Component, Entity, VecStorage};
+use specs::{Component, Entity, VecStorage, shrev::EventChannel};
 
 pub use base_systems::{
     camera3d::ActiveCamera,

@@ -38,6 +38,10 @@ pub use ecs::{
     WinitEvents
 };
 
+pub use assets::{
+    MeshPtr
+};
+
 pub use events::{
     WinitEvent,
     RxEvent

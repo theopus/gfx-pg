@@ -14,15 +14,14 @@ use log::{debug, error, info, trace, warn};
 pub use rx;
 pub use rx::*;
 pub use rx::{glm, run};
-use rx::ecs::base_systems::world3d::{init};
+use rx::ecs::base_systems::world3d::init;
 use rx::ecs::layer::EcsInitTuple;
 use rx::specs::Builder;
 use rx::specs::WorldExt;
-
-use crate::systems::test::Follower;
 use rx::winit::dpi::PhysicalSize;
 
-
+use crate::systems::test::Follower;
+use crate::winit::event::Event;
 
 mod flowchart;
 mod generatin;
@@ -133,14 +132,14 @@ pub fn start() {
             world.insert(CameraTarget(Some(player)));
 
             r_dispatcher.add(systems::test::FollowingSystem, "follow_sys", &[]);
-                //
+            //
             r_dispatcher.add(input_sys, "in_tst_sys", &[]);
             r_dispatcher.add(move_sys, "move_sys", &[]);
             r_dispatcher.add(mouse_sys, "mouse_sys", &[]);
             r_dispatcher.add(transform_sys, "tsm_sys", &[]);
 
             c_dispatcher.add_thread_local(rx::RenderSubmitSystem::new(draw, redner));
-            arrowdrop::create((world, r_dispatcher, c_dispatcher));
+            arrowdrop::create((world, r_dispatcher, c_dispatcher), _cube_mesh.clone());
         })
     );
 
@@ -153,16 +152,19 @@ pub fn start() {
     eng.push_layer(move |upd: run::FrameUpdate<()>| {
         use rx::egui;
         use rx::winit::event;
-        for e in upd.events {
-            match e {
-                event::Event::WindowEvent { event: event::WindowEvent::Resized(size),.. } => {
-                    size_d = *size
+        for rx_e in upd.events {
+            match rx_e {
+                RxEvent::WinitEvent(event) => match event {
+                    event::Event::WindowEvent { event: event::WindowEvent::Resized(size), .. } => {
+                        size_d = *size
+                    }
+                    _ => {}
                 }
                 _ => {}
             }
         }
         elapsed += upd.elapsed;
-        frames+=1;
+        frames += 1;
         if elapsed >= std::time::Duration::from_millis(100) {
             frame_rate = frames as f32 * 0.5 + frame_rate * 0.5;
             frames = 0;
@@ -172,7 +174,7 @@ pub fn start() {
         egui::Window::new("info").show(&upd.egui_ctx, |ui| {
             ui.label(format!("Frame time: {} ms", upd.elapsed.as_millis()));
             ui.label(format!("Frames: {:.2} /sec", frame_rate * 10.));
-            ui.label(format!("Size: {}x{}",size_d.width,size_d.height));
+            ui.label(format!("Size: {}x{}", size_d.width, size_d.height));
         }).unwrap().hovered();
     });
     eng.run();

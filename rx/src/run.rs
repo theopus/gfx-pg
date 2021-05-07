@@ -18,7 +18,7 @@ use crate::wgpu_graphics::pipeline::Pipeline;
 use crate::window::WinitState;
 
 pub struct Engine<T: 'static + Send + Clone> {
-    winit_state: WinitState<T>,
+    winit_state: WinitState<()>,
     layers: Vec<Box<dyn Layer<T>>>,
     renderer: Renderer,
 }
@@ -33,7 +33,7 @@ impl Pipeline for Test {
 
 impl<T: 'static + Send + Clone> Default for Engine<T> {
     fn default() -> Self {
-        let winit_state: WinitState<T> = Default::default();
+        let winit_state: WinitState<()> = Default::default();
         let renderer = Renderer::new(winit_state.window.as_ref().unwrap()).unwrap();
         Self {
             winit_state,
@@ -65,7 +65,7 @@ impl<T: Send + Clone> Engine<T> {
     }
 
     pub fn run(self) {
-        let (events_loop, window): (winit::event_loop::EventLoop<RxEvent<T>>, winit::window::Window) = {
+        let (events_loop, window): (winit::event_loop::EventLoop<()>, winit::window::Window) = {
             let WinitState {
                 events_loop,
                 window,
@@ -76,12 +76,15 @@ impl<T: Send + Clone> Engine<T> {
 
         // imgui.io_mut().update_delta_time();
         let mut layers = self.layers;
+        for l in &mut layers {
+            l.setup();
+        }
         let mut renderer = self.renderer;
-        let mut events: Vec<events::WinitEvent<T>> = Vec::new();
+        let mut events: Vec<RxEvent<T>> = Vec::new();
         let run_start = Instant::now();
         let mut last = Instant::now();
 
-        let repaint_signal: Arc<ExampleRepaintSignal<T>> = std::sync::Arc::new(ExampleRepaintSignal(std::sync::Mutex::new(
+        let repaint_signal: Arc<ExampleRepaintSignal<()>> = std::sync::Arc::new(ExampleRepaintSignal(std::sync::Mutex::new(
             events_loop.create_proxy(),
         )));
 
@@ -91,11 +94,11 @@ impl<T: Send + Clone> Engine<T> {
         // events.push(MyEvent::Resized(800, 600));
         
         let size = window.inner_size();
-        events.push(Event::WindowEvent { window_id: window.id(), event: WindowEvent::Resized(size) });
+        events.push(RxEvent::WinitEvent(Event::WindowEvent { window_id: window.id(), event: WindowEvent::Resized(size) }));
 
         info!("Start!");
-        let run_loop = move |o_event: Event<RxEvent<T>>,
-                             _: &EventLoopWindowTarget<RxEvent<T>>,
+        let run_loop = move |o_event: Event<()>,
+                             _: &EventLoopWindowTarget<()>,
                              control_flow: &mut ControlFlow| {
             //Always poll
             *control_flow = ControlFlow::Poll;
@@ -147,7 +150,7 @@ impl<T: Send + Clone> Engine<T> {
 
     fn on_update(
         layers: &mut Vec<Box<dyn Layer<T>>>,
-        events: &mut Vec<events::WinitEvent<T>>,
+        events: &mut Vec<RxEvent<T>>,
         elapsed: Duration,
         egui_ctx: egui::CtxRef,
     ) {
@@ -173,13 +176,14 @@ impl<T: Send + Clone> Engine<T> {
 
 
 pub struct FrameUpdate<'a, T: 'static + Clone + Send> {
-    pub events: &'a Vec<events::WinitEvent<T>>,
+    pub events: &'a Vec<RxEvent<T>>,
     pub elapsed: Duration,
     pub egui_ctx: egui::CtxRef,
 }
 
 pub trait Layer<T: Clone + Send> {
     fn on_update(&mut self, upd: FrameUpdate<T>);
+    fn setup(&mut self) {}
     fn name(&self) -> &'static str;
 }
 

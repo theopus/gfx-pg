@@ -3,13 +3,14 @@ use winit::event::{DeviceEvent, Event};
 
 #[derive(Debug, Clone)]
 pub enum RxEvent<T: 'static + Send + Clone> {
-    TestEvent,
+    None,
     ClientEvent(T),
+    WinitEvent(winit::event::Event<'static, ()>)
 }
 
 pub type WinitEvent<T> = winit::event::Event<'static, RxEvent<T>>;
 
-pub fn handle_event<T: Clone + Send>(buffer: &mut Vec<WinitEvent<T>>, event: winit::event::Event<RxEvent<T>>) {
+pub fn handle_event<T: Clone + Send>(buffer: &mut Vec<RxEvent<T>>, event: winit::event::Event<()>) {
     match event {
         //forward
         Event::WindowEvent { .. } => { wrap(buffer, event) }
@@ -28,8 +29,8 @@ pub fn handle_event<T: Clone + Send>(buffer: &mut Vec<WinitEvent<T>>, event: win
     }
 }
 
-fn wrap<T: Clone + Send>(buffer: &mut Vec<Event<RxEvent<T>>>, event: Event<RxEvent<T>>) {
+fn wrap<T: Clone + Send>(buffer: &mut Vec<RxEvent<T>>, event: winit::event::Event<()>) {
     if let Some(e) = event.to_static().as_ref() {
-        buffer.push(e.clone());
+        buffer.push(RxEvent::WinitEvent(e.clone()));
     }
 }

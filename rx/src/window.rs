@@ -10,7 +10,7 @@ use crate::events::RxEvent;
 
 #[derive(Debug)]
 pub struct WinitState<T: 'static + Send + Clone> {
-    pub events_loop: EventLoop<RxEvent<T>>,
+    pub events_loop: EventLoop<T>,
     pub window: Option<Window>,
     pub window_builder: Option<WindowBuilder>,
 }
