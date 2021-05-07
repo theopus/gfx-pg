@@ -41,7 +41,7 @@ pub mod test {
         );
 
         fn run(&mut self, data: Self::SystemData) {
-            let (vp, events, active_cam, camera, target, mut pos, mut vel, selected) = data;
+            let (vp, eventss, active_cam, camera, target, mut pos, mut vel, selected) = data;
 
             let cam = camera.get(active_cam.0.unwrap()).unwrap();
             let mut _posit = pos.get_mut(target.0.unwrap()).unwrap();
@@ -50,29 +50,32 @@ pub mod test {
             let mut sel_vel: &mut Velocity = vel.get_mut(selected.0.unwrap()).unwrap();
 
             use rx::winit::event::{Event, WindowEvent};
-            for e in &events.0 {
-                match e {
-                    Event::WindowEvent {
-                        event: WindowEvent::CursorMoved { position, .. },
-                        ..
-                    } => {
-                        self.x = position.x as f32;
-                        self.y = position.y as f32;
+            if let Some(events) = &eventss.0 {
+                for e in events {
+                    match e {
+                        Event::WindowEvent {
+                            event: WindowEvent::CursorMoved { position, .. },
+                            ..
+                        } => {
+                            self.x = position.x as f32;
+                            self.y = position.y as f32;
+                        }
+                        Event::WindowEvent { event: WindowEvent::Resized(size), .. } => {
+                            self.w = size.width;
+                            self.h = size.height;
+                        }
+                        Event::WindowEvent {
+                            event: WindowEvent::MouseInput { state, button: MouseButton::Middle, .. },
+                            ..
+                        } => match state {
+                            ElementState::Pressed => self.pressed = true,
+                            ElementState::Released => self.pressed = false,
+                        }
+                        _ => {}
                     }
-                    Event::WindowEvent { event: WindowEvent::Resized(size), .. } => {
-                        self.w = size.width;
-                        self.h = size.height;
-                    }
-                    Event::WindowEvent {
-                        event: WindowEvent::MouseInput { state, button: MouseButton::Middle, .. },
-                        ..
-                    } => match state {
-                        ElementState::Pressed => self.pressed = true,
-                        ElementState::Released => self.pressed = false,
-                    }
-                    _ => {}
                 }
             }
+
 
             if self.pressed {
                 let vec =

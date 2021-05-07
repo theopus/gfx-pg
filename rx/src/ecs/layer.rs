@@ -7,6 +7,7 @@ use specs::{DispatcherBuilder, World, WorldExt};
 
 use crate::ecs::WinitEvents;
 use crate::run::{FrameUpdate, Layer};
+use crate::glm::e;
 
 pub struct EcsLayer<'a> {
     world: specs::World,
@@ -21,30 +22,49 @@ const DURATION_PER_UPD: Duration = Duration::from_nanos(UPD_60_PER_SEC_NANOS);
 impl<'a, T: Clone + Send + Sync> Layer<T> for EcsLayer<'a> {
     fn on_update(&mut self, frame: FrameUpdate<T>) {
         self.lag += frame.elapsed;
+
         {
-            let mut events_resource = self.world.write_resource::<WinitEvents<T>>();
+
+            let mut events_resource = &mut self.world.write_resource::<WinitEvents<T>>().0;
+            if events_resource.is_none() {
+                info!("None");
+                events_resource.replace(Vec::new());
+            }
+
             for e in frame.events.iter() {
-                events_resource.0.push((*e).clone());
+                events_resource.as_mut().unwrap().push((*e).clone());
             }
         }
+        //rated
+
+        let mut tmp = None;
 
         {
             let start = Instant::now();
             let mut count = 0;
             while self.lag >= DURATION_PER_UPD {
                 self.rated_dispatcher.dispatch(&self.world);
-                let mut events_resource = self.world.write_resource::<WinitEvents<T>>();
-                events_resource.0.clear();
+                let mut events_resource = &mut self.world.write_resource::<WinitEvents<T>>().0;
+                if tmp.is_none() {
+                    tmp = events_resource.take()
+                }
                 self.lag -= DURATION_PER_UPD;
                 count += 1;
             }
             debug!("rated dispatch took {:?}, {:?} times", Instant::now() - start, count);
         }
-
+        let mut flag = false;
+        if tmp.is_some() {
+            self.world.write_resource::<WinitEvents<T>>().0 = tmp;
+            flag = true;
+        }
         {
             let start = Instant::now();
             self.constant_dispatcher.dispatch(&self.world);
             debug!("constant dispatcher took {:?}", Instant::now() - start);
+        }
+        if flag {
+            self.world.write_resource::<WinitEvents<T>>().0.as_mut().unwrap().clear();
         }
     }
 
