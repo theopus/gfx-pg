@@ -1,22 +1,23 @@
 pub mod world3d {
+    use std::ops::Deref;
+    use std::sync::mpsc::Sender;
     use std::time::Instant;
 
     use glm;
     #[allow(unused_imports)]
     use log::{debug, error, info, trace, warn};
-    
     use specs::{
         Builder, Component, Entity, Join, Read, ReadStorage, System,
         VecStorage, World, WorldExt, Write, WriteStorage,
     };
 
+    use crate::assets::MeshPtr;
     use crate::ecs::base_systems::camera3d::{
         ActiveCamera, CameraTarget, init as init_cam, TargetedCamera, ViewProjection,
     };
-    use crate::assets::MeshPtr;
-    use std::sync::mpsc::Sender;
+    use crate::ecs::base_systems::to_radians;
+    use crate::glm::Vec3;
     use crate::graphics_api::{DrawCmd, RenderCommand};
-
 
     #[derive(Component, Debug)]
     #[storage(VecStorage)]
@@ -204,6 +205,23 @@ pub mod world3d {
             glm::vec3(self.x, self.y, self.z)
         }
     }
+
+    impl Rotation {
+        pub fn as_vec3(&self) -> glm::Vec3 {
+            glm::vec3(self.x, self.y, self.z)
+        }
+
+        pub fn rotate_vec3(&self, vec: &glm::Vec3) -> glm::Vec3 {
+            let mut result = glm::rotate_vec3(&vec, to_radians(self.x), &glm::vec3(1.0, 0., 0.0));
+            result = glm::rotate_vec3(&result, to_radians(self.y), &glm::vec3(0.0, 1.0, 0.0));
+            result = glm::rotate_vec3(&result, to_radians(self.z), &glm::vec3(0.0, 0.0, 1.0));
+            result
+        }
+    }
+}
+
+pub fn to_radians(degree: f32) -> f32 {
+    glm::radians(&glm::vec1(degree)).x
 }
 
 pub mod camera3d {
@@ -213,9 +231,9 @@ pub mod camera3d {
     use specs::{Builder, Component, Entity, VecStorage, World, WorldExt};
 
     ///
-        /// creates targeted camera, places camera to active
-        /// @return Camera Entity
-        ///
+            /// creates targeted camera, places camera to active
+            /// @return Camera Entity
+            ///
     pub fn init(world: &mut World, cam_target: Entity) -> Entity {
         info!("Init camera3d_system");
         world.register::<TargetedCamera>();

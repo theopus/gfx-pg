@@ -49,11 +49,14 @@ pub mod test {
     impl<'a> System<'a> for ScreenClickSystem {
         type SystemData = (
             Read<'a, EventChannel<RxEvent<()>>>,
-            Read<'a, ViewProjection>
+            Read<'a, ViewProjection>,
+            Read<'a, ActiveCamera>,
+            ReadStorage<'a, TargetedCamera>,
         );
 
-        fn run(&mut self, (events, vp): Self::SystemData) {
+        fn run(&mut self, (events, vp, active_cam, camera): Self::SystemData) {
             use rx::winit::event::{Event, WindowEvent};
+            let cam = camera.get(active_cam.0.unwrap()).unwrap();
 
             if let Some(reader_id) = &mut self.reader {
                 for rx_e in &mut events.read(reader_id) {
@@ -78,6 +81,7 @@ pub mod test {
                                     w.send(rx::ScreenClickEvent {
                                         screen_pos: (self.x, self.y),
                                         world_vec: maths::screen2world((self.x as f32, self.y as f32), (self.w, self.h), &vp.view, &vp.proj),
+                                        cam_pos: cam.cam_pos.clone() as glm::Vec3,
                                         mouse_button: button.clone(),
                                         state: state.clone(),
                                     }.into());

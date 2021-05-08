@@ -35,6 +35,8 @@ pub fn screen2world(
     eye2world(&eye, view)
 }
 
+pub const F32_PRECISION: f32 = 0.000001;
+
 //maybe bug [plane_p]!
 pub fn intersection(plane_n: &glm::Vec3, plane_p: &glm::Vec3, line_vec: &glm::Vec3, line_p: &glm::Vec3) -> Option<glm::Vec3> {
     let d = glm::dot(plane_n, plane_p);
@@ -42,7 +44,6 @@ pub fn intersection(plane_n: &glm::Vec3, plane_p: &glm::Vec3, line_vec: &glm::Ve
     if glm::dot(plane_n, line_vec) == 0. {
         return None;
     }
-
     let x = (d - glm::dot(plane_n, line_p)) / glm::dot(plane_n, line_vec);
     Some(line_p + glm::normalize(&line_vec) * x)
 }

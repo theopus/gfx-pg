@@ -3,13 +3,13 @@ use std::fmt;
 #[allow(unused_imports)]
 use log::{debug, error, info, trace, warn};
 use rand;
-use rand::{Rng};
 use rand::distributions::Distribution;
+use rand::Rng;
 use rand_distr;
 use rand_distr::Normal;
 
+use rx::ecs::base_systems::to_radians;
 use rx::utils::file_system;
-
 
 struct Person {
     first_name: String,
@@ -131,6 +131,15 @@ mod spc {
 
 #[test]
 fn test() {
+    crate::init_log();
+    use rx::glm;
+
+    let third: glm::Vec3 = glm::vec3(1., 0., 0.);
+
+    info!("{:?}", glm::rotate_vec3(&third, glm::radians(&glm::vec1(90.)).x, &glm::vec3(0., 0., 1.0)));
+
+    info!("{:?}", 0.00000017484555 - f32::EPSILON);
+
     // use itertools::Itertools;
     // use rand_pcg::Pcg64;
     // use rand_seeder::Seeder;

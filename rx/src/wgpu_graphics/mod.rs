@@ -43,7 +43,7 @@ impl State {
         // The instance is a handle to our GPU
         // BackendBit::PRIMARY => Vulkan + Metal + DX12 + Browser WebGPU
         let instance = wgpu::Instance::new(
-            wgpu::BackendBit::PRIMARY | wgpu::BackendBit::SECONDARY
+            wgpu::BackendBit::DX12 |  wgpu::BackendBit::PRIMARY | wgpu::BackendBit::SECONDARY
         );
         let surface = unsafe { instance.create_surface(window) };
 
@@ -75,7 +75,7 @@ impl State {
         let mm = MemoryManager::new(&mut device, MemoryManagerConfig {
             mesh_buffer_size: 1_000_000,
             idx_buffer_size: 1_000_000,
-            instanced_buffer_size: (64 * 2) * 50_000,
+            instanced_buffer_size: (64 * 2) * 100_000,
         });
         let depth_texture = texture::Texture::create_depth_texture(&device, &sc_desc, "depth_texture");
         let target_texture = texture::Texture::create_target_texture(&device, &sc_desc, "target_texture");

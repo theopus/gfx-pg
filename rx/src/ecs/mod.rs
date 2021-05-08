@@ -38,6 +38,7 @@ pub enum EcsEvent {
 pub struct ScreenClickEvent {
     pub screen_pos: (f64, f64),
     pub world_vec: glm::Vec3,
+    pub cam_pos: glm::Vec3,
     pub mouse_button: winit::event::MouseButton,
     pub state: winit::event::ElementState,
 }

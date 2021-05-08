@@ -140,9 +140,9 @@ pub fn start() {
             r_dispatcher.add(mouse_sys, "mouse_sys", &[]);
             r_dispatcher.add(transform_sys, "tsm_sys", &[]);
 
-            c_dispatcher.add(gui_sys::GuiSystem::default(), "guy_sys", &[]);
-            c_dispatcher.add_thread_local(rx::RenderSubmitSystem::new(draw, redner));
+            c_dispatcher.add_thread_local(gui_sys::GuiSystem::default());
             arrowdrop::create((world, r_dispatcher, c_dispatcher), _cube_mesh.clone());
+            c_dispatcher.add_thread_local(rx::RenderSubmitSystem::new(draw, redner));
         })
     );
 
@@ -179,6 +179,8 @@ pub fn start() {
         }
 
         egui::Window::new("info")
+            .collapsible(false)
+            .fixed_pos((size_d.width as f32 - 190. , 0.))
             .resizable(false)
             .show(&upd.egui_ctx, |ui| {
                 egui::Grid::new("info_grid").min_col_width(180.).striped(true).show(ui, |ui| {
@@ -191,7 +193,7 @@ pub fn start() {
                     ui.label(format!("Cursor: x: {:.2} y: {:.2}", cursor_pos.x, cursor_pos.y));
                     ui.end_row();
                 });
-            }).unwrap().hovered();
+            }).unwrap();
     });
     eng.run();
 }
