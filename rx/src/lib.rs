@@ -35,7 +35,13 @@ pub use ecs::{
     CameraTarget,
     ActiveCamera,
     SelectedEntity,
-    WinitEvents
+    WinitEvents,
+    EventReader,
+    EventWriter,
+    EventChannelReader,
+    EcsEvent,
+    ScreenClickEvent,
+    EguiCtx
 };
 
 pub use assets::{

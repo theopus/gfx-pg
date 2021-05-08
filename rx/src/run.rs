@@ -16,6 +16,7 @@ use crate::render_w::Renderer;
 use crate::wgpu_graphics::{FrameState, State};
 use crate::wgpu_graphics::pipeline::Pipeline;
 use crate::window::WinitState;
+use crate::ecs::EventWriter;
 
 pub struct Engine<T: 'static + Send + Clone> {
     winit_state: WinitState<()>,

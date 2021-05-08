@@ -22,6 +22,7 @@ pub struct InputTestSystem {
     pub speed: f32,
     pub vert: f32,
     pub hor: f32,
+    pub ctrl_pressed: bool,
     pad: MovePad,
     reader: Option<rx::specs::shrev::ReaderId<RxEvent<()>>>,
 }
@@ -54,11 +55,11 @@ impl<'a> System<'a> for InputTestSystem {
                         event::Event::DeviceEvent {
                             event: DeviceEvent::MouseMotion { delta }, ..
                         } => {
-                            if self.should_affect_angle {
+                            if self.should_affect_angle && !self.ctrl_pressed {
                                 accum_delta.0 += delta.0;
                                 accum_delta.1 += delta.1;
                             }
-                            if self.should_affect_distance {
+                            if self.should_affect_distance && !self.ctrl_pressed{
                                 accum_dist += delta.1 as f32;
                             }
                         }
@@ -76,8 +77,15 @@ impl<'a> System<'a> for InputTestSystem {
                                     _ => {}
                                 }
                             }
+                            WindowEvent::ModifiersChanged(state) => {
+                                if (*state & winit::event::ModifiersState::CTRL).is_empty() {
+                                    self.ctrl_pressed = false
+                                } else{
+                                    self.ctrl_pressed = true
+                                }
+                            }
                             WindowEvent::KeyboardInput {
-                                input: KeyboardInput { virtual_keycode, state, .. },
+                                input: KeyboardInput { virtual_keycode, state,  .. },
                                 ..
                             } => if let Some(keycode) = virtual_keycode {
                                 match keycode {

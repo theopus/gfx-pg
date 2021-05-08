@@ -30,6 +30,7 @@ mod maths;
 mod systems;
 mod arrowdrop;
 mod input_sys;
+mod gui_sys;
 
 pub fn init_log() {
     env_logger::from_env(env_logger::Env::default().default_filter_or(
@@ -132,12 +133,14 @@ pub fn start() {
             world.insert(CameraTarget(Some(player)));
 
             r_dispatcher.add(systems::test::FollowingSystem, "follow_sys", &[]);
+            r_dispatcher.add(systems::test::ScreenClickSystem::default(), "screen_click_sys", &[]);
             //
             r_dispatcher.add(input_sys, "in_tst_sys", &[]);
             r_dispatcher.add(move_sys, "move_sys", &[]);
             r_dispatcher.add(mouse_sys, "mouse_sys", &[]);
             r_dispatcher.add(transform_sys, "tsm_sys", &[]);
 
+            c_dispatcher.add(gui_sys::GuiSystem::default(), "guy_sys", &[]);
             c_dispatcher.add_thread_local(rx::RenderSubmitSystem::new(draw, redner));
             arrowdrop::create((world, r_dispatcher, c_dispatcher), _cube_mesh.clone());
         })
@@ -149,6 +152,7 @@ pub fn start() {
     let mut frame_rate = 0.0;
     let mut elapsed = std::time::Duration::from_millis(0);
     let mut size_d: PhysicalSize<u32> = PhysicalSize { width: 0, height: 0 };
+    let mut cursor_pos: rx::winit::dpi::PhysicalPosition<f64> = rx::winit::dpi::PhysicalPosition { x: 0., y: 0. };
     eng.push_layer(move |upd: run::FrameUpdate<()>| {
         use rx::egui;
         use rx::winit::event;
@@ -157,6 +161,9 @@ pub fn start() {
                 RxEvent::WinitEvent(event) => match event {
                     event::Event::WindowEvent { event: event::WindowEvent::Resized(size), .. } => {
                         size_d = *size
+                    }
+                    event::Event::WindowEvent { event: event::WindowEvent::CursorMoved { position, .. }, .. } => {
+                        cursor_pos = position.clone();
                     }
                     _ => {}
                 }
@@ -171,11 +178,20 @@ pub fn start() {
             elapsed -= std::time::Duration::from_millis(100)
         }
 
-        egui::Window::new("info").show(&upd.egui_ctx, |ui| {
-            ui.label(format!("Frame time: {} ms", upd.elapsed.as_millis()));
-            ui.label(format!("Frames: {:.2} /sec", frame_rate * 10.));
-            ui.label(format!("Size: {}x{}", size_d.width, size_d.height));
-        }).unwrap().hovered();
+        egui::Window::new("info")
+            .resizable(false)
+            .show(&upd.egui_ctx, |ui| {
+                egui::Grid::new("info_grid").min_col_width(180.).striped(true).show(ui, |ui| {
+                    ui.label(format!("Frame time: {} ms", upd.elapsed.as_millis()));
+                    ui.end_row();
+                    ui.label(format!("Frames: {:.2} /sec", frame_rate * 10.));
+                    ui.end_row();
+                    ui.label(format!("Size: {}x{}", size_d.width, size_d.height));
+                    ui.end_row();
+                    ui.label(format!("Cursor: x: {:.2} y: {:.2}", cursor_pos.x, cursor_pos.y));
+                    ui.end_row();
+                });
+            }).unwrap().hovered();
     });
     eng.run();
 }

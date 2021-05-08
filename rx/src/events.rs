@@ -1,10 +1,12 @@
 
 use winit::event::{DeviceEvent, Event};
+use crate::ecs::EcsEvent;
 
 #[derive(Debug, Clone)]
 pub enum RxEvent<T: 'static + Send + Clone> {
     None,
     ClientEvent(T),
+    EcsEvent(EcsEvent),
     WinitEvent(winit::event::Event<'static, ()>)
 }
 

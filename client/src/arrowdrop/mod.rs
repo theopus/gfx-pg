@@ -44,6 +44,14 @@ pub fn create((mut world, r, c): rx::EcsInitTuple, mesh_ptr: rx::MeshPtr){
     world.register::<Normal>();
     world.register::<Grid>();
 
+
+    world.create_entity()
+        .with(rx::Position::default())
+        .with(rx::Rotation::default())
+        .with(Normal::default())
+        // .with(Grid::default())
+        .build();
+
     for v in 0..7 {
         for h in 0..7 {
             world.
@@ -65,10 +73,4 @@ pub fn create((mut world, r, c): rx::EcsInitTuple, mesh_ptr: rx::MeshPtr){
                 .build();
         }
     }
-
-    world.create_entity()
-        .with(rx::Position::default())
-        .with(rx::Rotation::default())
-        .with(Normal::default())
-        .build();
 }

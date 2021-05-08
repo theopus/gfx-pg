@@ -2,6 +2,7 @@ pub mod test {
     #[allow(unused_imports)]
     use log::{debug, error, info, trace, warn};
 
+    use rx::{EventWriter, glm, RxEvent};
     use rx::ecs::{
         Position, SelectedEntity,
         Velocity, WinitEvents,
@@ -9,14 +10,17 @@ pub mod test {
     use rx::ecs::base_systems::camera3d::{
         ActiveCamera, CameraTarget, TargetedCamera, ViewProjection,
     };
-    use rx::glm;
+    use rx::events::RxEvent::EcsEvent;
     use rx::glm::{Vec2, Vec3};
-    use rx::specs::{Entity, Join, Read, ReadStorage, System, WriteStorage};
+    use rx::specs::{Entity, Join, Read, ReadStorage, System, Write, WriteStorage};
     use rx::specs::Component;
+    use rx::specs::shrev::EventChannel;
     use rx::specs::storage::VecStorage;
     use rx::winit::event::{ElementState, KeyboardInput, MouseButton, VirtualKeyCode};
 
+    use crate::egui::CtxRef;
     use crate::maths;
+    use crate::specs::World;
 
     #[derive(Default)]
     pub struct MoveClickSystem {
@@ -26,12 +30,83 @@ pub mod test {
         h: u32,
 
         pressed: bool,
+        reader: rx::EventReader<()>,
+    }
+
+    #[derive(Default)]
+    pub struct ScreenClickSystem {
+        reader: rx::EventReader<()>,
+        writer: rx::EventWriter<()>,
+
+        pressed: bool,
+
+        x: f64,
+        y: f64,
+        w: u32,
+        h: u32,
+    }
+
+    impl<'a> System<'a> for ScreenClickSystem {
+        type SystemData = (
+            Read<'a, EventChannel<RxEvent<()>>>,
+            Read<'a, ViewProjection>
+        );
+
+        fn run(&mut self, (events, vp): Self::SystemData) {
+            use rx::winit::event::{Event, WindowEvent};
+
+            if let Some(reader_id) = &mut self.reader {
+                for rx_e in &mut events.read(reader_id) {
+                    match rx_e {
+                        rx::RxEvent::WinitEvent(e) => match e {
+                            Event::WindowEvent {
+                                event: WindowEvent::CursorMoved { position, .. },
+                                ..
+                            } => {
+                                self.x = position.x;
+                                self.y = position.y;
+                            }
+                            Event::WindowEvent { event: WindowEvent::Resized(size), .. } => {
+                                self.w = size.width;
+                                self.h = size.height;
+                            }
+                            Event::WindowEvent {
+                                event: WindowEvent::MouseInput { state, button, .. },
+                                ..
+                            } => match state {
+                                ElementState::Pressed => self.writer.iter().for_each(|w| {
+                                    w.send(rx::ScreenClickEvent {
+                                        screen_pos: (self.x, self.y),
+                                        world_vec: maths::screen2world((self.x as f32, self.y as f32), (self.w, self.h), &vp.view, &vp.proj),
+                                        mouse_button: button.clone(),
+                                        state: state.clone(),
+                                    }.into());
+                                }),
+                                _ => {}
+                            }
+                            _ => {}
+                        }
+                        _ => {}
+                    }
+                }
+            }
+        }
+
+        fn setup(&mut self, world: &mut World) {
+            use rx::{
+                specs::SystemData,
+                specs::shrev::EventChannel,
+            };
+            Self::SystemData::setup(world);
+            self.reader = Some(world.fetch_mut::<EventChannel<RxEvent<()>>>().register_reader());
+            self.writer = world.fetch_mut::<EventWriter<()>>().clone();
+        }
     }
 
     impl<'a> System<'a> for MoveClickSystem {
         type SystemData = (
             Read<'a, ViewProjection>,
-            Read<'a, WinitEvents<()>>,
+            Write<'a, EventChannel<RxEvent<()>>>,
             Read<'a, ActiveCamera>,
             ReadStorage<'a, TargetedCamera>,
             Read<'a, CameraTarget>,
@@ -40,8 +115,9 @@ pub mod test {
             Read<'a, SelectedEntity>,
         );
 
+
         fn run(&mut self, data: Self::SystemData) {
-            let (vp, eventss, active_cam, camera, target, mut pos, mut vel, selected) = data;
+            let (vp, mut event_channel, active_cam, camera, target, mut pos, mut vel, selected) = data;
 
             let cam = camera.get(active_cam.0.unwrap()).unwrap();
             let mut _posit = pos.get_mut(target.0.unwrap()).unwrap();
@@ -50,27 +126,30 @@ pub mod test {
             let mut sel_vel: &mut Velocity = vel.get_mut(selected.0.unwrap()).unwrap();
 
             use rx::winit::event::{Event, WindowEvent};
-            if let Some(events) = &eventss.0 {
-                for e in events {
-                    match e {
-                        Event::WindowEvent {
-                            event: WindowEvent::CursorMoved { position, .. },
-                            ..
-                        } => {
-                            self.x = position.x as f32;
-                            self.y = position.y as f32;
-                        }
-                        Event::WindowEvent { event: WindowEvent::Resized(size), .. } => {
-                            self.w = size.width;
-                            self.h = size.height;
-                        }
-                        Event::WindowEvent {
-                            event: WindowEvent::MouseInput { state, button: MouseButton::Middle, .. },
-                            ..
-                        } => match state {
-                            ElementState::Pressed => self.pressed = true,
-                            ElementState::Released => self.pressed = false,
-                        }
+            if let Some(reader_id) = &mut self.reader {
+                for rx_e in &mut event_channel.read(reader_id) {
+                    match rx_e {
+                        rx::RxEvent::WinitEvent(e) => match e {
+                            Event::WindowEvent {
+                                event: WindowEvent::CursorMoved { position, .. },
+                                ..
+                            } => {
+                                self.x = position.x as f32;
+                                self.y = position.y as f32;
+                            }
+                            Event::WindowEvent { event: WindowEvent::Resized(size), .. } => {
+                                self.w = size.width;
+                                self.h = size.height;
+                            }
+                            Event::WindowEvent {
+                                event: WindowEvent::MouseInput { state, button: MouseButton::Middle, .. },
+                                ..
+                            } => match state {
+                                ElementState::Pressed => self.pressed = true,
+                                ElementState::Released => self.pressed = false,
+                            }
+                            _ => {}
+                        },
                         _ => {}
                     }
                 }
@@ -94,7 +173,17 @@ pub mod test {
                 sel_vel.v = glm::normalize(&dir) as glm::Vec3;
             }
         }
+
+        fn setup(&mut self, world: &mut World) {
+            use rx::{
+                specs::SystemData,
+                specs::shrev::EventChannel,
+            };
+            Self::SystemData::setup(world);
+            self.reader = Some(world.fetch_mut::<EventChannel<RxEvent<()>>>().register_reader());
+        }
     }
+
 
     #[derive(Default, Debug)]
     pub struct MovePad {
