@@ -1,5 +1,6 @@
 #[allow(unused_imports)]
 use log::{debug, error, info, trace, warn};
+use rand_distr::num_traits::Pow;
 
 use rx::{
     egui,
@@ -9,7 +10,6 @@ use rx::{
     winit,
     winit::event::{ElementState, MouseButton},
 };
-use rand_distr::num_traits::Pow;
 
 #[derive(Component, Debug)]
 #[storage(VecStorage)]
@@ -50,6 +50,16 @@ pub struct Grid {
     cells: Vec<Vec<bool>>,
 }
 
+impl Grid {
+    fn reset_all(&mut self, value: bool) {
+        for y in 0..self.cells.len(){
+            for x in 0..self.cells.len() {
+                self.cells[x][y] = value;
+            }
+        }
+    }
+}
+
 #[derive(Default)]
 struct GridSystem {
     reader: rx::EventReader<()>,
@@ -81,6 +91,9 @@ impl<'a> specs::System<'a> for GridUiSys {
                             ui.end_row();
                         }
                     });
+                    if ui.button("reset").clicked() {
+                        grid.reset_all(false);
+                    }
                 });
             }
         }
@@ -122,25 +135,51 @@ impl<'a> specs::System<'a> for GridSystem {
                 }
             }).flatten().collect();
 
-            const STEP_LEN: f32 = 3.0;
+            const STEP_LEN: f32 = 2.5;
             const STEP_N: u32 = 4;
 
             for (mut grid, rect, pos, rot, ) in (&mut grid_st, &rect_st, &pos_st, &rot_st).join() {
                 for (cam_vec, cam_pos) in clicks.iter() {
-
-
                     let new_rect = rect.rotate(rot);
                     let intrsect = crate::maths::intersection(&new_rect.normal(), &pos.as_vec3(), cam_vec, cam_pos);
                     if let Some(location) = &intrsect {
                         let p0 = pos.as_vec3();
-                        // let p1 = pos.as_vec3() + (new_rect.first) * (STEP_LEN * STEP_N as f32);
-                        // let p2 = pos.as_vec3() + (new_rect.second) * (STEP_LEN * STEP_N as f32);
-                        // let p3 = (p1 - p0) + p2;
                         let relational = (&p0 - location) / (STEP_LEN as f32);
-                        let truncated = glm::vec3(relational.x.trunc(),relational.y.trunc(),relational.z.trunc());
-                        info!("trunc: {:?}", truncated);
-                        info!("axis x: {},{},{}", truncated.x * new_rect.first.x, truncated.y* new_rect.first.y, truncated.z* new_rect.first.z);
-                        info!("axis y: {},{},{}", truncated.x * new_rect.second.x, truncated.y* new_rect.second.y, truncated.z* new_rect.second.z);
+                        let truncated = glm::vec3(relational.x.trunc(), relational.y.trunc(), relational.z.trunc());
+                        let x_axis: glm::IVec3 = -1 * glm::vec3(
+                            (truncated.x * new_rect.first.x) as i32,
+                            (truncated.y * new_rect.first.y) as i32,
+                            (truncated.z * new_rect.first.z) as i32,
+                        );
+                        let y_axis: glm::IVec3 = -1 * glm::vec3(
+                            (truncated.x * new_rect.second.x) as i32,
+                            (truncated.y * new_rect.second.y) as i32,
+                            (truncated.z * new_rect.second.z) as i32,
+                        );
+
+                        let x: i32 = if x_axis.x != 0 {
+                            x_axis.x
+                        } else if x_axis.y != 0 {
+                            x_axis.y
+                        } else {
+                            x_axis.z
+                        };
+
+
+                        let y: i32 = if y_axis.x != 0 {
+                            y_axis.x
+                        } else if y_axis.y != 0 {
+                            y_axis.y
+                        } else {
+                            y_axis.z
+                        };
+
+                        if (x >= 0 && x < 4) && (y >= 0 && y < 4) {
+                            info!("x:y {:?}", (x,y));
+                            grid.cells[x as usize][y as usize] = true;
+                        }
+                        info!("location :{:?}", location);
+
                     }
                 }
             }
@@ -163,13 +202,13 @@ pub fn create((mut world, rated, constant): rx::EcsInitTuple, mesh_ptr: rx::Mesh
     world.create_entity()
         .with(rx::Position {
             x: 0.0,
-            y: 15.0,
+            y: 16.0,
             z: 0.0,
         })
         .with(rx::Rotation {
             x: 0.0,
             y: 0.0,
-            z: 0.0,
+            z: -90.0,
         })
         .with(RectFromVec2::default())
         .with(Grid {
@@ -193,8 +232,8 @@ pub fn create((mut world, rated, constant): rx::EcsInitTuple, mesh_ptr: rx::Mesh
                 })
                 .with(rx::Position {
                     x: 0.0,
-                    y: 15.0 - (v as f32 * 3.0),
-                    z: -h as f32 * 3.0,
+                    y: 15.0 - (v as f32 * 2.5),
+                    z: -1.-(h as f32 * 2.5),
                 })
                 .with(rx::Transformation::default())
                 .with(rx::Render {
