@@ -95,9 +95,7 @@ pub fn start() {
                 .with(Position::default())
                 .with(Transformation::default())
                 .with(Velocity::default())
-                .with(Render {
-                    mesh: arrow_02.clone(),
-                })
+                .with(Render::new(arrow_02.clone()))
                 .build();
 
             let selected = world
@@ -106,9 +104,7 @@ pub fn start() {
                 .with(Position::default())
                 .with(Transformation::default())
                 .with(Velocity::default())
-                .with(Render {
-                    mesh: arrow_01.clone(),
-                })
+                .with(Render::new(arrow_01.clone()))
                 .build();
             world
                 .create_entity()
@@ -123,9 +119,7 @@ pub fn start() {
                     z: 0.,
                 })
                 .with(Transformation::default())
-                .with(Render {
-                    mesh: map_mesh_ptr.clone(),
-                })
+                .with(Render::new(map_mesh_ptr.clone()))
                 .build();
 
             world.insert(SelectedEntity(Some(selected)));
@@ -180,7 +174,7 @@ pub fn start() {
 
         egui::Window::new("info")
             .collapsible(false)
-            .fixed_pos((size_d.width as f32 - 190. , 0.))
+            .default_pos((size_d.width as f32 - 190. , 0.))
             .resizable(false)
             .show(&upd.egui_ctx, |ui| {
                 egui::Grid::new("info_grid").min_col_width(180.).striped(true).show(ui, |ui| {

@@ -23,6 +23,16 @@ pub mod world3d {
     #[storage(VecStorage)]
     pub struct Render {
         pub mesh: MeshPtr,
+        pub hidden: bool
+    }
+
+    impl Render {
+        pub fn new(mesh: MeshPtr) -> Self {
+            Render { mesh, hidden: false }
+        }
+        pub fn new_hidden(mesh: MeshPtr) -> Self {
+            Render { mesh, hidden: true }
+        }
     }
 
     pub struct RenderSubmitSystem {
@@ -52,13 +62,15 @@ pub mod world3d {
             self.send_render
                 .send(RenderCommand::PushView(cam.view.clone() as glm::Mat4)).unwrap();
             for (transformation, render) in (&transformation, &mut render).join() {
-                self.send_draw
-                    .send((
-                        render.mesh.clone(),
-                        transformation.mvp.clone() as glm::Mat4,
-                        transformation.model.clone() as glm::Mat4,
-                    ))
-                    .expect("not able to submit");
+                if !render.hidden {
+                    self.send_draw
+                        .send((
+                            render.mesh.clone(),
+                            transformation.mvp.clone() as glm::Mat4,
+                            transformation.model.clone() as glm::Mat4,
+                        ))
+                        .expect("not able to submit");
+                }
             }
         }
     }
@@ -204,11 +216,26 @@ pub mod world3d {
         pub fn as_vec3(&self) -> glm::Vec3 {
             glm::vec3(self.x, self.y, self.z)
         }
+        pub fn from_vec3(from: &glm::Vec3) -> Self {
+            Self {
+                x: from.x,
+                y: from.y,
+                z: from.z
+            }
+        }
     }
 
     impl Rotation {
         pub fn as_vec3(&self) -> glm::Vec3 {
             glm::vec3(self.x, self.y, self.z)
+        }
+
+        pub fn from_vec3(from: &glm::Vec3) -> Self {
+            Self {
+                x: from.x,
+                y: from.y,
+                z: from.z
+            }
         }
 
         pub fn rotate_vec3(&self, vec: &glm::Vec3) -> glm::Vec3 {
