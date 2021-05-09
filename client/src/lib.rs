@@ -31,6 +31,7 @@ mod systems;
 mod arrowdrop;
 mod input_sys;
 mod gui_sys;
+mod info_layer;
 
 pub fn init_log() {
     env_logger::from_env(env_logger::Env::default().default_filter_or(
@@ -141,54 +142,7 @@ pub fn start() {
     );
 
     eng.push_layer(ecs_layer);
-
-    let mut frames = 0;
-    let mut frame_rate = 0.0;
-    let mut elapsed = std::time::Duration::from_millis(0);
-    let mut size_d: PhysicalSize<u32> = PhysicalSize { width: 0, height: 0 };
-    let mut cursor_pos: rx::winit::dpi::PhysicalPosition<f64> = rx::winit::dpi::PhysicalPosition { x: 0., y: 0. };
-    eng.push_layer(move |upd: run::FrameUpdate<()>| {
-        use rx::egui;
-        use rx::winit::event;
-        for rx_e in upd.events {
-            match rx_e {
-                RxEvent::WinitEvent(event) => match event {
-                    event::Event::WindowEvent { event: event::WindowEvent::Resized(size), .. } => {
-                        size_d = *size
-                    }
-                    event::Event::WindowEvent { event: event::WindowEvent::CursorMoved { position, .. }, .. } => {
-                        cursor_pos = position.clone();
-                    }
-                    _ => {}
-                }
-                _ => {}
-            }
-        }
-        elapsed += upd.elapsed;
-        frames += 1;
-        if elapsed >= std::time::Duration::from_millis(100) {
-            frame_rate = frames as f32 * 0.5 + frame_rate * 0.5;
-            frames = 0;
-            elapsed -= std::time::Duration::from_millis(100)
-        }
-
-        egui::Window::new("info")
-            .collapsible(false)
-            .default_pos((size_d.width as f32 - 190. , 0.))
-            .resizable(false)
-            .show(&upd.egui_ctx, |ui| {
-                egui::Grid::new("info_grid").min_col_width(180.).striped(true).show(ui, |ui| {
-                    ui.label(format!("Frame time: {} ms", upd.elapsed.as_millis()));
-                    ui.end_row();
-                    ui.label(format!("Frames: {:.2} /sec", frame_rate * 10.));
-                    ui.end_row();
-                    ui.label(format!("Size: {}x{}", size_d.width, size_d.height));
-                    ui.end_row();
-                    ui.label(format!("Cursor: x: {:.2} y: {:.2}", cursor_pos.x, cursor_pos.y));
-                    ui.end_row();
-                });
-            }).unwrap();
-    });
+    eng.push_layer(info_layer::InfoLayer::default());
     eng.run();
 }
 

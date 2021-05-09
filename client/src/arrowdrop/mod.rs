@@ -261,9 +261,9 @@ pub fn create((mut world, rated, constant): rx::EcsInitTuple, mesh_ptr: rx::Mesh
         world,
         mesh_ptr,
         &glm::vec3(0., 26., 0.),
-        &glm::vec3(0., 0., -90.),
+        &glm::vec3(0., 0., 0.),
         2.5,
-        (5, 10),
+        (20, 5),
     )
 
 
