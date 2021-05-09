@@ -89,7 +89,7 @@ pub fn start() {
             world.register::<Velocity>();
             world.register::<Follower>();
 
-            let (.., cam_sys,transform_sys) = init(&mut world, &glm::vec3(0., 0., 0.));
+            let (.., cam_sys,transform_sys) = init::<()>(&mut world, &glm::vec3(0., 0., 0.));
 
             let player = world
                 .create_entity()

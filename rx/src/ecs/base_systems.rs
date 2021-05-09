@@ -15,7 +15,7 @@ pub mod world3d {
     use crate::assets::MeshPtr;
     use crate::ecs::base_systems::camera3d::{ActiveCamera, Camera, CameraTarget, init as init_cam, TargetedCamera, ViewProjection};
     use crate::ecs::base_systems::to_radians;
-    use crate::glm::Vec3;
+    use crate::glm::{Vec3, e};
     use crate::graphics_api::{DrawCmd, RenderCommand};
 
     #[derive(Component, Debug)]
@@ -100,9 +100,16 @@ pub mod world3d {
 
     pub struct TransformationSystem;
 
-    #[derive(Default)]
     pub struct CameraSystem<T: 'static + Send + Clone> {
         reader: EventReader<T>,
+    }
+
+    impl<T: 'static + Send + Clone> Default for CameraSystem<T> {
+        fn default() -> Self {
+            Self {
+                reader: None
+            }
+        }
     }
 
     impl<'a, T: 'static + Send + Clone + Sync> System<'a> for CameraSystem<T> {
@@ -114,14 +121,20 @@ pub mod world3d {
         );
 
         fn run(&mut self, (mut pos_st, mut cam_st, cam_tg, events): Self::SystemData) {
-            self.reader.map(|mut reader| {
-                events.read(&mut reader).filter(||)
-            }).map(|e| {
-                match e {
-                    RxEvent::WinitEvent(e) => {},
-                    _ => {}
-                }
-            });
+
+            if let Some(reader) = self.reader.as_mut() {
+                let a = events
+                    .read(reader)
+                    .filter_map(|rx_event|{
+                        match rx_event {
+                            RxEvent::WinitEvent(winit::event::Event::WindowEvent {event: winit::event::WindowEvent::Resized(size), ..}) => {
+                                Some(size)
+                            },
+                            _ => None
+                        }
+                    }).last();
+            }
+
 
             let cam_target_pos = cam_tg
                 .target_pos_mut(&mut pos_st)
