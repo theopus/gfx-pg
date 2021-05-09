@@ -28,12 +28,16 @@ pub use ecs::{
         TransformationSystem,
         RenderSubmitSystem,
     },
+    base_systems::camera3d::{
+        Camera,
+        TargetedCamera,
+        CameraTarget,
+        ActiveCamera,
+    },
     Position,
     Rotation,
     Velocity,
     Transformation,
-    CameraTarget,
-    ActiveCamera,
     SelectedEntity,
     WinitEvents,
     EventReader,
@@ -41,7 +45,7 @@ pub use ecs::{
     EventChannelReader,
     EcsEvent,
     ScreenClickEvent,
-    EguiCtx
+    EguiCtx,
 };
 
 pub use assets::{

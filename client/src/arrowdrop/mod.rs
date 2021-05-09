@@ -5,6 +5,7 @@ use rand_distr::num_traits::real::Real;
 
 use rx::{egui, glm, Render, specs, specs::{Builder, Component, Join, VecStorage, WorldExt}, winit, winit::event::{ElementState, MouseButton}};
 use rx::ecs::base_systems::to_radians;
+use crate::gui_sys::{EcsUiWidget, EcsUiSystem, EcsUiWidgetSystem};
 
 #[derive(Component, Debug)]
 #[storage(VecStorage)]
@@ -77,52 +78,54 @@ struct GridSystem {
 }
 
 #[derive(Default)]
-struct GridUiSys {
-    reader: rx::EventReader<()>,
+pub struct GridUiSys;
+
+impl EcsUiWidgetSystem for GridUiSys {
+    fn name() -> &'static str {
+        "GridUiSys"
+    }
 }
 
 impl<'a> specs::System<'a> for GridUiSys {
     type SystemData = (
-        specs::Read<'a, rx::EventChannelReader<()>>,
+        specs::ReadStorage<'a, EcsUiWidget>,
         specs::Read<'a, rx::EguiCtx>,
         specs::WriteStorage<'a, Grid>,
         specs::WriteStorage<'a, rx::Render>,
     );
 
-    fn run(&mut self, (events, gui, mut grid_st, mut render_st): Self::SystemData) {
-        ;
-        for g in (&mut grid_st).join() {
-            let grid: &mut Grid = g;
-            if let Some(gui_ctx) = gui.as_ref() {
-                egui::Window::new("Grid_debug").show(gui_ctx, |ui| {
-                    egui::Grid::new("grid_grid").striped(true).show(ui, |ui| {
-                        for y in grid.cells.iter() {
-                            for x in y.iter() {
-                                ui.label(format!("{:?}", x));
+    fn run(&mut self, (widgets, gui, mut grid_st, mut render_st): Self::SystemData) {
+        if Self::should_draw(&widgets) {
+            for g in (&mut grid_st).join() {
+                let grid: &mut Grid = g;
+                if let Some(gui_ctx) = gui.as_ref() {
+                    egui::Window::new("Grid_debug").show(gui_ctx, |ui| {
+                        egui::Grid::new("grid_grid").striped(true)
+                            .spacing([1.,1.])
+                            .show(ui, |ui| {
+                            for y in grid.cells.iter() {
+                                for x in y.iter() {
+                                    ui.label(if *x {
+                                        "o"
+                                    } else {
+                                        "x"
+                                    });
+                                }
+                                ui.end_row();
                             }
-                            ui.end_row();
+                        });
+                        if ui.button("reset").clicked() {
+                            grid.reset_all(false);
+                            grid.cells_e.iter().flatten().for_each(|e| {
+                                if let Some(render) = render_st.get_mut(*e) {
+                                    render.hidden = false
+                                }
+                            })
                         }
-                    });
-                    if ui.button("reset").clicked() {
-                        grid.reset_all(false);
-                        grid.cells_e.iter().flatten().for_each(|e| {
-                            if let Some(render) = render_st.get_mut(*e) {
-                                render.hidden = false
-                            }
-                        })
-                    }
-                }).unwrap().id;
+                    }).unwrap().id;
+                }
             }
         }
-    }
-
-    fn setup(&mut self, world: &mut specs::World) {
-        use rx::{
-            specs::SystemData,
-            specs::shrev::EventChannel,
-        };
-        Self::SystemData::setup(world);
-        self.reader = Some(world.fetch_mut::<EventChannel<rx::RxEvent<()>>>().register_reader());
     }
 }
 
@@ -256,7 +259,7 @@ pub fn create((mut world, rated, constant): rx::EcsInitTuple, mesh_ptr: rx::Mesh
     world.register::<Grid>();
 
     rated.add(GridSystem::default(), "grid_sys", &[]);
-    constant.add_thread_local(GridUiSys::default());
+
     new_grid(
         world,
         mesh_ptr,

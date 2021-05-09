@@ -33,16 +33,21 @@ impl<'a> System<'a> for InputTestSystem {
         Read<'a, ActiveCamera>,
         Read<'a, CameraTarget>,
         WriteStorage<'a, Position>,
-        //        Write<'a, CameraTarget>,
-        WriteStorage<'a, TargetedCamera>,
+        WriteStorage<'a, rx::Camera>,
         WriteStorage<'a, Velocity>,
     );
 
     fn run(&mut self, data: Self::SystemData) {
-        let (channel, active, target, mut position, mut camera, mut velocity) = data;
+        let (channel, active, target, mut pos_st, mut cam_st, mut velocity) = data;
+        let cam = active.camera_mut(&mut cam_st);
+        let pos = target.target_pos_mut(&mut pos_st);
 
-        let cam = camera.get_mut(active.0.unwrap()).unwrap();
-        let pos = position.get_mut(target.0.unwrap()).unwrap();
+        if cam.is_none() || pos.is_none() {
+            return;
+        }
+
+        let cam = cam.unwrap();
+        let pos = pos.unwrap();
 
         let mut accum_delta = (0.0, 0.0);
         let mut accum_dist = 0_f32;
@@ -127,11 +132,16 @@ impl<'a> System<'a> for InputTestSystem {
         }
 
 
-        cam.distance += 0.4 * accum_dist;
-        cam.yaw += (0.4 * accum_delta.0) as f32;
-        cam.pitch -= (0.4 * accum_delta.1) as f32;
+        let cam_yaw = if let rx::Camera::Targeted(cam) = cam {
+            cam.distance += 0.4 * accum_dist;
+            cam.yaw += (0.4 * accum_delta.0) as f32;
+            cam.pitch -= (0.4 * accum_delta.1) as f32;
+            cam.yaw
+        } else {
+            0.
+        };
 
-        let degree = cam.yaw - 180.;
+        let degree = cam_yaw - 180.;
 
         let d_vec: Vec2 = self.pad.as_vec2(true);
         if self.pad.is_active() {
@@ -140,7 +150,10 @@ impl<'a> System<'a> for InputTestSystem {
             let d_vec: Vec2 = glm::rotate_vec2(&d_vec, glm::radians(&glm::vec1(degree)).x);
             let move_vec = self.speed * d_vec;
 
-            let mut v: &mut Velocity = velocity.get_mut(target.0.unwrap()).unwrap();
+            let v = match target.target_vel_mut(&mut velocity) {
+                None => return,
+                Some(e) => e
+            };
             v.v = glm::vec3(move_vec.y, 0., move_vec.x);
         };
     }

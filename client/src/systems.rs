@@ -19,7 +19,7 @@ pub mod test {
     use rx::winit::event::{ElementState, KeyboardInput, MouseButton, VirtualKeyCode};
 
     use crate::egui::CtxRef;
-    use crate::maths;
+    use crate::{maths, Camera};
     use crate::specs::World;
 
     #[derive(Default)]
@@ -51,12 +51,20 @@ pub mod test {
             Read<'a, EventChannel<RxEvent<()>>>,
             Read<'a, ViewProjection>,
             Read<'a, ActiveCamera>,
-            ReadStorage<'a, TargetedCamera>,
+            ReadStorage<'a, Position>,
+            ReadStorage<'a, rx::Camera>,
         );
 
-        fn run(&mut self, (events, vp, active_cam, camera): Self::SystemData) {
+        fn run(&mut self, (events, vp, active_cam, pos_st, cam_st): Self::SystemData) {
             use rx::winit::event::{Event, WindowEvent};
-            let cam = camera.get(active_cam.0.unwrap()).unwrap();
+            let cam = match active_cam.camera(&cam_st) {
+                None => return,
+                Some(e) => e
+            };
+            let cam_pos = match active_cam.camera_pos(&pos_st){
+                None => return,
+                Some(e) => e.as_vec3()
+            };
 
             if let Some(reader_id) = &mut self.reader {
                 for rx_e in &mut events.read(reader_id) {
@@ -81,7 +89,7 @@ pub mod test {
                                     w.send(rx::ScreenClickEvent {
                                         screen_pos: (self.x, self.y),
                                         world_vec: maths::screen2world((self.x as f32, self.y as f32), (self.w, self.h), &vp.view, &vp.proj),
-                                        cam_pos: cam.cam_pos.clone() as glm::Vec3,
+                                        cam_pos: cam_pos.clone() as glm::Vec3,
                                         mouse_button: button.clone(),
                                         state: state.clone(),
                                     }.into());
@@ -111,9 +119,7 @@ pub mod test {
         type SystemData = (
             Read<'a, ViewProjection>,
             Write<'a, EventChannel<RxEvent<()>>>,
-            Read<'a, ActiveCamera>,
-            ReadStorage<'a, TargetedCamera>,
-            Read<'a, CameraTarget>,
+            Read<'a, ActiveCamera>, //
             WriteStorage<'a, Position>,
             WriteStorage<'a, Velocity>,
             Read<'a, SelectedEntity>,
@@ -121,12 +127,20 @@ pub mod test {
 
 
         fn run(&mut self, data: Self::SystemData) {
-            let (vp, mut event_channel, active_cam, camera, target, mut pos, mut vel, selected) = data;
+            let (
+                vp,
+                mut event_channel,
+                active_cam,
+                mut pos_st,
+                mut vel,
+                selected
+            ) = data;
 
-            let cam = camera.get(active_cam.0.unwrap()).unwrap();
-            let mut _posit = pos.get_mut(target.0.unwrap()).unwrap();
-            // let mut velos: &mut Velocity = vel.get_mut(target.0.unwrap()).unwrap();
-            let sel: &mut Position = pos.get_mut(selected.0.unwrap()).unwrap();
+            let cam_pos = match active_cam.camera_pos_mut(&mut pos_st) {
+                None => return,
+                Some(e) => e.as_vec3()
+            };
+            let sel: &mut Position = pos_st.get_mut(selected.0.unwrap()).unwrap();
             let mut sel_vel: &mut Velocity = vel.get_mut(selected.0.unwrap()).unwrap();
 
             use rx::winit::event::{Event, WindowEvent};
@@ -167,9 +181,8 @@ pub mod test {
                     &glm::vec3(0., 1., 0.),
                     &glm::vec3(0., 0., 0.),
                     &vec,
-                    &cam.cam_pos,
-                )
-                    .unwrap();
+                    &cam_pos,
+                ).unwrap();
                 info!("intersection: {:?}", vec);
                 intersect.y = 0.;
 
@@ -245,7 +258,7 @@ pub mod test {
 
         fn run(&mut self, (mut pos, mut vel): Self::SystemData) {
             for (p, v) in (&mut pos, &mut vel).join() {
-                let velocity: Vec3 = v.v;
+                let velocity: glm::Vec3 = v.v.clone();
                 const SLOW: f32 = 0.05;
                 p.x += velocity.x;
                 p.y += velocity.y;

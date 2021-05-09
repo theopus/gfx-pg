@@ -22,6 +22,7 @@ use rx::winit::dpi::PhysicalSize;
 
 use crate::systems::test::Follower;
 use crate::winit::event::Event;
+use crate::gui_sys::{EcsUiWidgetSystem, EcsUiWidget};
 
 mod flowchart;
 mod generatin;
@@ -88,7 +89,7 @@ pub fn start() {
             world.register::<Velocity>();
             world.register::<Follower>();
 
-            let (.., transform_sys) = init(&mut world, &glm::vec3(0., 0., 0.));
+            let (.., cam_sys,transform_sys) = init(&mut world, &glm::vec3(0., 0., 0.));
 
             let player = world
                 .create_entity()
@@ -125,7 +126,7 @@ pub fn start() {
 
             world.insert(SelectedEntity(Some(selected)));
             world.insert(WinitEvents::default() as WinitEvents<()>);
-            world.insert(CameraTarget(Some(player)));
+            world.insert(CameraTarget::new(player));
 
             r_dispatcher.add(systems::test::FollowingSystem, "follow_sys", &[]);
             r_dispatcher.add(systems::test::ScreenClickSystem::default(), "screen_click_sys", &[]);
@@ -133,9 +134,15 @@ pub fn start() {
             r_dispatcher.add(input_sys, "in_tst_sys", &[]);
             r_dispatcher.add(move_sys, "move_sys", &[]);
             r_dispatcher.add(mouse_sys, "mouse_sys", &[]);
+            r_dispatcher.add(cam_sys, "cam_sys", &[]);
             r_dispatcher.add(transform_sys, "tsm_sys", &[]);
 
-            c_dispatcher.add_thread_local(gui_sys::GuiSystem::default());
+            world.register::<EcsUiWidget>();
+            gui_sys::EcsUiSystem.register_widget(c_dispatcher, world);
+            gui_sys::CameraUiSystem.register_widget(c_dispatcher, world);
+            gui_sys::ScreenClickUiSystem::default().register_widget(c_dispatcher, world);
+            arrowdrop::GridUiSys.register_widget(c_dispatcher, world);
+
             arrowdrop::create((world, r_dispatcher, c_dispatcher), _cube_mesh.clone());
             c_dispatcher.add_thread_local(rx::RenderSubmitSystem::new(draw, redner));
         })

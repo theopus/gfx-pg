@@ -11,10 +11,9 @@ pub mod world3d {
         VecStorage, World, WorldExt, Write, WriteStorage,
     };
 
+    use crate::{EventChannelReader, EventReader, RxEvent};
     use crate::assets::MeshPtr;
-    use crate::ecs::base_systems::camera3d::{
-        ActiveCamera, CameraTarget, init as init_cam, TargetedCamera, ViewProjection,
-    };
+    use crate::ecs::base_systems::camera3d::{ActiveCamera, Camera, CameraTarget, init as init_cam, TargetedCamera, ViewProjection};
     use crate::ecs::base_systems::to_radians;
     use crate::glm::Vec3;
     use crate::graphics_api::{DrawCmd, RenderCommand};
@@ -23,7 +22,7 @@ pub mod world3d {
     #[storage(VecStorage)]
     pub struct Render {
         pub mesh: MeshPtr,
-        pub hidden: bool
+        pub hidden: bool,
     }
 
     impl Render {
@@ -51,17 +50,15 @@ pub mod world3d {
 
     impl<'a> System<'a> for RenderSubmitSystem {
         type SystemData = (
-            Read<'a, ActiveCamera>,
-            ReadStorage<'a, TargetedCamera>,
+            Read<'a, ViewProjection>,
             ReadStorage<'a, Transformation>,
-            WriteStorage<'a, Render>,
+            ReadStorage<'a, Render>,
         );
 
-        fn run(&mut self, (active, camera, transformation, mut render): Self::SystemData) {
-            let cam = camera.get(active.0.unwrap()).unwrap();
+        fn run(&mut self, (vp, transformation, render): Self::SystemData) {
             self.send_render
-                .send(RenderCommand::PushView(cam.view.clone() as glm::Mat4)).unwrap();
-            for (transformation, render) in (&transformation, &mut render).join() {
+                .send(RenderCommand::PushView(vp.view.clone() as glm::Mat4)).unwrap();
+            for (transformation, render) in (&transformation, &render).join() {
                 if !render.hidden {
                     self.send_draw
                         .send((
@@ -78,9 +75,9 @@ pub mod world3d {
 
     ///
     ///                  camera  system
-    pub type WorldInit = (Entity, TransformationSystem);
+    pub type WorldInit<T> = (Entity, CameraSystem<T>, TransformationSystem);
 
-    pub fn init(world: &mut World, camera_at: &glm::Vec3) -> WorldInit {
+    pub fn init<T: 'static + Send + Clone>(world: &mut World, camera_at: &glm::Vec3) -> WorldInit<T> {
         info!("Init world3d_system");
         world.register::<Render>();
         world.register::<Rotation>();
@@ -97,16 +94,63 @@ pub mod world3d {
             })
             .build();
 
-        (init_cam(world, target), TransformationSystem)
+        let (cam, cam_sys) = init_cam(world, target);
+        (cam, cam_sys, TransformationSystem)
     }
 
     pub struct TransformationSystem;
 
+    #[derive(Default)]
+    pub struct CameraSystem<T: 'static + Send + Clone> {
+        reader: EventReader<T>,
+    }
+
+    impl<'a, T: 'static + Send + Clone + Sync> System<'a> for CameraSystem<T> {
+        type SystemData = (
+            WriteStorage<'a, Position>,
+            WriteStorage<'a, Camera>,
+            Read<'a, CameraTarget>,
+            Read<'a, EventChannelReader<T>>,
+        );
+
+        fn run(&mut self, (mut pos_st, mut cam_st, cam_tg, events): Self::SystemData) {
+            self.reader.map(|mut reader| {
+                events.read(&mut reader).filter(||)
+            }).map(|e| {
+                match e {
+                    RxEvent::WinitEvent(e) => {},
+                    _ => {}
+                }
+            });
+
+            let cam_target_pos = cam_tg
+                .target_pos_mut(&mut pos_st)
+                .map(|e| { e.as_vec3() });
+            for (pos, cam) in (&mut pos_st, &mut cam_st).join() {
+                match cam {
+                    Camera::Targeted(cam) => {
+                        if let Some(t_pos) = cam_target_pos.as_ref() {
+                            cam.target_at(t_pos, &glm::vec3(0., 0., 0.));
+                            pos.upd_from_vec3(&cam.cam_pos)
+                        }
+                    }
+                    Camera::Free => {}
+                }
+            }
+        }
+
+        fn setup(&mut self, world: &mut World) {
+            use specs::SystemData;
+            use specs::shrev::EventChannel;
+            Self::SystemData::setup(world);
+            self.reader = Some(world.fetch_mut::<EventChannelReader<T>>().register_reader());
+        }
+    }
+
     impl<'a> System<'a> for TransformationSystem {
         type SystemData = (
             Read<'a, ActiveCamera>,
-            Read<'a, CameraTarget>,
-            WriteStorage<'a, TargetedCamera>,
+            ReadStorage<'a, Camera>,
             ReadStorage<'a, Rotation>,
             ReadStorage<'a, Position>,
             WriteStorage<'a, Transformation>,
@@ -114,34 +158,32 @@ pub mod world3d {
         );
 
         fn run(&mut self, data: Self::SystemData) {
-            let (active_camera, camera_target, mut camera, rot, pos, mut tsm, mut vp_e) = data;
+            let (
+                active_camera,
+                cam_st,
+                rot,
+                pos,
+                mut tsm,
+                mut vp_e
+            ) = data;
 
-            let target_pos = pos.get(camera_target.0.unwrap()).unwrap();
-            let target_rot = rot.get(camera_target.0.unwrap()).unwrap();
-            let cam = camera.get_mut(active_camera.0.unwrap()).unwrap();
-
-            let vp = cam.target_at(
-                &glm::vec3(target_pos.x, target_pos.y, target_pos.z),
-                &glm::vec3(target_rot.x, target_rot.y, target_rot.z),
-            );
+            let cam = match active_camera.camera(&cam_st) {
+                None => return,
+                Some(e) => e
+            };
 
             //set current V+P
-            vp_e.view = cam.view.clone() as glm::Mat4;
-            vp_e.proj = cam.projection.clone() as glm::Mat4;
+            let vp = cam.vp();
+            vp_e.view = cam.view();
+            vp_e.proj = cam.projection();
 
             //bottleneck
             {
                 let start = Instant::now();
                 for (pos, rot, tsm) in (&pos, &rot, &mut tsm).join() {
                     tsm.model = {
-                        let mut mtx: glm::Mat4 = glm::identity();
+                        let mut mtx = glm::identity() as glm::Mat4;
                         mtx = glm::translate(&mut mtx, &glm::vec3(pos.x, pos.y, pos.z));
-                        // if rot.x != 0.0 || rot.x != 0.0 || rot.x != 0.0 {
-                        //     mtx = mtx * Rotation3::from_euler_angles(rot.x, rot.y, rot.z);
-                        // }
-                        // if rot.x != 0.0 || rot.y != 0.0 || rot.z != 0.0 {
-                        //     mtx = mtx * glm::rotate_vec3();
-                        // }
                         if rot.x != 0.0 {
                             mtx = glm::rotate(&mut mtx, glm::radians(&glm::vec1(rot.x)).x, &glm::vec3(1., 0., 0.));
                         }
@@ -216,12 +258,18 @@ pub mod world3d {
         pub fn as_vec3(&self) -> glm::Vec3 {
             glm::vec3(self.x, self.y, self.z)
         }
+
         pub fn from_vec3(from: &glm::Vec3) -> Self {
             Self {
                 x: from.x,
                 y: from.y,
-                z: from.z
+                z: from.z,
             }
+        }
+        pub fn upd_from_vec3(&mut self, from: &glm::Vec3) {
+            self.x = from.x;
+            self.y = from.y;
+            self.z = from.z;
         }
     }
 
@@ -234,7 +282,7 @@ pub mod world3d {
             Self {
                 x: from.x,
                 y: from.y,
-                z: from.z
+                z: from.z,
             }
         }
 
@@ -255,23 +303,27 @@ pub mod camera3d {
     use glm;
     #[allow(unused_imports)]
     use log::{debug, error, info, trace, warn};
-    use specs::{Builder, Component, Entity, VecStorage, World, WorldExt};
+    use specs::{Builder, Component, Entity, ReadStorage, VecStorage, World, WorldExt, WriteStorage};
+
+    use crate::{Position, Velocity};
+    use crate::ecs::base_systems::world3d::CameraSystem;
 
     ///
-            /// creates targeted camera, places camera to active
-            /// @return Camera Entity
-            ///
-    pub fn init(world: &mut World, cam_target: Entity) -> Entity {
+                                        /// creates targeted camera, places camera to active
+                                        /// @return Camera Entity
+                                        ///
+    pub fn init<T: 'static + Send + Clone>(world: &mut World, cam_target: Entity) -> (Entity, CameraSystem<T>) {
         info!("Init camera3d_system");
-        world.register::<TargetedCamera>();
+        world.register::<Camera>();
         let cam_entity = world
             .create_entity()
-            .with(TargetedCamera::default())
+            .with(Position::default())
+            .with(Camera::Targeted(TargetedCamera::default()))
             .build();
         world.insert(ActiveCamera(Some(cam_entity)));
         world.insert(CameraTarget(Some(cam_target)));
         world.insert(ViewProjection::default());
-        cam_entity
+        (cam_entity, CameraSystem::default())
     }
 
     pub struct ViewProjection {
@@ -281,14 +333,77 @@ pub mod camera3d {
 
     //current camera Id
     #[derive(Default)]
-    pub struct ActiveCamera(pub Option<Entity>);
+    pub struct ActiveCamera(Option<Entity>);
+
+    impl ActiveCamera {
+        pub fn camera<'a>(&self, cam_st: &'a ReadStorage<Camera>) -> Option<&'a Camera> {
+            self.0.map(|e| { cam_st.get(e) }).flatten()
+        }
+        pub fn camera_pos<'a>(&self, pos_st: &'a ReadStorage<Position>) -> Option<&'a Position> {
+            self.0.map(|e| { pos_st.get(e) }).flatten()
+        }
+        pub fn camera_pos_mut<'a>(&self, pos_st: &'a mut WriteStorage<Position>) -> Option<&'a mut Position> {
+            self.0.map(move |e| { pos_st.get_mut(e) }).flatten()
+        }
+        pub fn camera_mut<'a>(&self, cam_st: &'a mut WriteStorage<Camera>) -> Option<&'a mut Camera> {
+            self.0.map(move |e| { cam_st.get_mut(e) }).flatten()
+        }
+    }
 
     //camera target for ```TargetedCamera```
     #[derive(Default)]
-    pub struct CameraTarget(pub Option<Entity>);
+    pub struct CameraTarget(Option<Entity>);
+
+    impl CameraTarget {
+        pub fn target_pos<'a>(&self, pos_st: &'a ReadStorage<Position>) -> Option<&'a Position> {
+            self.0.map(|e| { pos_st.get(e) }).flatten()
+        }
+        pub fn target_pos_mut<'a>(&self, pos_st: &'a mut WriteStorage<Position>) -> Option<&'a mut Position> {
+            self.0.map(move |e| { pos_st.get_mut(e) }).flatten()
+        }
+        pub fn target_vel_mut<'a>(&self, pos_st: &'a mut WriteStorage<Velocity>) -> Option<&'a mut Velocity> {
+            self.0.map(move |e| { pos_st.get_mut(e) }).flatten()
+        }
+        pub fn new(target: Entity) -> Self {
+            CameraTarget(Some(target))
+        }
+    }
 
     #[derive(Component, Debug)]
     #[storage(VecStorage)]
+    pub enum Camera {
+        Targeted(TargetedCamera),
+        Free,
+    }
+
+    impl Camera {
+        pub fn update_aspect(&mut self, aspect: f32) {
+            match self {
+                Camera::Targeted(t) => t.update_aspect(aspect),
+                Camera::Free => {}
+            }
+        }
+        pub fn view(&self) -> glm::Mat4 {
+            (match self {
+                Camera::Targeted(t) => t.view.clone(),
+                Camera::Free => glm::identity()
+            }) as glm::Mat4
+        }
+        pub fn projection(&self) -> glm::Mat4 {
+            (match self {
+                Camera::Targeted(t) => t.projection.clone(),
+                Camera::Free => glm::identity()
+            }) as glm::Mat4
+        }
+        pub fn vp(&self) -> glm::Mat4 {
+            (match self {
+                Camera::Targeted(t) => &t.projection * &t.view,
+                Camera::Free => glm::identity()
+            }) as glm::Mat4
+        }
+    }
+
+    #[derive(Debug)]
     pub struct TargetedCamera {
         pub projection: glm::Mat4,
         pub view: glm::Mat4,
