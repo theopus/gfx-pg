@@ -54,15 +54,15 @@ impl Grid {
     fn reset_all(&mut self, value: bool) {
         for y in 0..self.y_len as usize {
             for x in 0..self.x_len as usize {
-                self.cells[x][y] = value;
+                self.cells[y][x] = value;
             }
         }
     }
     pub fn new(step: f32, x_len: u32, y_len: u32, entities: Vec<Vec<specs::Entity>>) -> Self {
         let mut cells = Vec::with_capacity(x_len as usize);
-        for y in 0..x_len as usize {
+        for y in 0..y_len as usize {
             let mut row = Vec::with_capacity(y_len as usize);
-            for x in 0..y_len as usize {
+            for x in 0..x_len as usize {
                 row.push(false);
             }
             cells.push(row)
@@ -194,9 +194,10 @@ impl<'a> specs::System<'a> for GridSystem {
                             y_axis.z
                         };
 
-                        if (x >= 0 && x < grid.x_len as i32) && (y >= 0 && y < grid.y_len as i32) {
+                        if (x >= 0 && x < grid.y_len as i32) && (y >= 0 && y < grid.x_len as i32) {
                             grid.cells[x as usize][y as usize] = true;
-                            if let Some(rend) = render_st.get_mut(grid.cells_e[x as usize][y as usize]) {
+                            if let Some(rend) = render_st.get_mut(grid.cells_e[y as usize][x as usize]) {
+                                info!("x,y {:?}",[y,x]);
                                 rend.hidden = true;
                             }
                         }
@@ -220,18 +221,18 @@ pub fn new_grid(
     rot: &glm::Vec3,
     step: f32,
     dim: (u32, u32),
+    rect: RectFromVec2
 ) {
-    let rect = RectFromVec2::default();
     let first = rect.rotate(&rx::Rotation::from_vec3(rot)).first.clone();
     let second = rect.rotate(&rx::Rotation::from_vec3(rot)).second.clone();
 
 
     let mut entities: Vec<Vec<specs::Entity>> = Vec::with_capacity(dim.0 as usize);
-    for x in 0..dim.0 {
-        let x_pos = pos + first * step * x as f32 + (first); //B
+    for y in 0..dim.0 {
+        let y_pos = pos + second * step * y as f32 + (second); //B
         let mut row = Vec::with_capacity(dim.1 as usize);
-        for y in 0..dim.1 {
-            let y_pos = pos + second * step * y as f32 + (second); //C
+        for x in 0..dim.1 {
+            let x_pos = pos + first * step * x as f32 + (first); //C
             //  find 4th rect point
             let final_pos = (y_pos + x_pos - pos); //D=A+(B-A)-(C-A)=B+C-A
             let entity = world
@@ -263,10 +264,14 @@ pub fn create((mut world, rated, constant): rx::EcsInitTuple, mesh_ptr: rx::Mesh
     new_grid(
         world,
         mesh_ptr,
-        &glm::vec3(0., 26., 0.),
+        &glm::vec3(-13.5, 26., 0.),
         &glm::vec3(0., 0., 0.),
         2.5,
-        (4, 4),
+        (11, 20),
+        RectFromVec2::new(
+            glm::vec3(0.,-1.,0.),
+            glm::vec3(1.,0.,0.)
+        ).unwrap()
     )
 
 

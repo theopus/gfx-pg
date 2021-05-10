@@ -23,6 +23,7 @@ pub struct InputTestSystem {
     pub vert: f32,
     pub hor: f32,
     pub ctrl_pressed: bool,
+    pub enabled: bool,
     pad: MovePad,
     reader: rx::EventReader<()>,
 }
@@ -118,6 +119,12 @@ impl<'a> System<'a> for InputTestSystem {
                                         ElementState::Pressed => true,
                                         ElementState::Released => false,
                                     },
+                                    VirtualKeyCode::F6 => match state {
+                                        ElementState::Pressed => {
+                                            self.enabled = !self.enabled;
+                                        },
+                                        _ => {},
+                                    },
                                     _ => {}
                                 }
                             },
@@ -128,6 +135,10 @@ impl<'a> System<'a> for InputTestSystem {
                     _ => {}
                 };
             }
+        }
+
+        if !self.enabled {
+            return;
         }
 
         let cam_yaw = if let rx::Camera::Targeted(cam) = cam {

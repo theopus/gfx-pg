@@ -21,7 +21,7 @@ layout (location = 0) out gl_PerVertex {
 layout (location = 0) out vec2 frag_uv;
 layout (location = 1) out vec3 light_intensity;
 
-const vec3 l_position = vec3(0, 100, 0);
+const vec3 l_position = vec3(0, 100, 30);
 const vec3 intensity = vec3(1, 1, 1);
 
 void main() {

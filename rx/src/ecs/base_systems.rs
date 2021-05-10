@@ -425,14 +425,12 @@ pub mod camera3d {
     pub struct TargetedCamera {
         pub projection: glm::Mat4,
         pub view: glm::Mat4,
-        fov: f32,
-        //
+        pub fov: f32,
         offset_y: f32,
         pub distance: f32,
-        //angle around y
         pub yaw: f32,
-        //angle around x
         pub pitch: f32,
+        pub aspect_ratio: f32,
 
         pub cam_pos: glm::Vec3,
     }
@@ -457,6 +455,7 @@ pub mod camera3d {
                     0.1,
                     1000.,
                 ),
+                aspect_ratio: 6. / 4.,
                 view: glm::identity() as glm::Mat4,
                 fov: 60.,
                 offset_y: 0.,
@@ -470,8 +469,18 @@ pub mod camera3d {
 
     impl TargetedCamera {
         pub fn update_aspect(&mut self, aspect_ratio: f32) {
+            self.aspect_ratio = aspect_ratio;
             self.projection = glm::perspective(
-                aspect_ratio,
+                self.aspect_ratio,
+                glm::radians(&glm::vec1(self.fov)).x,
+                0.1,
+                1000.,
+            );
+        }
+        pub fn update_fov(&mut self, fov: f32) {
+            self.fov = fov;
+            self.projection = glm::perspective(
+                self.aspect_ratio,
                 glm::radians(&glm::vec1(self.fov)).x,
                 0.1,
                 1000.,

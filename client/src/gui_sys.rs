@@ -145,6 +145,15 @@ impl<'a> specs::System<'a> for CameraUiSystem {
                                         ui.label("Pitch:");
                                         ui.add(egui::DragValue::new(&mut t.pitch).speed(0.1));
                                         ui.end_row();
+
+                                        ui.label("FOV:");
+                                        let mut fov_copy = t.fov;
+                                        ui.add(egui::DragValue::new(&mut fov_copy).speed(0.1));
+                                        ui.end_row();
+                                        if fov_copy != t.fov {
+                                            t.update_fov(fov_copy);
+                                        }
+
                                         active_cam.camera_pos_mut(&mut pos_st).map(|pos| {
                                             ui.label("Position:");
                                             ui.vertical(|ui| {

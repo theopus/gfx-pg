@@ -20,9 +20,9 @@ use rx::specs::Builder;
 use rx::specs::WorldExt;
 use rx::winit::dpi::PhysicalSize;
 
+use crate::gui_sys::{EcsUiWidget, EcsUiWidgetSystem};
 use crate::systems::test::Follower;
 use crate::winit::event::Event;
-use crate::gui_sys::{EcsUiWidgetSystem, EcsUiWidget};
 
 mod flowchart;
 mod generatin;
@@ -89,25 +89,41 @@ pub fn start() {
             world.register::<Velocity>();
             world.register::<Follower>();
 
-            let (.., cam_sys,transform_sys) = init::<()>(&mut world, &glm::vec3(0., 0., 0.));
+            let (mut cam, cam_sys, transform_sys) = init::<()>(&mut world, &glm::vec3(0., 0., 0.));
+
+            {
+                world.system_data::<specs::WriteStorage<rx::Camera>>()
+                    .get_mut(cam)
+                    .map(|cam| {
+                        match cam {
+                            Camera::Targeted(cam) => {
+                                cam.yaw = 180.;
+                                cam.pitch = 0.;
+                                cam.distance = 30.;
+                                cam.fov = 30.
+                            }
+                            Camera::Free => {}
+                        }
+                    });
+            }
 
             let player = world
                 .create_entity()
-                .with(Rotation::default())
-                .with(Position::default())
+                .with(Rotation {
+                    x: 0.0,
+                    y: 90.0,
+                    z: -90.0
+                })
+                .with(Position{
+                    x: 0.0,
+                    y: 30.0,
+                    z: 0.0
+                })
                 .with(Transformation::default())
                 .with(Velocity::default())
                 .with(Render::new(arrow_02.clone()))
                 .build();
 
-            let selected = world
-                .create_entity()
-                .with(Rotation::default())
-                .with(Position::default())
-                .with(Transformation::default())
-                .with(Velocity::default())
-                .with(Render::new(arrow_01.clone()))
-                .build();
             world
                 .create_entity()
                 .with(Rotation {
@@ -123,8 +139,6 @@ pub fn start() {
                 .with(Transformation::default())
                 .with(Render::new(map_mesh_ptr.clone()))
                 .build();
-
-            world.insert(SelectedEntity(Some(selected)));
             world.insert(WinitEvents::default() as WinitEvents<()>);
             world.insert(CameraTarget::new(player));
 
@@ -133,7 +147,6 @@ pub fn start() {
             //
             r_dispatcher.add(input_sys, "in_tst_sys", &[]);
             r_dispatcher.add(move_sys, "move_sys", &[]);
-            r_dispatcher.add(mouse_sys, "mouse_sys", &[]);
             r_dispatcher.add(cam_sys, "cam_sys", &[]);
             r_dispatcher.add(transform_sys, "tsm_sys", &[]);
 
