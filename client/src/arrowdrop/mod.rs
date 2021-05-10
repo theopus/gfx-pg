@@ -241,6 +241,7 @@ pub fn new_grid(
                 .with(rx::Position::from_vec3(&final_pos))
                 .with(rx::Transformation::default())
                 .with(rx::Render::new(mesh.clone()))
+                .with(rx::Culling::default())
                 .build();
             row.push(entity);
         }

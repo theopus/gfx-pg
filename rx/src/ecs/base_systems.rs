@@ -17,6 +17,8 @@ pub mod world3d {
     use crate::ecs::base_systems::to_radians;
     use crate::glm::{e, Vec3};
     use crate::graphics_api::{DrawCmd, RenderCommand};
+    use crate::specs::RunningTime;
+    use crate::ecs::systems::frustum::Culling;
 
     #[derive(Component, Debug)]
     #[storage(VecStorage)]
@@ -53,13 +55,14 @@ pub mod world3d {
             Read<'a, ViewProjection>,
             ReadStorage<'a, Transformation>,
             ReadStorage<'a, Render>,
+            ReadStorage<'a, Culling>,
         );
 
-        fn run(&mut self, (vp, transformation, render): Self::SystemData) {
+        fn run(&mut self, (vp, transformation, render, culling_st): Self::SystemData) {
             self.send_render
                 .send(RenderCommand::PushView(vp.view.clone() as glm::Mat4)).unwrap();
-            for (transformation, render) in (&transformation, &render).join() {
-                if !render.hidden {
+            for (transformation, render, cull) in (&transformation, &render, &culling_st).join() {
+                if !render.hidden && !cull.is_culled() {
                     self.send_draw
                         .send((
                             render.mesh.clone(),
@@ -171,9 +174,12 @@ pub mod world3d {
             ReadStorage<'a, Camera>,
             ReadStorage<'a, Rotation>,
             ReadStorage<'a, Position>,
+            ReadStorage<'a, Culling>,
             WriteStorage<'a, Transformation>,
             Write<'a, ViewProjection>,
         );
+
+
 
         fn run(&mut self, data: Self::SystemData) {
             let (
@@ -181,6 +187,7 @@ pub mod world3d {
                 cam_st,
                 rot,
                 pos,
+                culling_st,
                 mut tsm,
                 mut vp_e
             ) = data;
@@ -198,7 +205,10 @@ pub mod world3d {
             //bottleneck
             {
                 let start = Instant::now();
-                for (pos, rot, tsm) in (&pos, &rot, &mut tsm).join() {
+                for (cull, pos, rot, tsm) in (&culling_st, &pos, &rot, &mut tsm).join() {
+                    if cull.is_culled() {
+                        continue;
+                    }
                     tsm.model = {
                         let mut mtx = glm::identity() as glm::Mat4;
                         mtx = glm::translate(&mut mtx, &glm::vec3(pos.x, pos.y, pos.z));
@@ -217,6 +227,10 @@ pub mod world3d {
                 }
                 debug!("matrix took {:?}", Instant::now() - start);
             }
+        }
+
+        fn running_time(&self) ->  specs::RunningTime {
+            specs::RunningTime::VeryLong
         }
     }
 

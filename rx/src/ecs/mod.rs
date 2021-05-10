@@ -20,6 +20,7 @@ use crate::{events, RxEvent};
 pub mod base_systems;
 
 pub mod layer;
+pub mod systems;
 
 
 pub type EventReader<T> = Option<specs::shrev::ReaderId<RxEvent<T>>>;

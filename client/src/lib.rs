@@ -23,11 +23,15 @@ use rx::winit::dpi::PhysicalSize;
 use crate::gui_sys::{EcsUiWidget, EcsUiWidgetSystem};
 use crate::systems::test::Follower;
 use crate::winit::event::Event;
+use rx::ecs::systems::frustum;
+use rx::ecs::systems::frustum::Culling;
+
+
+use rx::maths;
 
 mod flowchart;
 mod generatin;
 mod map;
-mod maths;
 mod systems;
 mod arrowdrop;
 mod input_sys;
@@ -88,6 +92,7 @@ pub fn start() {
             use rx::ecs::{CameraTarget, Position, Rotation};
             world.register::<Velocity>();
             world.register::<Follower>();
+            world.register::<rx::Culling>();
 
             let (mut cam, cam_sys, transform_sys) = init::<()>(&mut world, &glm::vec3(0., 0., 0.));
 
@@ -109,6 +114,7 @@ pub fn start() {
 
             let player = world
                 .create_entity()
+                .with(Culling::default())
                 .with(Rotation {
                     x: 0.0,
                     y: 90.0,
@@ -138,6 +144,7 @@ pub fn start() {
                 })
                 .with(Transformation::default())
                 .with(Render::new(map_mesh_ptr.clone()))
+                .with(Culling::never())
                 .build();
             world.insert(WinitEvents::default() as WinitEvents<()>);
             world.insert(CameraTarget::new(player));
@@ -148,6 +155,7 @@ pub fn start() {
             r_dispatcher.add(input_sys, "in_tst_sys", &[]);
             r_dispatcher.add(move_sys, "move_sys", &[]);
             r_dispatcher.add(cam_sys, "cam_sys", &[]);
+            r_dispatcher.add(frustum::CullingSystem, "cull_sys", &[]);
             r_dispatcher.add(transform_sys, "tsm_sys", &[]);
 
             world.register::<EcsUiWidget>();

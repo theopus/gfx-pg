@@ -7,8 +7,6 @@ use log::{debug, error, info, trace, warn};
 
 use rx::glm;
 
-// use crate::flowchart::fields::Grid;
-
 mod pathfinding {
     #[allow(unused_imports)]
     use log::{debug, error, info, trace, warn};
@@ -118,7 +116,9 @@ mod pathfinding {
             let cell = cell_at(self.cell_width, self.n_width, self.n_height, origin, target)?;
             info!("{:?}", cell);
             self.update_integration_field(cell)?;
-            Some(self.flow_field())
+            let field = self.flow_field();
+            // self.reset_field();
+            Some(field)
         }
     }
 
@@ -134,7 +134,7 @@ mod pathfinding {
                 });
         }
 
-                #[allow(dead_code)]
+        #[allow(dead_code)]
         pub fn print_integration(&self) {
             for (_y, line) in self.cells.iter().rev().enumerate() {
                 for (_x, c) in line.iter().enumerate() {
@@ -155,17 +155,14 @@ mod pathfinding {
 
         fn update_integration_field(&mut self, cell: (usize, usize)) -> Option<()> {
             let selected_cell = glm::vec2(cell.0 as u32, cell.1 as u32);
-
+            let size = self.n_height.clone() * self.n_width.clone();
             let cell = self.cell_mut(selected_cell.x, selected_cell.y);
-            info!("{:?}", cell);
-            if cell.cost == BLOCKED_COST {
-                return None;
-            }
-            let cell_cost = cell.cost;
+            let cell_cost = cell.cost.clone();
             cell.cost = 0;
             cell.integration = 0;
 
-            let mut open_list: Vec<glm::UVec2> = Vec::with_capacity(self.n_height * self.n_width);
+            let mut open_list: Vec<glm::UVec2> = Vec::with_capacity(size);
+
             open_list.push(selected_cell);
 
             while !open_list.is_empty() {
@@ -203,12 +200,12 @@ mod pathfinding {
                     self.cell_mut(cell_xy.x, cell_xy.y).integration = BLOCKED_COST;
                 }
             }
-            cell.cost = cell_cost;
-            self.reset_field();
+            let cell2 = self.cell_mut(selected_cell.x, selected_cell.y);
+            cell2.cost = cell_cost;
             Some(())
         }
 
-        fn flow_field(&self) -> FlowField {
+        pub fn flow_field(&self) -> FlowField {
             let mut response = Vec::with_capacity(self.n_height);
             for (y, line) in self.cells.iter().enumerate() {
                 let mut c_line = Vec::with_capacity(self.n_width);
@@ -246,24 +243,22 @@ mod pathfinding {
     impl FlowGrid {
         #[allow(dead_code)]
         pub fn set_cost(&mut self, x: u32, y: u32, cost: u32) {
-            self.cells[y as usize][x as usize].cost = cost;
+            self.cells[self.n_height - 1 - y as usize][x as usize].cost = cost;
         }
 
         pub fn set_cost_all(&mut self, cost: u32) {
-            self.cells.iter_mut().flat_map(|v| {v.iter_mut()}).for_each(|c|{
+            self.cells.iter_mut().flat_map(|v| { v.iter_mut() }).for_each(|c| {
                 c.cost = cost
             })
         }
 
         #[allow(dead_code)]
         fn cell(&self, x: u32, y: u32) -> &FlowGridCell {
-            // maybe wrong?
             &self.cells[y as usize][x as usize]
         }
 
         #[allow(dead_code)]
         fn cell_mut(&mut self, x: u32, y: u32) -> &mut FlowGridCell {
-            // maybe wrong?
             &mut self.cells[y as usize][x as usize]
         }
     }
@@ -361,13 +356,22 @@ fn test() {
     // grid.print_integration();
     // grid.print_flowfield();
 
-    let mut field = pathfinding::FlowGrid::new(2.5, 5, 11);
-    field.set_cost_all(pathfinding::BLOCKED);
+    let mut field = pathfinding::FlowGrid::new(2.5, 50, 11);
+    // field.set_cost_all(pathfinding::BLOCKED);
     field.set_cost(0, 0, 1);
+    field.set_cost(0, 1, 1);
+    field.set_cost(0, 2, 1);
+    field.set_cost(0, 3, 1);
+    field.set_cost(1, 3, 1);
+    field.set_cost(0, 4, 1);
+    field.set_cost(1, 4, 1);
+    field.set_cost(2, 4, 1);
+    field.set_cost(3, 4, 1);
+    field.set_cost(4, 4, 1);
     let flow_field = field
         .flow_field_at(
             &glm::vec2(-13.5, 26.),
-            &glm::vec2(-5., 26.),
+            &glm::vec2(-13.5, 26.),
         );
     field.print_integration();
     flow_field.map(|f| {
