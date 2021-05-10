@@ -24,7 +24,7 @@ pub struct InputTestSystem {
     pub hor: f32,
     pub ctrl_pressed: bool,
     pad: MovePad,
-    reader: Option<rx::specs::shrev::ReaderId<RxEvent<()>>>,
+    reader: rx::EventReader<()>,
 }
 
 impl<'a> System<'a> for InputTestSystem {
@@ -121,7 +121,6 @@ impl<'a> System<'a> for InputTestSystem {
                                     _ => {}
                                 }
                             },
-                            WindowEvent::Resized(size) => cam.update_aspect(size.width as f32 / size.height as f32),
                             _ => {}
                         },
                         _ => (),
@@ -130,7 +129,6 @@ impl<'a> System<'a> for InputTestSystem {
                 };
             }
         }
-
 
         let cam_yaw = if let rx::Camera::Targeted(cam) = cam {
             cam.distance += 0.4 * accum_dist;

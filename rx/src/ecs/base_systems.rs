@@ -15,7 +15,7 @@ pub mod world3d {
     use crate::assets::MeshPtr;
     use crate::ecs::base_systems::camera3d::{ActiveCamera, Camera, CameraTarget, init as init_cam, TargetedCamera, ViewProjection};
     use crate::ecs::base_systems::to_radians;
-    use crate::glm::{Vec3, e};
+    use crate::glm::{e, Vec3};
     use crate::graphics_api::{DrawCmd, RenderCommand};
 
     #[derive(Component, Debug)]
@@ -122,18 +122,20 @@ pub mod world3d {
 
         fn run(&mut self, (mut pos_st, mut cam_st, cam_tg, events): Self::SystemData) {
 
-            if let Some(reader) = self.reader.as_mut() {
-                let a = events
+            // if let Some(reader) = ) {
+            let size = self.reader.as_mut().map(|mut reader| {
+                events
                     .read(reader)
-                    .filter_map(|rx_event|{
+                    .filter_map(|rx_event| {
                         match rx_event {
-                            RxEvent::WinitEvent(winit::event::Event::WindowEvent {event: winit::event::WindowEvent::Resized(size), ..}) => {
+                            RxEvent::WinitEvent(winit::event::Event::WindowEvent { event: winit::event::WindowEvent::Resized(size), .. }) => {
                                 Some(size)
-                            },
+                            }
                             _ => None
                         }
-                    }).last();
-            }
+                    }).last()
+            }).flatten();
+            // }
 
 
             let cam_target_pos = cam_tg
@@ -148,6 +150,9 @@ pub mod world3d {
                         }
                     }
                     Camera::Free => {}
+                }
+                if let Some(size) = size{
+                    cam.update_aspect(size.width as f32 / size.height as f32)
                 }
             }
         }
@@ -322,9 +327,9 @@ pub mod camera3d {
     use crate::ecs::base_systems::world3d::CameraSystem;
 
     ///
-                                        /// creates targeted camera, places camera to active
-                                        /// @return Camera Entity
-                                        ///
+                                            /// creates targeted camera, places camera to active
+                                            /// @return Camera Entity
+                                            ///
     pub fn init<T: 'static + Send + Clone>(world: &mut World, cam_target: Entity) -> (Entity, CameraSystem<T>) {
         info!("Init camera3d_system");
         world.register::<Camera>();
