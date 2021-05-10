@@ -6,279 +6,345 @@
 use log::{debug, error, info, trace, warn};
 
 use rx::glm;
-use rx::glm::UVec2;
 
-#[derive(Debug)]
-struct Cell {
-    cost: u32,
-    integration: u32,
-    visited: bool,
-    ch: char,
-}
+// use crate::flowchart::fields::Grid;
 
-#[allow(dead_code)]
-struct Grid {
-    array: Vec<Vec<Cell>>,
-    n_cells: usize,
-    cells_width: f32,
-    origin: glm::Vec2,
-}
+mod pathfinding {
+    #[allow(unused_imports)]
+    use log::{debug, error, info, trace, warn};
 
-#[allow(dead_code)]
-const BLOCKED: u32 = u32::max_value();
-#[allow(dead_code)]
-const DEFAULT: u32 = u32::max_value() - 1000;
+    use rx::glm;
 
-impl Grid {
-    #[allow(dead_code)]
-    fn new(a: &glm::Vec2, cells_width: f32, n_cells: usize) -> Self {
-        use std::iter;
-        let grid_array = iter::repeat_with(|| {
-            iter::repeat_with(|| Cell {
-                cost: 1,
-                integration: DEFAULT,
-                visited: false,
-                ch: '*',
-            })
-                .take(n_cells)
-                .collect::<Vec<Cell>>()
-        })
-            .take(n_cells)
-            .collect::<Vec<Vec<Cell>>>();
+    const DEFAULT_INTEGRATION_COST: u32 = u32::MAX - 1000;
+    const BLOCKED_COST: u32 = u32::MAX;
+    pub const BLOCKED: u32 = u32::MAX;
 
-        Self {
-            array: grid_array,
-            n_cells,
-            cells_width,
-            origin: a.clone_owned(),
-        }
-    }
-    #[allow(dead_code)]
-    fn cell_coords(&self, coords: &glm::Vec2) -> glm::UVec2 {
-        let x = ((coords.x + (-1. * self.origin.x)) / self.cells_width) as u32;
-        let y = ((coords.y + (-1. * self.origin.y)) / self.cells_width) as u32;
-        glm::vec2(x, y)
-    }
-    #[allow(dead_code)]
-    pub fn neighbors(&self, x: u32, y: u32) -> Vec<glm::UVec2> {
-        let mut neighbours = Vec::new();
-        let n = glm::vec2(x, y + 1);
-        if n.y <= (self.n_cells - 1) as u32 {
-            neighbours.push(n)
-        }
-        if y >= 1 {
-            neighbours.push(glm::vec2(x, y - 1))
-        }
-        let e = glm::vec2(x + 1, y);
-        if e.x <= (self.n_cells - 1) as u32 {
-            neighbours.push(e)
-        }
-        if x >= 1 {
-            neighbours.push(glm::vec2(x - 1, y))
-        }
-        neighbours
+    #[derive(Debug)]
+    pub struct FlowGridCell {
+        integration: u32,
+        cost: u32,
+        visited: bool,
     }
 
-    #[allow(dead_code)]
-    pub fn neighbors_1(&self, x: u32, y: u32) -> Vec<glm::UVec2> {
-        let mut neighbours = Vec::new();
-
-        if y < self.n_cells as u32 - 1 {
-            //n
-            neighbours.push(glm::vec2(x, y + 1));
-            //nw
-            if x >= 1 {
-                neighbours.push(glm::vec2(x - 1, y + 1))
-            }
-            //ne
-            if x < self.n_cells as u32 - 1 {
-                neighbours.push(glm::vec2(x + 1, y + 1))
-            }
-        }
-
-        if y >= 1 {
-            //s
-            neighbours.push(glm::vec2(x, y - 1));
-            //sw
-            if x >= 1 {
-                neighbours.push(glm::vec2(x - 1, y - 1))
-            }
-            //se
-            if x < self.n_cells as u32 - 1 {
-                neighbours.push(glm::vec2(x + 1, y - 1))
-            }
-        }
-
-        //w
-        if x >= 1 {
-            neighbours.push(glm::vec2(x - 1, y))
-        }
-        //e
-        if x < self.n_cells as u32 - 1 {
-            neighbours.push(glm::vec2(x + 1, y))
-        }
-        neighbours
+    pub struct FlowGrid {
+        cell_width: f32,
+        n_width: usize,
+        n_height: usize,
+        cells: Vec<Vec<FlowGridCell>>,
     }
 
-    #[allow(dead_code)]
-    pub fn print_integration(&self) {
-        for (_y, line) in self.array.iter().rev().enumerate() {
-            for (_x, c) in line.iter().enumerate() {
-                if c.integration == BLOCKED {
-                    print!("-X-");
-                    continue;
-                };
+    pub struct FlowField {
+        cell_width: f32,
+        n_width: usize,
+        n_height: usize,
+        cells: Vec<Vec<glm::IVec2>>,
+    }
 
-                if c.integration >= 10 {
-                    print!("{:?}-", c.integration);
-                } else {
-                    print!("-{:?}-", c.integration);
+    fn cell_at(
+        cell_width: f32,
+        n_width: usize,
+        n_height: usize,
+        origin: &glm::Vec2,
+        coords: &glm::Vec2,
+    ) -> Option<(usize, usize)> {
+        let x = ((coords.x + (-1. * origin.x)) / cell_width) as i32;
+        let y = n_height as i32 - ((-coords.y + origin.y) / cell_width) as i32 - 1;
+
+        if x >= 0 && x < n_width as i32 && y >= 0 && y < n_height as i32 {
+            return Some((x as usize, y as usize));
+        }
+        return None;
+    }
+
+    impl FlowField {
+        #[allow(dead_code)]
+        pub fn print_flowfield(&self) {
+            let flow = self.to_char_flowfield(&self.cells);
+            for line in flow.iter().rev() {
+                let mut string_vec = Vec::with_capacity(self.n_width);
+                for (_i, c) in line.iter().enumerate() {
+                    string_vec.push(c.to_string());
                 }
+                info!("{:?}", string_vec);
             }
-            println!("");
         }
-    }
-
-    #[allow(dead_code)]
-    pub fn print_flowfield(&self) {
-        let flow = self.to_char_flowfield(&self.flow_field());
-        for line in flow.iter().rev() {
-            let mut string_vec = Vec::with_capacity(self.n_cells);
-            for (_i, c) in line.iter().enumerate() {
-                string_vec.push(c.to_string());
-            }
-            info!("{:?}", string_vec);
-        }
-    }
-
-    #[allow(dead_code)]
-    pub fn cell(&self, x: u32, y: u32) -> &Cell {
-        // maybe wrong?
-        &self.array[y as usize][x as usize]
-    }
-
-    #[allow(dead_code)]
-    pub fn cell_mut(&mut self, x: u32, y: u32) -> &mut Cell {
-        // maybe wrong?
-        &mut self.array[y as usize][x as usize]
-    }
-
-    pub fn flow_field(&self) -> Vec<Vec<glm::IVec2>> {
-        let mut response = Vec::with_capacity(self.n_cells);
-        for (y, line) in self.array.iter().enumerate() {
-            let mut c_line = Vec::with_capacity(self.n_cells);
-            for (x, c) in line.iter().enumerate() {
-                let int = c.integration;
-                let mut character = glm::vec2(0, 0);
-                let mut min = u32::max_value();
-                if int == BLOCKED {
-                    character = glm::vec2(i32::max_value(), i32::max_value());
+        #[allow(dead_code)]
+        pub fn to_char_flowfield(&self, field: &Vec<Vec<glm::IVec2>>) -> Vec<Vec<char>> {
+            let mut response = Vec::with_capacity(field.len());
+            for (_y, line) in field.iter().enumerate() {
+                let mut c_line = Vec::with_capacity(line.len());
+                for (_x, dir) in line.iter().enumerate() {
+                    let mut character = '↯';
+                    if dir.x == i32::max_value() && dir.y == i32::max_value() {
+                        character = 'x';
+                    } else {
+                        if dir.x > 0 && dir.y > 0 {
+                            character = '↗';
+                        }
+                        if dir.x < 0 && dir.y < 0 {
+                            character = '↙';
+                        }
+                        if dir.x < 0 && dir.y > 0 {
+                            character = '↖';
+                        }
+                        if dir.x > 0 && dir.y < 0 {
+                            character = '↘';
+                        }
+                        if dir.x > 0 && dir.y == 0 {
+                            character = '→';
+                        }
+                        if dir.x < 0 && dir.y == 0 {
+                            character = '←';
+                        }
+                        if dir.y > 0 && dir.x == 0 {
+                            character = '↑';
+                        }
+                        if dir.y < 0 && dir.x == 0 {
+                            character = '↓';
+                        }
+                    }
                     c_line.push(character);
-                    continue;
                 }
-                for n in self.neighbors_1(x as u32, y as u32).iter() {
-                    let n_int = self.cell(n.x, n.y).integration;
-
-                    if (n_int < int) && n_int < min {
-                        min = n_int;
-                        character =
-                            &glm::vec2(n.x as i32, n.y as i32) - &glm::vec2(x as i32, y as i32);
-                    }
-                }
-                c_line.push(character);
+                response.push(c_line);
             }
-            response.push(c_line);
+            response
         }
-        response
     }
 
-    #[allow(dead_code)]
-    pub fn to_char_flowfield(&self, field: &Vec<Vec<glm::IVec2>>) -> Vec<Vec<char>> {
-        let mut response = Vec::with_capacity(field.len());
-        for (_y, line) in field.iter().enumerate() {
-            let mut c_line = Vec::with_capacity(line.len());
-            for (_x, dir) in line.iter().enumerate() {
-                let mut character = '↯';
-                if dir.x == i32::max_value() && dir.y == i32::max_value() {
-                    character = 'x';
-                } else {
-                    if dir.x > 0 && dir.y > 0 {
-                        character = '↗';
-                    }
-                    if dir.x < 0 && dir.y < 0 {
-                        character = '↙';
-                    }
-                    if dir.x < 0 && dir.y > 0 {
-                        character = '↖';
-                    }
-                    if dir.x > 0 && dir.y < 0 {
-                        character = '↘';
-                    }
-                    if dir.x > 0 && dir.y == 0 {
-                        character = '→';
-                    }
-                    if dir.x < 0 && dir.y == 0 {
-                        character = '←';
-                    }
-                    if dir.y > 0 && dir.x == 0 {
-                        character = '↑';
-                    }
-                    if dir.y < 0 && dir.x == 0 {
-                        character = '↓';
-                    }
-                }
-                c_line.push(character);
-            }
-            response.push(c_line);
+
+    ///public api
+    impl FlowGrid {
+        pub fn flow_field_at(&mut self, origin: &glm::Vec2, target: &glm::Vec2) -> Option<FlowField> {
+            let cell = cell_at(self.cell_width, self.n_width, self.n_height, origin, target)?;
+            info!("{:?}", cell);
+            self.update_integration_field(cell)?;
+            Some(self.flow_field())
         }
-        response
     }
 
-    #[allow(dead_code)]
-    pub fn integration_field(&mut self, coords: &glm::Vec2) {
-        let selected_cell = self.cell_coords(coords);
-        info!("{:?}", selected_cell);
-        let cell = &mut self.cell_mut(selected_cell.x, selected_cell.y);
-        cell.cost = 0;
-        cell.integration = 0;
+    ///integration upd & flowfield
+    impl FlowGrid {
+        fn reset_field(&mut self) {
+            self.cells
+                .iter_mut()
+                .flat_map(|a| a.iter_mut())
+                .for_each(|c| {
+                    c.visited = false;
+                    c.integration = 0;
+                });
+        }
 
-        let mut open_list: Vec<UVec2> = Vec::with_capacity(self.n_cells * self.n_cells);
-        open_list.push(selected_cell);
+                #[allow(dead_code)]
+        pub fn print_integration(&self) {
+            for (_y, line) in self.cells.iter().rev().enumerate() {
+                for (_x, c) in line.iter().enumerate() {
+                    if c.integration == BLOCKED {
+                        print!("-X-");
+                        continue;
+                    };
 
-        while !open_list.is_empty() {
-            let cell_xy = open_list.pop().unwrap();
-            let neighbors = self.neighbors(cell_xy.x, cell_xy.y);
-            self.cell_mut(cell_xy.x, cell_xy.y).visited = true;
-
-            for n in neighbors.iter() {
-                let cost = self.cell(cell_xy.x, cell_xy.y).cost;
-                let integration = self.cell(cell_xy.x, cell_xy.y).integration;
-                let n_integration = self.cell(n.x, n.y).integration;
-
-                if !self.cell(n.x, n.y).visited {
-                    open_list.push(n.clone_owned());
+                    if c.integration >= 10 {
+                        print!("{:?}-", c.integration);
+                    } else {
+                        print!("-{:?}-", c.integration);
+                    }
                 }
-                if n_integration == BLOCKED {
-                    continue;
-                }
-                if cost == BLOCKED {
-                    self.cell_mut(cell_xy.x, cell_xy.y).integration = BLOCKED;
-                    continue;
+                println!("");
+            }
+        }
+
+        fn update_integration_field(&mut self, cell: (usize, usize)) -> Option<()> {
+            let selected_cell = glm::vec2(cell.0 as u32, cell.1 as u32);
+
+            let cell = self.cell_mut(selected_cell.x, selected_cell.y);
+            info!("{:?}", cell);
+            if cell.cost == BLOCKED_COST {
+                return None;
+            }
+            let cell_cost = cell.cost;
+            cell.cost = 0;
+            cell.integration = 0;
+
+            let mut open_list: Vec<glm::UVec2> = Vec::with_capacity(self.n_height * self.n_width);
+            open_list.push(selected_cell);
+
+            while !open_list.is_empty() {
+                let cell_xy = open_list.pop().unwrap();
+                let neighbors = self.neighbors_cross(cell_xy.x, cell_xy.y);
+                self.cell_mut(cell_xy.x, cell_xy.y).visited = true;
+
+                for n in neighbors.iter() {
+                    let cost = self.cell(cell_xy.x, cell_xy.y).cost;
+                    let integration = self.cell(cell_xy.x, cell_xy.y).integration;
+                    let n_integration = self.cell(n.x, n.y).integration;
+
+                    if !self.cell(n.x, n.y).visited {
+                        open_list.push(n.clone_owned());
+                    }
+                    if n_integration == BLOCKED_COST {
+                        continue;
+                    }
+                    if cost == BLOCKED_COST {
+                        self.cell_mut(cell_xy.x, cell_xy.y).integration = BLOCKED_COST;
+                        continue;
+                    }
+
+                    let integration_cost = if self.cell(n.x, n.y).visited {
+                        n_integration + cost
+                    } else {
+                        n_integration
+                    };
+                    if integration_cost < integration {
+                        self.cell_mut(cell_xy.x, cell_xy.y).integration = integration_cost;
+                    }
                 }
 
-                let integration_cost = if self.cell(n.x, n.y).visited {
-                    n_integration + cost
-                } else {
-                    n_integration
-                };
-                if integration_cost < integration {
-                    self.cell_mut(cell_xy.x, cell_xy.y).integration = integration_cost;
+                if self.cell(cell_xy.x, cell_xy.y).integration == DEFAULT_INTEGRATION_COST {
+                    self.cell_mut(cell_xy.x, cell_xy.y).integration = BLOCKED_COST;
+                }
+            }
+            cell.cost = cell_cost;
+            self.reset_field();
+            Some(())
+        }
+
+        fn flow_field(&self) -> FlowField {
+            let mut response = Vec::with_capacity(self.n_height);
+            for (y, line) in self.cells.iter().enumerate() {
+                let mut c_line = Vec::with_capacity(self.n_width);
+                for (x, c) in line.iter().enumerate() {
+                    let int = c.integration;
+                    let mut character = glm::vec2(0, 0);
+                    let mut min = BLOCKED;
+                    if int == BLOCKED {
+                        character = glm::vec2(i32::MAX, i32::MAX);
+                        c_line.push(character);
+                        continue;
+                    }
+                    for n in self.neighbors_1grid(x as u32, y as u32).iter() {
+                        let n_int = self.cell(n.x, n.y).integration;
+                        if (n_int < int) && n_int < min {
+                            min = n_int;
+                            character =
+                                &glm::vec2(n.x as i32, n.y as i32) - &glm::vec2(x as i32, y as i32);
+                        }
+                    }
+                    c_line.push(character);
+                }
+                response.push(c_line);
+            }
+            FlowField {
+                cell_width: self.cell_width,
+                n_width: self.n_width,
+                n_height: self.n_height,
+                cells: response,
+            }
+        }
+    }
+
+    ///cell accessors
+    impl FlowGrid {
+        #[allow(dead_code)]
+        pub fn set_cost(&mut self, x: u32, y: u32, cost: u32) {
+            self.cells[y as usize][x as usize].cost = cost;
+        }
+
+        pub fn set_cost_all(&mut self, cost: u32) {
+            self.cells.iter_mut().flat_map(|v| {v.iter_mut()}).for_each(|c|{
+                c.cost = cost
+            })
+        }
+
+        #[allow(dead_code)]
+        fn cell(&self, x: u32, y: u32) -> &FlowGridCell {
+            // maybe wrong?
+            &self.cells[y as usize][x as usize]
+        }
+
+        #[allow(dead_code)]
+        fn cell_mut(&mut self, x: u32, y: u32) -> &mut FlowGridCell {
+            // maybe wrong?
+            &mut self.cells[y as usize][x as usize]
+        }
+    }
+
+    ///neighbours
+    impl FlowGrid {
+        fn neighbors_cross(&self, x: u32, y: u32) -> Vec<glm::UVec2> {
+            let mut neighbours = Vec::new();
+            let n = glm::vec2(x, y + 1);
+            if n.y <= (self.n_height - 1) as u32 {
+                neighbours.push(n)
+            }
+            if y >= 1 {
+                neighbours.push(glm::vec2(x, y - 1))
+            }
+            let e = glm::vec2(x + 1, y);
+            if e.x <= (self.n_width - 1) as u32 {
+                neighbours.push(e)
+            }
+            if x >= 1 {
+                neighbours.push(glm::vec2(x - 1, y))
+            }
+            neighbours
+        }
+
+        fn neighbors_1grid(&self, x: u32, y: u32) -> Vec<glm::UVec2> {
+            let mut neighbours = Vec::new();
+
+            if y < self.n_height as u32 - 1 {
+                //n
+                neighbours.push(glm::vec2(x, y + 1));
+                //nw
+                if x >= 1 {
+                    neighbours.push(glm::vec2(x - 1, y + 1))
+                }
+                //ne
+                if x < self.n_width as u32 - 1 {
+                    neighbours.push(glm::vec2(x + 1, y + 1))
                 }
             }
 
-            if self.cell(cell_xy.x, cell_xy.y).integration == DEFAULT {
-                self.cell_mut(cell_xy.x, cell_xy.y).integration = BLOCKED;
+            if y >= 1 {
+                //s
+                neighbours.push(glm::vec2(x, y - 1));
+                //sw
+                if x >= 1 {
+                    neighbours.push(glm::vec2(x - 1, y - 1))
+                }
+                //se
+                if x < self.n_width as u32 - 1 {
+                    neighbours.push(glm::vec2(x + 1, y - 1))
+                }
             }
+
+            //w
+            if x >= 1 {
+                neighbours.push(glm::vec2(x - 1, y))
+            }
+            //e
+            if x < self.n_width as u32 - 1 {
+                neighbours.push(glm::vec2(x + 1, y))
+            }
+            neighbours
+        }
+    }
+
+    impl FlowGrid {
+        pub fn new(cell_width: f32, n_width: usize, n_height: usize) -> Self {
+            let mut v_vec = Vec::with_capacity(n_height);
+            for _ in 0..n_height {
+                let mut h_vec = Vec::with_capacity(n_width);
+                for _ in 0..n_width {
+                    h_vec.push(FlowGridCell {
+                        integration: DEFAULT_INTEGRATION_COST,
+                        cost: 1,
+                        visited: false,
+                    })
+                }
+                v_vec.push(h_vec);
+            }
+            FlowGrid { cell_width, n_width, n_height, cells: v_vec }
         }
     }
 }
@@ -286,18 +352,25 @@ impl Grid {
 #[test]
 fn test() {
     crate::init_log();
-    let mut grid = Grid::new(&glm::vec2(-100., -100.), 20., 11);
-    {
-        grid.cell_mut(4, 6).cost = BLOCKED;
-        grid.cell_mut(5, 6).cost = BLOCKED;
-        grid.cell_mut(6, 6).cost = BLOCKED;
-        grid.cell_mut(6, 5).cost = BLOCKED;
-        grid.cell_mut(6, 4).cost = BLOCKED;
-        grid.cell_mut(5, 4).cost = BLOCKED;
-        grid.cell_mut(4, 4).cost = BLOCKED;
-        grid.cell_mut(4, 5).cost = BLOCKED;
-    }
-    grid.integration_field(&glm::vec2(119., 119.));
-    grid.print_integration();
-    grid.print_flowfield();
+    // let mut grid = Grid::new(&glm::vec2(-13.5, 26.), 2.5, 11);
+    // {
+    //     grid.set_cost_all(fields::BLOCKED);
+    // }
+    // grid.integration_field(&glm::vec2(0., 26.));
+    // info!("{:?}", grid.flow_field().get_dir(&glm::vec2(-13., 26.)));
+    // grid.print_integration();
+    // grid.print_flowfield();
+
+    let mut field = pathfinding::FlowGrid::new(2.5, 5, 11);
+    field.set_cost_all(pathfinding::BLOCKED);
+    field.set_cost(0, 0, 1);
+    let flow_field = field
+        .flow_field_at(
+            &glm::vec2(-13.5, 26.),
+            &glm::vec2(-5., 26.),
+        );
+    field.print_integration();
+    flow_field.map(|f| {
+        f.print_flowfield();
+    });
 }
