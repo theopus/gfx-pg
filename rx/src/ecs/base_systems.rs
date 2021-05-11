@@ -61,6 +61,7 @@ pub mod world3d {
         fn run(&mut self, (vp, transformation, render, culling_st): Self::SystemData) {
             self.send_render
                 .send(RenderCommand::PushView(vp.view.clone() as glm::Mat4)).unwrap();
+            let start = Instant::now();
             for (transformation, render, cull) in (&transformation, &render, &culling_st).join() {
                 if !render.hidden && !cull.is_culled() {
                     self.send_draw
@@ -72,6 +73,7 @@ pub mod world3d {
                         .expect("not able to submit");
                 }
             }
+            debug!("render_submin took {:?}", Instant::now() - start);
         }
     }
 
@@ -120,7 +122,7 @@ pub mod world3d {
         );
 
         fn run(&mut self, (mut pos_st, mut cam_st, cam_tg, events): Self::SystemData) {
-
+            let start = Instant::now();
             // if let Some(reader) = ) {
             let size = self.reader.as_mut().map(|mut reader| {
                 events
@@ -154,6 +156,7 @@ pub mod world3d {
                     cam.update_aspect(size.width as f32 / size.height as f32)
                 }
             }
+            debug!("cam_sys took {:?}", Instant::now() - start);
         }
 
         fn setup(&mut self, world: &mut World) {
@@ -188,6 +191,7 @@ pub mod world3d {
                 mut vp_e
             ) = data;
 
+            let start = Instant::now();
             let cam = match active_camera.camera(&cam_st) {
                 None => return,
                 Some(e) => e
@@ -200,7 +204,7 @@ pub mod world3d {
 
             //bottleneck
             {
-                let start = Instant::now();
+
                 for (cull, pos, rot, tsm) in (&culling_st, &mut pos, &mut rot, &mut tsm).join() {
                     if cull.is_culled() {
                         continue;
@@ -225,8 +229,8 @@ pub mod world3d {
                     }
                     tsm.mvp = &vp * &tsm.model
                 }
-                debug!("matrix took {:?}", Instant::now() - start);
             }
+            info!("transform_sys took {:?}", Instant::now() - start);
         }
 
         fn running_time(&self) ->  specs::RunningTime {

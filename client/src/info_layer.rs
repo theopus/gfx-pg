@@ -6,6 +6,7 @@ use rx::egui;
 pub struct InfoLayer {
     frames: u32,
     frame_rate: f32,
+    elapsed_display: std::time::Duration,
     elapsed: std::time::Duration,
     size_d: winit::dpi::PhysicalSize<u32>,
     cursor_pos: winit::dpi::PhysicalPosition<f64>
@@ -16,6 +17,7 @@ impl Default for InfoLayer {
         Self {
             frames: 0,
             frame_rate: 0.0,
+            elapsed_display: Default::default(),
             elapsed: Default::default(),
             size_d: winit::dpi::PhysicalSize { width: 0, height: 0 },
             cursor_pos: winit::dpi::PhysicalPosition { x: 0., y: 0. }

@@ -46,21 +46,6 @@ pub fn intersection(plane_n: &glm::Vec3, plane_p: &glm::Vec3, line_vec: &glm::Ve
     Some(line_p + glm::normalize(&line_vec) * x)
 }
 
-/*
-void extract_planes_from_projmat(
-        const float mat[4][4],
-        float left[4], float right[4], float top[4], float bottom[4],
-        float near[4], float far[4])
-{
-    for (int i = 4; i--; ) left[i]      = mat[i][3] + mat[i][0];
-    for (int i = 4; i--; ) right[i]     = mat[i][3] - mat[i][0];
-    for (int i = 4; i--; ) bottom[i]    = mat[i][3] + mat[i][1];
-    for (int i = 4; i--; ) top[i]       = mat[i][3] - mat[i][1];
-    for (int i = 4; i--; ) near[i]      = mat[i][3] + mat[i][2];
-    for (int i = 4; i--; ) far[i]       = mat[i][3] - mat[i][2];
-
- */
-
 pub fn frustum_planes(vp: &glm::Mat4) -> [glm::Vec4; 6]{
     let mut vec0 = glm::vec4(0.,0.,0.,0.);
     vec0.x = vp.m41 + vp.m11;

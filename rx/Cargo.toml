@@ -17,7 +17,7 @@ image = "0.22.4"
 tobj = "0.1.8"
 nalgebra = "0.18.0"
 nalgebra-glm = "0.4.0"
-specs = { version = "0.16", features = ["specs-derive"] }
+specs = { version = "0.16", features = ["specs-derive", "parallel"], default-features = false }
 specs-derive = "0.4"
 itertools = "0.8.0"
 wgpu = "0.7"

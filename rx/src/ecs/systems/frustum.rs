@@ -6,6 +6,10 @@ use specs::{
     System,
     Join
 };
+use std::time::Instant;
+
+#[allow(unused_imports)]
+use log::{debug, error, info, trace, warn};
 
 
 #[derive(Component, Debug)]
@@ -48,6 +52,10 @@ impl<'a> specs::System<'a> for CullingSystem {
     );
 
     fn run(&mut self, (active_cam, cam, pos_st, mut culling_st): Self::SystemData) {
+        let start = Instant::now();
+
+        let mut cnt = 0;
+
         active_cam.camera(&cam).map(|cam|{
             let planes = maths::frustum_planes(&cam.vp());
             let should_cull = |pos: &glm::Vec3, radius: f32| {
@@ -65,9 +73,12 @@ impl<'a> specs::System<'a> for CullingSystem {
             };
 
             for (pos, cull) in (&pos_st, &mut culling_st).join(){
-                cull.culled = should_cull(&pos.as_vec3(), cull.sphere_radius)
+                cull.culled = should_cull(&pos.as_vec3(), cull.sphere_radius);
+                cnt += 1;
             }
         });
+
+        debug!("frustum took {:?}, instances {:?}", Instant::now() - start, cnt);
     }
 }
 

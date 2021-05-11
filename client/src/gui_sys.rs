@@ -111,7 +111,7 @@ impl EcsUiWidgetSystem for CameraUiSystem {
     }
 
     fn visible() -> bool {
-        true
+        false
     }
 }
 

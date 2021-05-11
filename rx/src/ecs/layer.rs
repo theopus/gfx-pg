@@ -25,13 +25,17 @@ pub struct EcsLayer<'a, T: 'static + Send + Clone> {
 
 
 const UPD_60_PER_SEC_NANOS: u64 = 16600000;
+const UPD_60_PER_SEC_NANOS_LAG: u64 = 19600000;
 const DURATION_PER_UPD: Duration = Duration::from_nanos(UPD_60_PER_SEC_NANOS);
+const DURATION_PER_UPD_LAG: Duration = Duration::from_nanos(UPD_60_PER_SEC_NANOS_LAG);
 
 impl<'a, T: 'static + Clone + Send + Sync> Layer<T> for EcsLayer<'a, T> {
     fn on_update(&mut self, frame: FrameUpdate<T>) {
         self.lag += frame.elapsed;
 
+
         {
+            let start = Instant::now();
             self.world.write_resource::<EguiCtx>().replace(frame.egui_ctx.clone());
             let mut event_channel = self.world.write_resource::<EventChannel<RxEvent<T>>>();
             event_channel
@@ -43,23 +47,32 @@ impl<'a, T: 'static + Clone + Send + Sync> Layer<T> for EcsLayer<'a, T> {
                     event_channel.single_write(e)
                 }
             }
+            debug!("event_propogate took {:?}", Instant::now() - start);
         }
         //rated
 
+
         {
+
             let start = Instant::now();
             let mut count = 0;
             while self.lag >= DURATION_PER_UPD {
+                let start = Instant::now();
                 self.rated_dispatcher.dispatch(&self.world);
                 self.lag -= DURATION_PER_UPD;
+                let dur = Instant::now() - start;
+                if dur > DURATION_PER_UPD_LAG {
+                    warn!("Last upd is {:?}. dropping lag...", dur);
+                    self.lag = Duration::from_secs(0);
+                }
                 count += 1;
             }
-            debug!("rated dispatch took {:?}, {:?} times", Instant::now() - start, count);
+            info!("rated_dispatch took {:?}, excuted {:?} times", Instant::now() - start, count);
         }
         {
             let start = Instant::now();
             self.constant_dispatcher.dispatch(&self.world);
-            debug!("constant dispatcher took {:?}", Instant::now() - start);
+            info!("constant dispatcher took {:?}", Instant::now() - start);
         }
     }
 

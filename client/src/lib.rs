@@ -84,7 +84,7 @@ pub fn start() {
     let (draw, redner) = eng.renderer().queue();
 
     let input_sys = input_sys::InputTestSystem::default();
-    // let move_sys = systems::test::/MoveSystem;
+    let move_sys = systems::test::MoveSystem;
     let mouse_sys = systems::test::MoveClickSystem::default();
 
     let ecs_layer = rx::ecs::layer::EcsLayer::new(
@@ -133,22 +133,24 @@ pub fn start() {
             world.insert(WinitEvents::default() as WinitEvents<()>);
             world.insert(CameraTarget::new(player));
 
-            r_dispatcher.add(systems::test::FollowingSystem, "follow_sys", &[]);
+            // r_dispatcher.add(systems::test::FollowingSystem, "follow_sys", &[]);
             r_dispatcher.add(systems::test::ScreenClickSystem::default(), "screen_click_sys", &[]);
             //
             r_dispatcher.add(input_sys, "in_tst_sys", &[]);
-            // r_dispatcher.add(move_sys, "move_sys", &[]);
+            r_dispatcher.add(move_sys, "move_sys", &[]);
             r_dispatcher.add(cam_sys, "cam_sys", &[]);
-            r_dispatcher.add(frustum::CullingSystem, "cull_sys", &[]);
-            r_dispatcher.add(transform_sys, "tsm_sys", &[]);
 
             world.register::<EcsUiWidget>();
-            gui_sys::EcsUiSystem.register_widget(c_dispatcher, world);
-            gui_sys::CameraUiSystem.register_widget(c_dispatcher, world);
-            gui_sys::ScreenClickUiSystem::default().register_widget(c_dispatcher, world);
-            arrowdrop::GridUiSys.register_widget(c_dispatcher, world);
+            // gui_sys::EcsUiSystem.register_widget(c_dispatcher, world);
+            // gui_sys::CameraUiSystem.register_widget(c_dispatcher, world);
+            // gui_sys::ScreenClickUiSystem::default().register_widget(c_dispatcher, world);
+            // arrowdrop::GridUiSys.register_widget(c_dispatcher, world);
 
             arrowdrop::create((world, r_dispatcher, c_dispatcher), _cube_mesh.clone());
+
+
+            c_dispatcher.add(frustum::CullingSystem, "cull_sys", &[]);
+            c_dispatcher.add(transform_sys, "tsm_sys", &["cull_sys"]);
             c_dispatcher.add_thread_local(rx::RenderSubmitSystem::new(draw, redner));
         })
     );
