@@ -84,7 +84,7 @@ pub fn start() {
     let (draw, redner) = eng.renderer().queue();
 
     let input_sys = input_sys::InputTestSystem::default();
-    let move_sys = systems::test::MoveSystem;
+    // let move_sys = systems::test::/MoveSystem;
     let mouse_sys = systems::test::MoveClickSystem::default();
 
     let ecs_layer = rx::ecs::layer::EcsLayer::new(
@@ -115,16 +115,8 @@ pub fn start() {
             let player = world
                 .create_entity()
                 .with(Culling::default())
-                .with(Rotation {
-                    x: 0.0,
-                    y: 90.0,
-                    z: -90.0
-                })
-                .with(Position{
-                    x: 0.0,
-                    y: 30.0,
-                    z: 0.0
-                })
+                .with(Rotation::new(0., 90., -90.))
+                .with(Position::new(0., 30., 0.))
                 .with(Transformation::default())
                 .with(Velocity::default())
                 .with(Render::new(arrow_02.clone()))
@@ -132,16 +124,8 @@ pub fn start() {
 
             world
                 .create_entity()
-                .with(Rotation {
-                    x: 180.0,
-                    y: 0.0,
-                    z: 0.0,
-                })
-                .with(Position {
-                    x: 0.,
-                    y: -10.,
-                    z: 0.,
-                })
+                .with(Rotation::new(180., 0., 0.))
+                .with(Position::new(0.,10.,0.))
                 .with(Transformation::default())
                 .with(Render::new(map_mesh_ptr.clone()))
                 .with(Culling::never())
@@ -153,7 +137,7 @@ pub fn start() {
             r_dispatcher.add(systems::test::ScreenClickSystem::default(), "screen_click_sys", &[]);
             //
             r_dispatcher.add(input_sys, "in_tst_sys", &[]);
-            r_dispatcher.add(move_sys, "move_sys", &[]);
+            // r_dispatcher.add(move_sys, "move_sys", &[]);
             r_dispatcher.add(cam_sys, "cam_sys", &[]);
             r_dispatcher.add(frustum::CullingSystem, "cull_sys", &[]);
             r_dispatcher.add(transform_sys, "tsm_sys", &[]);

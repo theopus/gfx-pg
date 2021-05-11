@@ -43,7 +43,7 @@ impl State {
         // The instance is a handle to our GPU
         // BackendBit::PRIMARY => Vulkan + Metal + DX12 + Browser WebGPU
         let instance = wgpu::Instance::new(
-            wgpu::BackendBit::DX12 |  wgpu::BackendBit::PRIMARY | wgpu::BackendBit::SECONDARY
+            wgpu::BackendBit::VULKAN | wgpu::BackendBit::DX12 |  wgpu::BackendBit::PRIMARY | wgpu::BackendBit::SECONDARY
         );
         let surface = unsafe { instance.create_surface(window) };
 

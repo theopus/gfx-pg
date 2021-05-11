@@ -250,37 +250,37 @@ pub mod test {
             }
         }
     }
-
-    pub struct MoveSystem;
-
-    impl<'a> System<'a> for MoveSystem {
-        type SystemData = (WriteStorage<'a, Position>, WriteStorage<'a, Velocity>);
-
-        fn run(&mut self, (mut pos, mut vel): Self::SystemData) {
-            for (p, v) in (&mut pos, &mut vel).join() {
-                let velocity: glm::Vec3 = v.v.clone();
-                const SLOW: f32 = 0.05;
-                p.x += velocity.x;
-                p.y += velocity.y;
-                p.z += velocity.z;
-
-                let inversed: Vec3 = -1. * &velocity;
-                let oposite_vec = if !(inversed.x == 0. && inversed.y == 0. && inversed.z == 0.) {
-                    glm::normalize(&inversed)
-                } else {
-                    inversed
-                };
-
-                v.v = velocity + oposite_vec * SLOW;
-                if v.v.x >= -1.3 && v.v.x <= 1.3 {
-                    v.v.x = 0.;
-                }
-                if v.v.z >= -1.3 && v.v.z <= 1.3 {
-                    v.v.z = 0.;
-                }
-            }
-        }
-    }
+    //
+    // pub struct MoveSystem;
+    //
+    // impl<'a> System<'a> for MoveSystem {
+    //     type SystemData = (WriteStorage<'a, Position>, WriteStorage<'a, Velocity>);
+    //
+    //     fn run(&mut self, (mut pos, mut vel): Self::SystemData) {
+    //         for (p, v) in (&mut pos, &mut vel).join() {
+    //             let velocity: glm::Vec3 = v.v.clone();
+    //             const SLOW: f32 = 0.05;
+    //             p.x += velocity.x;
+    //             p.y += velocity.y;
+    //             p.z += velocity.z;
+    //
+    //             let inversed: Vec3 = -1. * &velocity;
+    //             let oposite_vec = if !(inversed.x == 0. && inversed.y == 0. && inversed.z == 0.) {
+    //                 glm::normalize(&inversed)
+    //             } else {
+    //                 inversed
+    //             };
+    //
+    //             v.v = velocity + oposite_vec * SLOW;
+    //             if v.v.x >= -1.3 && v.v.x <= 1.3 {
+    //                 v.v.x = 0.;
+    //             }
+    //             if v.v.z >= -1.3 && v.v.z <= 1.3 {
+    //                 v.v.z = 0.;
+    //             }
+    //         }
+    //     }
+    // }
 
     #[derive(Component, Debug)]
     #[storage(VecStorage)]

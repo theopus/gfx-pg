@@ -1,5 +1,5 @@
 pub mod world3d {
-    use std::ops::Deref;
+    use std::ops::{Deref, DerefMut};
     use std::sync::mpsc::Sender;
     use std::time::Instant;
 
@@ -90,11 +90,7 @@ pub mod world3d {
         let target = world
             .create_entity()
             .with(Rotation::default())
-            .with(Position {
-                x: camera_at.x,
-                y: camera_at.y,
-                z: camera_at.z,
-            })
+            .with(Position::new(camera_at.x,camera_at.y,camera_at.z))
             .build();
 
         let (cam, cam_sys) = init_cam(world, target);
@@ -172,8 +168,8 @@ pub mod world3d {
         type SystemData = (
             Read<'a, ActiveCamera>,
             ReadStorage<'a, Camera>,
-            ReadStorage<'a, Rotation>,
-            ReadStorage<'a, Position>,
+            WriteStorage<'a, Rotation>,
+            WriteStorage<'a, Position>,
             ReadStorage<'a, Culling>,
             WriteStorage<'a, Transformation>,
             Write<'a, ViewProjection>,
@@ -185,8 +181,8 @@ pub mod world3d {
             let (
                 active_camera,
                 cam_st,
-                rot,
-                pos,
+                mut rot,
+                mut pos,
                 culling_st,
                 mut tsm,
                 mut vp_e
@@ -205,24 +201,28 @@ pub mod world3d {
             //bottleneck
             {
                 let start = Instant::now();
-                for (cull, pos, rot, tsm) in (&culling_st, &pos, &rot, &mut tsm).join() {
+                for (cull, pos, rot, tsm) in (&culling_st, &mut pos, &mut rot, &mut tsm).join() {
                     if cull.is_culled() {
                         continue;
                     }
-                    tsm.model = {
-                        let mut mtx = glm::identity() as glm::Mat4;
-                        mtx = glm::translate(&mut mtx, &glm::vec3(pos.x, pos.y, pos.z));
-                        if rot.x != 0.0 {
-                            mtx = glm::rotate(&mut mtx, glm::radians(&glm::vec1(rot.x)).x, &glm::vec3(1., 0., 0.));
-                        }
-                        if rot.y != 0.0 {
-                            mtx = glm::rotate(&mut mtx, glm::radians(&glm::vec1(rot.y)).x, &glm::vec3(0., 1., 0.));
-                        }
-                        if rot.z != 0.0 {
-                            mtx = glm::rotate(&mut mtx, glm::radians(&glm::vec1(rot.z)).x, &glm::vec3(0., 0., 1.));
-                        }
-                        mtx
-                    };
+                    if pos.did_change || rot.did_change {
+                        tsm.model = {
+                            let mut mtx = glm::identity() as glm::Mat4;
+                            mtx = glm::translate(&mut mtx, &pos);
+                            if rot.x != 0.0 {
+                                mtx = glm::rotate(&mut mtx, glm::radians(&glm::vec1(rot.x)).x, &glm::vec3(1., 0., 0.));
+                            }
+                            if rot.y != 0.0 {
+                                mtx = glm::rotate(&mut mtx, glm::radians(&glm::vec1(rot.y)).x, &glm::vec3(0., 1., 0.));
+                            }
+                            if rot.z != 0.0 {
+                                mtx = glm::rotate(&mut mtx, glm::radians(&glm::vec1(rot.z)).x, &glm::vec3(0., 0., 1.));
+                            }
+                            mtx
+                        };
+                        pos.did_change = false;
+                        rot.did_change = false;
+                    }
                     tsm.mvp = &vp * &tsm.model
                 }
                 debug!("matrix took {:?}", Instant::now() - start);
@@ -244,17 +244,15 @@ pub mod world3d {
     #[derive(Component, Debug)]
     #[storage(VecStorage)]
     pub struct Position {
-        pub x: f32,
-        pub y: f32,
-        pub z: f32,
+        vec: glm::Vec3,
+        did_change: bool
     }
 
     #[derive(Component, Debug)]
     #[storage(VecStorage)]
     pub struct Rotation {
-        pub x: f32,
-        pub y: f32,
-        pub z: f32,
+        vec: glm::Vec3,
+        did_change: bool
     }
 
     impl Default for Transformation {
@@ -269,9 +267,8 @@ pub mod world3d {
     impl Default for Position {
         fn default() -> Self {
             Self {
-                x: 0.0,
-                y: 0.0,
-                z: 0.0,
+                vec: glm::zero::<glm::Vec3>() as glm::Vec3,
+                did_change: true
             }
         }
     }
@@ -279,42 +276,117 @@ pub mod world3d {
     impl Default for Rotation {
         fn default() -> Self {
             Self {
-                x: 0.0,
-                y: 0.0,
-                z: 0.0,
+                vec: glm::zero::<glm::Vec3>(),
+                did_change: true
             }
         }
     }
 
+    impl Deref for Position {
+        type Target = glm::Vec3;
+
+        fn deref(&self) -> &Self::Target {
+            &self.vec
+        }
+    }
+
+    impl DerefMut for Position {
+        fn deref_mut(&mut self) -> &mut Self::Target {
+            self.did_change = true;
+            &mut self.vec
+        }
+    }
+
+    impl Into<Position> for glm::Vec3 {
+        fn into(self) -> Position {
+            Position {
+                vec: self,
+                did_change: true
+            }
+        }
+    }
     impl Position {
+        pub fn x(&self) -> f32 {
+            self.vec.x
+        }
+        pub fn y(&self) -> f32 {
+            self.vec.y
+        }
+        pub fn z(&self) -> f32 {
+            self.vec.z
+        }
         pub fn as_vec3(&self) -> glm::Vec3 {
             glm::vec3(self.x, self.y, self.z)
         }
 
         pub fn from_vec3(from: &glm::Vec3) -> Self {
             Self {
-                x: from.x,
-                y: from.y,
-                z: from.z,
+                vec: from.clone() as glm::Vec3,
+                did_change: true
             }
         }
         pub fn upd_from_vec3(&mut self, from: &glm::Vec3) {
-            self.x = from.x;
-            self.y = from.y;
-            self.z = from.z;
+            self.did_change = true;
+            self.vec = from.clone() as glm::Vec3
+        }
+        pub fn new(x: f32,y: f32,z: f32) -> Self {
+            Position { vec: glm::vec3(x,y,z), did_change: true }
+        }
+    }
+    impl Rotation {
+        pub fn x(&self) -> f32 {
+            self.vec.x
+        }
+        pub fn y(&self) -> f32 {
+            self.vec.y
+        }
+        pub fn z(&self) -> f32 {
+            self.vec.z
+        }
+
+        pub fn upd_from_vec3(&mut self, from: &glm::Vec3) {
+            self.did_change = true;
+            self.vec = from.clone() as glm::Vec3
+        }
+        pub fn new(x: f32,y: f32,z: f32) -> Self {
+            Self { vec: glm::vec3(x,y,z), did_change: true }
+        }
+    }
+
+    impl Deref for Rotation {
+        type Target = glm::Vec3;
+
+        fn deref(&self) -> &Self::Target {
+            &self.vec
+        }
+    }
+
+    impl DerefMut for Rotation {
+        fn deref_mut(&mut self) -> &mut Self::Target {
+            self.did_change = true;
+            &mut self.vec
+        }
+    }
+
+    impl Into<Rotation> for glm::Vec3 {
+        fn into(self) -> Rotation {
+            Rotation {
+                vec: self,
+                did_change: true
+            }
         }
     }
 
     impl Rotation {
+
         pub fn as_vec3(&self) -> glm::Vec3 {
             glm::vec3(self.x, self.y, self.z)
         }
 
         pub fn from_vec3(from: &glm::Vec3) -> Self {
             Self {
-                x: from.x,
-                y: from.y,
-                z: from.z,
+                vec: from.clone() as glm::Vec3,
+                did_change: true
             }
         }
 
