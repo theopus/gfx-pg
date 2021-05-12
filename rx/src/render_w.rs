@@ -1,23 +1,16 @@
-
-
-
 use std::sync::mpsc::{channel, Receiver, Sender};
 
-
 use futures::executor::block_on;
-
 #[allow(unused_imports)]
 use log::{debug, error, info, trace, warn};
 use winit::dpi::PhysicalSize;
 
 use crate::{gui, wgpu_graphics};
 use crate::assets::{AssetsLoader, AssetsStorage};
-use crate::graphics_api::{DrawCmd, RenderCommand};
+use crate::graphics_api::{DrawCmd, RenderCommand, v0};
 use crate::utils::file_system;
-
 use crate::wgpu_graphics::{FrameState, pipeline};
 use crate::wgpu_graphics::pipeline::Pipeline;
-
 
 pub struct Renderer {
     pub(crate) wpgu_state: wgpu_graphics::State,
@@ -49,7 +42,16 @@ impl Renderer {
         let (r_send, r_recv) = channel();
 
         let egui_pipeline = gui::EguiPipeline::new(&wpgu_state.device, false);
-        let pipeline = wgpu_graphics::pipeline::PipelineV0::new(&mut wpgu_state.device, &wpgu_state.sc_desc, recv);
+        let pipeline = wgpu_graphics::pipeline::PipelineV0::new(&mut wpgu_state.device, &mut wpgu_state.memory_manager, &wpgu_state.sc_desc, recv);
+
+        wpgu_state.queue.write_buffer(&wpgu_state.memory_manager.uniform_buffer, 0,
+                                           bytemuck::cast_slice(
+                                               &[v0::Uniforms {
+                                                   view: (glm::identity() as glm::Mat4).into(),
+                                                   light_pos: glm::vec4(0., 100., 30., 1.).into(),
+                                                   light_intensity: glm::vec4(1., 1., 1., 1.).into(),
+                                               }]
+                                           ));
         Ok(Self {
             storage,
             loader,
@@ -76,6 +78,23 @@ impl Renderer {
     }
 
     pub fn render(&mut self, ctx: egui::CtxRef, egui_state: &mut gui::EguiState) {
+        for cmd in self.cmd_r.try_iter() {
+            match cmd {
+                RenderCommand::PushView(view) => {
+                    self.wpgu_state.queue.write_buffer(
+                        &self.wpgu_state.memory_manager.uniform_buffer,
+                        v0::Uniforms::VIEW_OFFSET,
+                        bytemuck::cast_slice(&[
+                            v0::ViewMtx {
+                                view: view.into()
+                            }
+                        ])
+                    );
+                }
+                _ => {}
+            }
+        }
+
         let next_frame = self.wpgu_state.start_frame();
         match next_frame {
             Ok(frame) => {

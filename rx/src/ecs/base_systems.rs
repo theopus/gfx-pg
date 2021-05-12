@@ -230,7 +230,7 @@ pub mod world3d {
                     tsm.mvp = &vp * &tsm.model
                 }
             }
-            info!("transform_sys took {:?}", Instant::now() - start);
+            debug!("transform_sys took {:?}", Instant::now() - start);
         }
 
         fn running_time(&self) ->  specs::RunningTime {

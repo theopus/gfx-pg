@@ -7,6 +7,7 @@ use crate::graphics_api::{DrawCmd, v0};
 use crate::graphics_api::v0::VertexInstance;
 use crate::utils::file_system;
 use crate::wgpu_graphics::{FrameState, texture};
+use crate::wgpu_graphics::memory::MemoryManager;
 
 pub trait Pipeline {
     fn process(&mut self, frame: FrameState);
@@ -15,17 +16,52 @@ pub trait Pipeline {
 pub struct PipelineV0 {
     pipeline: wgpu::RenderPipeline,
     receiver: mpsc::Receiver<DrawCmd>,
+    uniform_bind_group: wgpu::BindGroup,
 }
 
 impl PipelineV0 {
-    fn pipeline(device: &mut wgpu::Device, sc_desc: &wgpu::SwapChainDescriptor) -> wgpu::RenderPipeline {
+    fn pipeline(
+        device: &mut wgpu::Device,
+        sc_desc: &wgpu::SwapChainDescriptor,
+        memory_manager: &mut MemoryManager,
+    ) -> (wgpu::RenderPipeline, wgpu::BindGroup) {
         let vert_path = &["shaders", "one.vert.spv"];
         let frag_path = &["shaders", "one.frag.spv"];
-        device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+
+        let uniform_bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            entries: &[
+                wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStage::VERTEX,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                }
+            ],
+            label: Some("uniform_bind_group_layout"),
+        });
+
+        let uniform_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            layout: &uniform_bind_group_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: memory_manager.uniform_buffer.as_entire_binding(),
+                }
+            ],
+            label: Some("uniform_bind_group"),
+        });
+
+        let pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
             label: Some("v0 render_pipeline"),
             layout: Some(&device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                 label: Some("v0 render_pipeline_layout"),
-                bind_group_layouts: &[],
+                bind_group_layouts: &[
+                    &uniform_bind_group_layout
+                ],
                 push_constant_ranges: &[],
             })),
             vertex: wgpu::VertexState {
@@ -54,7 +90,7 @@ impl PipelineV0 {
                 depth_compare: wgpu::CompareFunction::Less,
                 stencil: Default::default(),
                 bias: Default::default(),
-                clamp_depth: false
+                clamp_depth: false,
             }),
             multisample: Default::default(),
             fragment: Some(wgpu::FragmentState {
@@ -71,17 +107,21 @@ impl PipelineV0 {
                     write_mask: wgpu::ColorWrite::ALL,
                 }],
             }),
-        })
+        });
+        (pipeline, uniform_bind_group)
     }
 
     pub fn new(
         device: &mut wgpu::Device,
+        memory_manager: &mut MemoryManager,
         sc_desc: &wgpu::SwapChainDescriptor,
         receiver: mpsc::Receiver<DrawCmd>,
     ) -> Self {
+        let (pipeline, uniform_bind_group) = Self::pipeline(device, sc_desc, memory_manager);
         PipelineV0 {
-            pipeline: Self::pipeline(device, sc_desc),
+            pipeline,
             receiver,
+            uniform_bind_group,
         }
     }
 
@@ -165,6 +205,7 @@ impl Pipeline for PipelineV0 {
 
             render_pass.push_debug_group("PipelineV0: renderpass");
             render_pass.set_pipeline(&self.pipeline);
+            render_pass.set_bind_group(0, &self.uniform_bind_group, &[]);
             render_pass.set_index_buffer(
                 mem.idx_buffer.slice(..),
                 wgpu::IndexFormat::Uint32,

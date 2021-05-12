@@ -2,12 +2,14 @@ pub struct MemoryManager {
     pub(crate) mesh_buffer: wgpu::Buffer,
     pub(crate) idx_buffer: wgpu::Buffer,
     pub(crate) instanced_buffer: wgpu::Buffer,
+    pub(crate) uniform_buffer: wgpu::Buffer,
 }
 
 pub struct MemoryManagerConfig {
     pub mesh_buffer_size: u64,
     pub idx_buffer_size: u64,
     pub instanced_buffer_size: u64,
+    pub uniform_buffer_size: u64,
 }
 
 impl MemoryManager {
@@ -35,16 +37,26 @@ impl MemoryManager {
             mapped_at_creation: false,
         }
     }
+    fn uniform_buffer_desc(config: &MemoryManagerConfig) -> wgpu::BufferDescriptor {
+        wgpu::BufferDescriptor {
+            label: Some("uniform_buffer"),
+            size: config.uniform_buffer_size,
+            usage: wgpu::BufferUsage::UNIFORM | wgpu::BufferUsage::MAP_WRITE | wgpu::BufferUsage::COPY_DST,
+            mapped_at_creation: false,
+        }
+    }
 
 
     pub fn new(device: &mut wgpu::Device, config: MemoryManagerConfig) -> Self {
         let mesh_buffer = device.create_buffer(&Self::mesh_buffer_desc(&config));
         let idx_buffer = device.create_buffer(&Self::index_buffer_desc(&config));
         let instanced_buffer = device.create_buffer(&Self::instanced_buffer_desc(&config));
+        let uniform_buffer = device.create_buffer(&Self::uniform_buffer_desc(&config));
         MemoryManager {
             mesh_buffer,
             idx_buffer,
             instanced_buffer,
+            uniform_buffer
         }
     }
 }

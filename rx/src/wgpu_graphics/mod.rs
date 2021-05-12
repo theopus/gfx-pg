@@ -76,6 +76,7 @@ impl State {
             mesh_buffer_size: 1_000_000,
             idx_buffer_size: 1_000_000,
             instanced_buffer_size: (64 * 2) * 100_000,
+            uniform_buffer_size: 64 + 16 + 16
         });
         let depth_texture = texture::Texture::create_depth_texture(&device, &sc_desc, "depth_texture");
         let target_texture = texture::Texture::create_target_texture(&device, &sc_desc, "target_texture");

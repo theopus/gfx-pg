@@ -61,7 +61,6 @@ pub mod v0 {
         }
     }
 
-
     #[repr(C)]
     #[derive(Debug, Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
     pub struct VertexInstance {
@@ -118,6 +117,26 @@ pub mod v0 {
                 ],
             }
         }
+    }
+
+    #[repr(C)]
+    #[derive(Debug, Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
+    pub struct Uniforms {
+        pub view: [[f32; 4]; 4],
+        pub light_pos: [f32; 4],
+        pub light_intensity: [f32; 4],
+    }
+
+    #[repr(C)]
+    #[derive(Debug, Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
+    pub struct ViewMtx {
+        pub view: [[f32; 4]; 4]
+    }
+
+    impl Uniforms {
+        pub const VIEW_OFFSET: u64 = 0;
+        pub const LIGHT_POS_OFFSET: u64 = mem::size_of::<[[f32; 4]; 4]>() as u64;
+        pub const LIGHT_INTENSITY_OFFSET: u64 = (mem::size_of::<[[f32; 4]; 4]>() + mem::size_of::<[f32; 4]>()) as u64;
     }
 }
 

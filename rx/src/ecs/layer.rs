@@ -67,12 +67,12 @@ impl<'a, T: 'static + Clone + Send + Sync> Layer<T> for EcsLayer<'a, T> {
                 }
                 count += 1;
             }
-            info!("rated_dispatch took {:?}, excuted {:?} times", Instant::now() - start, count);
+            debug!("rated_dispatch took {:?}, excuted {:?} times", Instant::now() - start, count);
         }
         {
             let start = Instant::now();
             self.constant_dispatcher.dispatch(&self.world);
-            info!("constant dispatcher took {:?}", Instant::now() - start);
+            debug!("constant dispatcher took {:?}", Instant::now() - start);
         }
     }
 
