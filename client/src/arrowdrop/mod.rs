@@ -260,18 +260,18 @@ pub fn create((mut world, rated, constant): rx::EcsInitTuple, mesh_ptr: rx::Mesh
     world.register::<RectFromVec2>();
     world.register::<Grid>();
 
-    // rated.add(GridSystem::default(), "grid_sys", &[]);
+    rated.add(GridSystem::default(), "grid_sys", &[]);
 
     new_grid(
         world,
         mesh_ptr,
-        &glm::vec3(-13.5, 26., 0.),
+        &glm::vec3(-16., 0., 0.),
         &glm::vec3(0., 0., 0.),
-        2.5,
-        (10, 10),
+        3.,
+        (11, 11),
         RectFromVec2::new(
-            glm::vec3(0.,-1.,0.),
-            glm::vec3(1.,0.,0.)
+            glm::vec3(1.,0.,0.),
+            glm::vec3(0.,0.,1.)
         ).unwrap()
     )
 

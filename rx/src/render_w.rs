@@ -9,7 +9,7 @@ use crate::{gui, wgpu_graphics};
 use crate::assets::{AssetsLoader, AssetsStorage};
 use crate::graphics_api::{DrawCmd, RenderCommand, v0};
 use crate::utils::file_system;
-use crate::wgpu_graphics::{FrameState, pipeline};
+use crate::wgpu_graphics::{FrameState, pipeline, pipeline_test};
 use crate::wgpu_graphics::pipeline::Pipeline;
 
 pub struct Renderer {
@@ -24,6 +24,7 @@ pub struct Renderer {
     cmd_r: Receiver<RenderCommand>,
 
     pipeline_v0: pipeline::PipelineV0,
+    pipeline_grid: pipeline_test::GridPipeline,
 
     pipelines: Vec<Box<dyn Pipeline>>,
     egui_pipeline: gui::EguiPipeline,
@@ -43,6 +44,7 @@ impl Renderer {
 
         let egui_pipeline = gui::EguiPipeline::new(&wpgu_state.device, false);
         let pipeline = wgpu_graphics::pipeline::PipelineV0::new(&mut wpgu_state.device, &mut wpgu_state.memory_manager, &wpgu_state.sc_desc, recv);
+        let pipeline_grid = wgpu_graphics::pipeline_test::GridPipeline::new(&mut wpgu_state.device, &mut wpgu_state.memory_manager, &wpgu_state.sc_desc);
 
         wpgu_state.queue.write_buffer(&wpgu_state.memory_manager.uniform_buffer, 0,
                                            bytemuck::cast_slice(
@@ -61,6 +63,7 @@ impl Renderer {
             cmd_s: r_send,
             cmd_r: r_recv,
             pipeline_v0: pipeline,
+            pipeline_grid,
             pipelines: Vec::new(),
             egui_pipeline,
         })
@@ -105,6 +108,7 @@ impl Renderer {
                 // for p in self.pipelines.iter_mut() {
                 //     p.process(FrameState::of(&frame, &mut encoder, &mut self.wpgu_state))
                 // }
+                self.pipeline_grid.process(FrameState::of(&frame, &mut encoder, &mut self.wpgu_state));
                 self.egui_pipeline.process(FrameState::of(&frame, &mut encoder, &mut self.wpgu_state), ctx, egui_state);
                 self.wpgu_state.end_frame(frame, encoder)
             }

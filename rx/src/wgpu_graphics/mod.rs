@@ -22,6 +22,7 @@ use crate::wgpu_graphics::memory::{MemoryManager, MemoryManagerConfig};
 pub mod memory;
 pub mod texture;
 pub mod pipeline;
+pub mod pipeline_test;
 
 pub struct State {
     surface: wgpu::Surface,

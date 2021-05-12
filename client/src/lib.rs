@@ -103,8 +103,8 @@ pub fn start() {
                         match cam {
                             Camera::Targeted(cam) => {
                                 cam.yaw = 180.;
-                                cam.pitch = 0.;
-                                cam.distance = 30.;
+                                cam.pitch = 90.;
+                                cam.distance = 60.;
                                 cam.fov = 30.
                             }
                             Camera::Free => {}
@@ -115,21 +115,21 @@ pub fn start() {
             let player = world
                 .create_entity()
                 .with(Culling::default())
-                .with(Rotation::new(0., 90., -90.))
-                .with(Position::new(0., 30., 0.))
+                .with(Rotation::new(270., 90., -90.))
+                .with(Position::new(0., 0., -5.))
                 .with(Transformation::default())
                 .with(Velocity::default())
                 .with(Render::new(arrow_02.clone()))
                 .build();
 
-            world
-                .create_entity()
-                .with(Rotation::new(180., 0., 0.))
-                .with(Position::new(0.,10.,0.))
-                .with(Transformation::default())
-                .with(Render::new(map_mesh_ptr.clone()))
-                .with(Culling::never())
-                .build();
+            // world
+            //     .create_entity()
+            //     .with(Rotation::new(180., 0., 0.))
+            //     .with(Position::new(0.,10.,0.))
+            //     .with(Transformation::default())
+            //     .with(Render::new(map_mesh_ptr.clone()))
+            //     .with(Culling::never())
+            //     .build();
             world.insert(WinitEvents::default() as WinitEvents<()>);
             world.insert(CameraTarget::new(player));
 
@@ -141,10 +141,10 @@ pub fn start() {
             r_dispatcher.add(cam_sys, "cam_sys", &[]);
 
             world.register::<EcsUiWidget>();
-            // gui_sys::EcsUiSystem.register_widget(c_dispatcher, world);
-            // gui_sys::CameraUiSystem.register_widget(c_dispatcher, world);
-            // gui_sys::ScreenClickUiSystem::default().register_widget(c_dispatcher, world);
-            // arrowdrop::GridUiSys.register_widget(c_dispatcher, world);
+            gui_sys::EcsUiSystem.register_widget(c_dispatcher, world);
+            gui_sys::CameraUiSystem.register_widget(c_dispatcher, world);
+            gui_sys::ScreenClickUiSystem::default().register_widget(c_dispatcher, world);
+            arrowdrop::GridUiSys.register_widget(c_dispatcher, world);
 
             arrowdrop::create((world, r_dispatcher, c_dispatcher), _cube_mesh.clone());
 
