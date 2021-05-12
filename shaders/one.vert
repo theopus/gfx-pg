@@ -25,6 +25,7 @@ layout (location = 1) out vec3 light_intensity;
 
 layout(set=0, binding=0)
 uniform Uniforms {
+    mat4 proj;
     mat4 view;
     vec4 light_position;
     vec4 light_intensity_1;

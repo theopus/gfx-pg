@@ -15,10 +15,10 @@ pub mod world3d {
     use crate::assets::MeshPtr;
     use crate::ecs::base_systems::camera3d::{ActiveCamera, Camera, CameraTarget, init as init_cam, TargetedCamera, ViewProjection};
     use crate::ecs::base_systems::to_radians;
+    use crate::ecs::systems::frustum::Culling;
     use crate::glm::{e, Vec3};
     use crate::graphics_api::{DrawCmd, RenderCommand};
     use crate::specs::RunningTime;
-    use crate::ecs::systems::frustum::Culling;
 
     #[derive(Component, Debug)]
     #[storage(VecStorage)]
@@ -60,7 +60,8 @@ pub mod world3d {
 
         fn run(&mut self, (vp, transformation, render, culling_st): Self::SystemData) {
             self.send_render
-                .send(RenderCommand::PushView(vp.view.clone() as glm::Mat4)).unwrap();
+                .send(RenderCommand::PushProjView((vp.proj.clone(), vp.view.clone()) as (glm::Mat4, glm::Mat4)))
+                .unwrap();
             let start = Instant::now();
             for (transformation, render, cull) in (&transformation, &render, &culling_st).join() {
                 if !render.hidden && !cull.is_culled() {
@@ -92,7 +93,7 @@ pub mod world3d {
         let target = world
             .create_entity()
             .with(Rotation::default())
-            .with(Position::new(camera_at.x,camera_at.y,camera_at.z))
+            .with(Position::new(camera_at.x, camera_at.y, camera_at.z))
             .build();
 
         let (cam, cam_sys) = init_cam(world, target);
@@ -152,7 +153,7 @@ pub mod world3d {
                     }
                     Camera::Free => {}
                 }
-                if let Some(size) = size{
+                if let Some(size) = size {
                     cam.update_aspect(size.width as f32 / size.height as f32)
                 }
             }
@@ -179,7 +180,6 @@ pub mod world3d {
         );
 
 
-
         fn run(&mut self, data: Self::SystemData) {
             let (
                 active_camera,
@@ -204,7 +204,6 @@ pub mod world3d {
 
             //bottleneck
             {
-
                 for (cull, pos, rot, tsm) in (&culling_st, &mut pos, &mut rot, &mut tsm).join() {
                     if cull.is_culled() {
                         continue;
@@ -233,7 +232,7 @@ pub mod world3d {
             debug!("transform_sys took {:?}", Instant::now() - start);
         }
 
-        fn running_time(&self) ->  specs::RunningTime {
+        fn running_time(&self) -> specs::RunningTime {
             specs::RunningTime::VeryLong
         }
     }
@@ -249,14 +248,14 @@ pub mod world3d {
     #[storage(VecStorage)]
     pub struct Position {
         vec: glm::Vec3,
-        did_change: bool
+        did_change: bool,
     }
 
     #[derive(Component, Debug)]
     #[storage(VecStorage)]
     pub struct Rotation {
         vec: glm::Vec3,
-        did_change: bool
+        did_change: bool,
     }
 
     impl Default for Transformation {
@@ -272,7 +271,7 @@ pub mod world3d {
         fn default() -> Self {
             Self {
                 vec: glm::zero::<glm::Vec3>() as glm::Vec3,
-                did_change: true
+                did_change: true,
             }
         }
     }
@@ -281,7 +280,7 @@ pub mod world3d {
         fn default() -> Self {
             Self {
                 vec: glm::zero::<glm::Vec3>(),
-                did_change: true
+                did_change: true,
             }
         }
     }
@@ -305,10 +304,11 @@ pub mod world3d {
         fn into(self) -> Position {
             Position {
                 vec: self,
-                did_change: true
+                did_change: true,
             }
         }
     }
+
     impl Position {
         pub fn x(&self) -> f32 {
             self.vec.x
@@ -326,17 +326,18 @@ pub mod world3d {
         pub fn from_vec3(from: &glm::Vec3) -> Self {
             Self {
                 vec: from.clone() as glm::Vec3,
-                did_change: true
+                did_change: true,
             }
         }
         pub fn upd_from_vec3(&mut self, from: &glm::Vec3) {
             self.did_change = true;
             self.vec = from.clone() as glm::Vec3
         }
-        pub fn new(x: f32,y: f32,z: f32) -> Self {
-            Position { vec: glm::vec3(x,y,z), did_change: true }
+        pub fn new(x: f32, y: f32, z: f32) -> Self {
+            Position { vec: glm::vec3(x, y, z), did_change: true }
         }
     }
+
     impl Rotation {
         pub fn x(&self) -> f32 {
             self.vec.x
@@ -352,8 +353,8 @@ pub mod world3d {
             self.did_change = true;
             self.vec = from.clone() as glm::Vec3
         }
-        pub fn new(x: f32,y: f32,z: f32) -> Self {
-            Self { vec: glm::vec3(x,y,z), did_change: true }
+        pub fn new(x: f32, y: f32, z: f32) -> Self {
+            Self { vec: glm::vec3(x, y, z), did_change: true }
         }
     }
 
@@ -376,13 +377,12 @@ pub mod world3d {
         fn into(self) -> Rotation {
             Rotation {
                 vec: self,
-                did_change: true
+                did_change: true,
             }
         }
     }
 
     impl Rotation {
-
         pub fn as_vec3(&self) -> glm::Vec3 {
             glm::vec3(self.x, self.y, self.z)
         }
@@ -390,7 +390,7 @@ pub mod world3d {
         pub fn from_vec3(from: &glm::Vec3) -> Self {
             Self {
                 vec: from.clone() as glm::Vec3,
-                did_change: true
+                did_change: true,
             }
         }
 
@@ -417,9 +417,9 @@ pub mod camera3d {
     use crate::ecs::base_systems::world3d::CameraSystem;
 
     ///
-                                            /// creates targeted camera, places camera to active
-                                            /// @return Camera Entity
-                                            ///
+                                                /// creates targeted camera, places camera to active
+                                                /// @return Camera Entity
+                                                ///
     pub fn init<T: 'static + Send + Clone>(world: &mut World, cam_target: Entity) -> (Entity, CameraSystem<T>) {
         info!("Init camera3d_system");
         world.register::<Camera>();

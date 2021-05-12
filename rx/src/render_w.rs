@@ -47,6 +47,7 @@ impl Renderer {
         wpgu_state.queue.write_buffer(&wpgu_state.memory_manager.uniform_buffer, 0,
                                            bytemuck::cast_slice(
                                                &[v0::Uniforms {
+                                                   proj: (glm::identity() as glm::Mat4).into(),
                                                    view: (glm::identity() as glm::Mat4).into(),
                                                    light_pos: glm::vec4(0., 100., 30., 1.).into(),
                                                    light_intensity: glm::vec4(1., 1., 1., 1.).into(),
@@ -80,12 +81,13 @@ impl Renderer {
     pub fn render(&mut self, ctx: egui::CtxRef, egui_state: &mut gui::EguiState) {
         for cmd in self.cmd_r.try_iter() {
             match cmd {
-                RenderCommand::PushView(view) => {
+                RenderCommand::PushProjView((proj,view)) => {
                     self.wpgu_state.queue.write_buffer(
                         &self.wpgu_state.memory_manager.uniform_buffer,
-                        v0::Uniforms::VIEW_OFFSET,
+                        v0::Uniforms::VIEW_PROJ_OFFSET,
                         bytemuck::cast_slice(&[
-                            v0::ViewMtx {
+                            v0::ProjViewMtx {
+                                proj: proj.into(),
                                 view: view.into()
                             }
                         ])

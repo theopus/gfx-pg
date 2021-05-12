@@ -4,7 +4,7 @@ use crate::graphics_api::v0::VertexInstance;
 pub type DrawCmd = (MeshPtr, glm::Mat4, glm::Mat4);
 
 pub enum RenderCommand {
-    PushView(glm::Mat4),
+    PushProjView((glm::Mat4,glm::Mat4)),
     PushLight(glm::Vec3),
     PushState,
     Draw,
@@ -122,6 +122,7 @@ pub mod v0 {
     #[repr(C)]
     #[derive(Debug, Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
     pub struct Uniforms {
+        pub proj: [[f32; 4]; 4],
         pub view: [[f32; 4]; 4],
         pub light_pos: [f32; 4],
         pub light_intensity: [f32; 4],
@@ -129,14 +130,17 @@ pub mod v0 {
 
     #[repr(C)]
     #[derive(Debug, Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
-    pub struct ViewMtx {
+    pub struct ProjViewMtx {
+        pub proj: [[f32; 4]; 4],
         pub view: [[f32; 4]; 4]
     }
 
     impl Uniforms {
-        pub const VIEW_OFFSET: u64 = 0;
-        pub const LIGHT_POS_OFFSET: u64 = mem::size_of::<[[f32; 4]; 4]>() as u64;
-        pub const LIGHT_INTENSITY_OFFSET: u64 = (mem::size_of::<[[f32; 4]; 4]>() + mem::size_of::<[f32; 4]>()) as u64;
+        pub const VIEW_PROJ_OFFSET: u64 = 0;
+        pub const PROJ_OFFSET: u64 = 0;
+        pub const VIEW_OFFSET: u64 = mem::size_of::<[[f32; 4]; 4]>() as u64;
+        pub const LIGHT_POS_OFFSET: u64 = 2 * mem::size_of::<[[f32; 4]; 4]>() as u64;
+        pub const LIGHT_INTENSITY_OFFSET: u64 = (2 * mem::size_of::<[[f32; 4]; 4]>() + mem::size_of::<[f32; 4]>()) as u64;
     }
 }
 
