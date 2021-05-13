@@ -37,6 +37,7 @@ mod arrowdrop;
 mod input_sys;
 mod gui_sys;
 mod info_layer;
+mod grid;
 
 pub fn init_log() {
     env_logger::from_env(env_logger::Env::default().default_filter_or(
