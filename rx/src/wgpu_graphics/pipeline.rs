@@ -3,14 +3,32 @@ use std::sync::mpsc;
 
 use itertools::Itertools;
 
-use crate::graphics_api::{DrawCmd, v0};
-use crate::graphics_api::v0::VertexInstance;
-use crate::utils::file_system;
-use crate::wgpu_graphics::{FrameState, texture};
-use crate::wgpu_graphics::memory::MemoryManager;
+use crate::{
+    graphics_api::{
+        DrawCmd,
+        v0,
+        v0::VertexInstance
+    },
+    utils::file_system,
+    wgpu_graphics::{
+        State,
+        FrameState,
+        texture,
+        memory::MemoryManager
+    },
+    shader
+};
+use crate::shader::SpirvCompiler;
 
 pub trait Pipeline {
     fn process(&mut self, frame: FrameState);
+    fn reset(
+        &mut self,
+        compiler: &mut shader::SpirvCompiler,
+        state: &mut State
+    ) {
+
+    }
 }
 
 pub struct PipelineV0 {
@@ -171,6 +189,8 @@ struct InstanceDraw {
 }
 
 impl Pipeline for PipelineV0 {
+
+
     fn process(&mut self, state: FrameState) {
         let FrameState { target_texture: _, frame, encoder, depth_texture, mem, queue, .. } = state;
         encoder.push_debug_group("pipeline_v0");
@@ -229,5 +249,17 @@ impl Pipeline for PipelineV0 {
             render_pass.pop_debug_group();
         }
         encoder.pop_debug_group();
+    }
+
+    fn reset(&mut self, compiler: &mut SpirvCompiler, state: &mut State) {
+        compiler.compile_to_fs(file_system::path_from_root(&["shaders", "one.vert"]));
+        compiler.compile_to_fs(file_system::path_from_root(&["shaders", "one.frag"]));
+        let (pipe, bind_group) = Self::pipeline(
+            &mut state.device,
+            &state.sc_desc,
+            &mut state.memory_manager
+        );
+        self.pipeline = pipe;
+        self.uniform_bind_group = bind_group;
     }
 }

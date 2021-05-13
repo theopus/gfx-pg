@@ -5,7 +5,7 @@ use futures::executor::block_on;
 use log::{debug, error, info, trace, warn};
 use winit::dpi::PhysicalSize;
 
-use crate::{gui, wgpu_graphics};
+use crate::{gui, wgpu_graphics, shader};
 use crate::assets::{AssetsLoader, AssetsStorage};
 use crate::graphics_api::{DrawCmd, RenderCommand, v0};
 use crate::utils::file_system;
@@ -22,10 +22,11 @@ pub struct Renderer {
 
     cmd_s: Sender<RenderCommand>,
     cmd_r: Receiver<RenderCommand>,
+    compiler: shader::SpirvCompiler,
+
 
     pipeline_v0: pipeline::PipelineV0,
     pipeline_grid: pipeline_test::GridPipeline,
-
     pipelines: Vec<Box<dyn Pipeline>>,
     egui_pipeline: gui::EguiPipeline,
 }
@@ -62,6 +63,7 @@ impl Renderer {
             sender: send,
             cmd_s: r_send,
             cmd_r: r_recv,
+            compiler: shader::SpirvCompiler::new().unwrap(),
             pipeline_v0: pipeline,
             pipeline_grid,
             pipelines: Vec::new(),
@@ -79,6 +81,14 @@ impl Renderer {
 
     pub fn push_pipelines<P>(&mut self, pipeline: P) where P: Pipeline + 'static {
         self.pipelines.push(Box::new(pipeline));
+    }
+
+    pub fn reset_pipelines(&mut self) {
+        self.pipeline_v0.reset(&mut self.compiler, &mut self.wpgu_state);
+        self.pipeline_grid.reset(&mut self.compiler, &mut self.wpgu_state);
+        for p in self.pipelines.iter_mut(){
+            p.reset(&mut self.compiler, &mut self.wpgu_state)
+        }
     }
 
     pub fn render(&mut self, ctx: egui::CtxRef, egui_state: &mut gui::EguiState) {
@@ -99,6 +109,7 @@ impl Renderer {
                 _ => {}
             }
         }
+
 
         let next_frame = self.wpgu_state.start_frame();
         match next_frame {

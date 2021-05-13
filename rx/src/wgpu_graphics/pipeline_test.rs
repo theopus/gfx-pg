@@ -6,9 +6,10 @@ use itertools::Itertools;
 use crate::graphics_api::{DrawCmd, v0};
 use crate::graphics_api::v0::VertexInstance;
 use crate::utils::file_system;
-use crate::wgpu_graphics::{FrameState, texture};
+use crate::wgpu_graphics::{FrameState, texture, State};
 use crate::wgpu_graphics::memory::MemoryManager;
 use crate::wgpu_graphics::pipeline::Pipeline;
+use crate::shader::SpirvCompiler;
 
 pub struct GridPipeline {
     pipeline: wgpu::RenderPipeline,
@@ -126,6 +127,7 @@ impl GridPipeline {
     }
 }
 impl Pipeline for GridPipeline {
+
     fn process(&mut self, state: FrameState) {
         let FrameState { target_texture: _, frame, encoder, depth_texture, mem, queue, .. } = state;
         encoder.push_debug_group("pipeline_grid");
@@ -161,5 +163,13 @@ impl Pipeline for GridPipeline {
             render_pass.pop_debug_group();
         }
         encoder.pop_debug_group();
+    }
+
+    fn reset(&mut self, compiler: &mut SpirvCompiler, state: &mut State) {
+        compiler.compile_to_fs(file_system::path_from_root(&["shaders", "grid.vert"]));
+        compiler.compile_to_fs(file_system::path_from_root(&["shaders", "grid.frag"]));
+        let (a, b) = Self::pipeline(&mut state.device, &state.sc_desc, &mut state.memory_manager);
+        self.pipeline = a;
+        self.uniform_bind_group = b;
     }
 }

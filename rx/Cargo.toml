@@ -10,26 +10,29 @@ edition = "2018"
 default = []
 
 [dependencies]
+wgpu = "0.7"
 winit = { version = "0.24.0", features = ["web-sys"] }
+specs = { version = "0.16", features = ["specs-derive", "parallel"], default-features = false }
+crossbeam-channel = "0.5.1"
+specs-derive = "0.4"
 log = "0.4.0"
 arrayvec = "0.4"
 image = "0.22.4"
 tobj = "0.1.8"
 nalgebra = "0.18.0"
 nalgebra-glm = "0.4.0"
-specs = { version = "0.16", features = ["specs-derive", "parallel"], default-features = false }
-specs-derive = "0.4"
 itertools = "0.8.0"
-wgpu = "0.7"
 futures = "0.3"
 bytemuck = { version = "1.4", features = ["derive"] }
-crossbeam-channel = "0.5.1"
 
 #egui
 egui = "0.11.0"
 egui_wgpu_backend = "0.6.0"
 egui_demo_lib = "0.11.0"
 egui_winit_platform = "0.6.0"
+#dev dependencies?
+shaderc = "0.7"
+anyhow = "1.0"
 
 [build-dependencies]
 anyhow = "1.0"

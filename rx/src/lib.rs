@@ -17,6 +17,7 @@ pub mod wgpu_graphics;
 pub mod render_w;
 pub mod graphics_api;
 mod gui;
+mod shader;
 
 
 pub use ecs::{

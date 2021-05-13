@@ -135,6 +135,17 @@ impl<T: Send + Clone> Engine<T> {
                     last = current;
                 }
                 Event::WindowEvent {
+                    event: WindowEvent::KeyboardInput {
+                        input: winit::event::KeyboardInput {
+                            state: winit::event::ElementState::Pressed,
+                            virtual_keycode: Some(winit::event::VirtualKeyCode::F5),
+                            ..
+                        },..
+                    }, ..
+                } => {
+                    renderer.reset_pipelines();
+                }
+                Event::WindowEvent {
                     event: WindowEvent::Resized(phys_size),
                     ..
                 } => {
