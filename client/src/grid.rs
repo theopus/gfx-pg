@@ -63,9 +63,14 @@ impl Grid2D {
 
     fn is_in_bounds(&self, (x, y): (i32, i32), level: u32) -> bool {
         if let Some(bounds) = self.bounds {
-            let (max_x, max_y) = self.max_cell_at(level);
-            return x >= 0 && x < max_x as i32
-                && y >= 0 && y < max_y as i32;
+            let cells_per = self.cells_per(level);
+            let mut max_x = bounds.0 / cells_per.0;
+            let mut max_y = bounds.1 / cells_per.1;
+            if max_x == 0 { max_x = 1 };
+            if max_y == 0 { max_y = 1 };
+
+            return x >= -(max_x as i32) && x < max_x as i32
+                && y >= -(max_y as i32) && y < max_y as i32;
         }
         true
     }
@@ -145,9 +150,9 @@ impl Grid2D {
 #[test]
 fn test() {
     crate::init_log();
-    let mut d: Grid2D = Grid2D::new_asymmetrical(2., (5, 5), 1, None);
+    let mut d: Grid2D = Grid2D::new_asymmetrical(2., (5, 5), 1, Some(((5,5), 0)));
 
-    d.get_cell_at(&glm::vec2(0., 0.), &glm::vec2(-2.6, -2.5), 0)
+    d.get_cell_at(&glm::vec2(0., 0.), &glm::vec2(-22.6, -2.5), 0)
         .map(|p| info!("0 {:?}", p));
 
     d.pos_for_cell_at(&glm::vec2(0., 0.), (-1, -1), 0)
