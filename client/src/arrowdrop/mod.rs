@@ -5,24 +5,49 @@ use rand_distr::num_traits::real::Real;
 
 use rx::{egui, glm, Render, specs, specs::{Builder, Component, Join, VecStorage, WorldExt}, winit, winit::event::{ElementState, MouseButton}};
 use rx::ecs::base_systems::to_radians;
-use crate::gui_sys::{EcsUiWidget, EcsUiSystem, EcsUiWidgetSystem};
+use rx::egui::Key::R;
+
+use crate::grid;
+use crate::gui_sys::{EcsUiSystem, EcsUiWidget, EcsUiWidgetSystem};
+
+#[derive(Component, Debug)]
+#[storage(VecStorage)]
+pub struct TestGrid {
+    cells: Vec<Vec<bool>>,
+    cells_e: Vec<Vec<specs::Entity>>,
+    step: f32,
+    x_len: u32,
+    y_len: u32,
+}
+
+impl TestGrid {
+    fn reset_all(&mut self, value: bool) {
+        for y in 0..self.y_len as usize {
+            for x in 0..self.x_len as usize {
+                self.cells[y][x] = value;
+            }
+        }
+    }
+    pub fn new(step: f32, x_len: u32, y_len: u32, entities: Vec<Vec<specs::Entity>>) -> Self {
+        let mut cells = Vec::with_capacity(x_len as usize);
+        for y in 0..y_len as usize {
+            let mut row = Vec::with_capacity(y_len as usize);
+            for x in 0..x_len as usize {
+                row.push(false);
+            }
+            cells.push(row)
+        }
+
+        TestGrid { cells, cells_e: entities, step, x_len, y_len }
+    }
+}
+
 
 #[derive(Component, Debug)]
 #[storage(VecStorage)]
 pub struct RectFromVec2 {
     first: glm::Vec3,
     second: glm::Vec3,
-}
-
-
-#[derive(Component, Debug)]
-#[storage(VecStorage)]
-pub struct Grid {
-    cells: Vec<Vec<bool>>,
-    cells_e: Vec<Vec<specs::Entity>>,
-    step: f32,
-    x_len: u32,
-    y_len: u32,
 }
 
 impl RectFromVec2 {
@@ -50,30 +75,8 @@ impl Default for RectFromVec2 {
     }
 }
 
-impl Grid {
-    fn reset_all(&mut self, value: bool) {
-        for y in 0..self.y_len as usize {
-            for x in 0..self.x_len as usize {
-                self.cells[y][x] = value;
-            }
-        }
-    }
-    pub fn new(step: f32, x_len: u32, y_len: u32, entities: Vec<Vec<specs::Entity>>) -> Self {
-        let mut cells = Vec::with_capacity(x_len as usize);
-        for y in 0..y_len as usize {
-            let mut row = Vec::with_capacity(y_len as usize);
-            for x in 0..x_len as usize {
-                row.push(false);
-            }
-            cells.push(row)
-        }
-
-        Grid { cells, cells_e: entities, step, x_len, y_len }
-    }
-}
-
 #[derive(Default)]
-struct GridSystem {
+struct TestGridSystem {
     reader: rx::EventReader<()>,
 }
 
@@ -90,30 +93,30 @@ impl<'a> specs::System<'a> for GridUiSys {
     type SystemData = (
         specs::ReadStorage<'a, EcsUiWidget>,
         specs::Read<'a, rx::EguiCtx>,
-        specs::WriteStorage<'a, Grid>,
+        specs::WriteStorage<'a, TestGrid>,
         specs::WriteStorage<'a, rx::Render>,
     );
 
     fn run(&mut self, (widgets, gui, mut grid_st, mut render_st): Self::SystemData) {
         if Self::should_draw(&widgets) {
             for g in (&mut grid_st).join() {
-                let grid: &mut Grid = g;
+                let grid: &mut TestGrid = g;
                 if let Some(gui_ctx) = gui.as_ref() {
                     egui::Window::new("Grid_debug").show(gui_ctx, |ui| {
                         egui::Grid::new("grid_grid").striped(true)
-                            .spacing([1.,1.])
+                            .spacing([1., 1.])
                             .show(ui, |ui| {
-                            for y in grid.cells.iter() {
-                                for x in y.iter() {
-                                    ui.label(if *x {
-                                        "o"
-                                    } else {
-                                        "x"
-                                    });
+                                for y in grid.cells.iter() {
+                                    for x in y.iter() {
+                                        ui.label(if *x {
+                                            "o"
+                                        } else {
+                                            "x"
+                                        });
+                                    }
+                                    ui.end_row();
                                 }
-                                ui.end_row();
-                            }
-                        });
+                            });
                         if ui.button("reset").clicked() {
                             grid.reset_all(false);
                             grid.cells_e.iter().flatten().for_each(|e| {
@@ -129,10 +132,10 @@ impl<'a> specs::System<'a> for GridUiSys {
     }
 }
 
-impl<'a> specs::System<'a> for GridSystem {
+impl<'a> specs::System<'a> for TestGridSystem {
     type SystemData = (
         specs::Read<'a, rx::EventChannelReader<()>>,
-        specs::WriteStorage<'a, Grid>,
+        specs::WriteStorage<'a, TestGrid>,
         specs::WriteStorage<'a, rx::Render>,
         specs::ReadStorage<'a, RectFromVec2>,
         specs::ReadStorage<'a, rx::Position>,
@@ -197,7 +200,7 @@ impl<'a> specs::System<'a> for GridSystem {
                         if (x >= 0 && x < grid.y_len as i32) && (y >= 0 && y < grid.x_len as i32) {
                             grid.cells[x as usize][y as usize] = true;
                             if let Some(rend) = render_st.get_mut(grid.cells_e[y as usize][x as usize]) {
-                                info!("x,y {:?}",[y,x]);
+                                info!("x,y {:?}", [y, x]);
                                 rend.hidden = true;
                             }
                         }
@@ -221,7 +224,7 @@ pub fn new_grid(
     rot: &glm::Vec3,
     step: f32,
     dim: (u32, u32),
-    rect: RectFromVec2
+    rect: RectFromVec2,
 ) {
     let first = rect.rotate(&rx::Rotation::from_vec3(rot)).first.clone();
     let second = rect.rotate(&rx::Rotation::from_vec3(rot)).second.clone();
@@ -247,7 +250,7 @@ pub fn new_grid(
         }
         entities.push(row);
     }
-    let grid = Grid::new(step, dim.0, dim.1, entities);
+    let grid = TestGrid::new(step, dim.0, dim.1, entities);
     world.create_entity()
         .with(rx::Position::from_vec3(pos))
         .with(rx::Rotation::from_vec3(rot))
@@ -258,8 +261,10 @@ pub fn new_grid(
 
 pub fn create((mut world, rated, constant): rx::EcsInitTuple, mesh_ptr: rx::MeshPtr) {
     world.register::<RectFromVec2>();
-    world.register::<Grid>();
+    world.register::<TestGrid>();
+    world.register::<GridComponent>();
 
+    rated.add(TestGridSystem::default(), "tgrid_sys", &[]);
     rated.add(GridSystem::default(), "grid_sys", &[]);
 
     new_grid(
@@ -270,56 +275,82 @@ pub fn create((mut world, rated, constant): rx::EcsInitTuple, mesh_ptr: rx::Mesh
         3.,
         (11, 11),
         RectFromVec2::new(
-            glm::vec3(1.,0.,0.),
-            glm::vec3(0.,0.,1.)
-        ).unwrap()
-    )
+            glm::vec3(1., 0., 0.),
+            glm::vec3(0., 0., 1.),
+        ).unwrap(),
+    );
 
 
-    // world.create_entity()
-    //     .with(rx::Position {
-    //         x: 0.0,
-    //         y: 16.0,
-    //         z: 0.0,
-    //     })
-    //     .with(rx::Rotation {
-    //         x: 0.0,
-    //         y: 0.0,
-    //         z: -90.0,
-    //     })
-    //     .with(RectFromVec2::default())
-    //     .with(Grid {
-    //         cells: vec![
-    //             vec![false, false, false, false],
-    //             vec![false, false, false, false],
-    //             vec![false, false, false, false],
-    //             vec![false, false, false, false],
-    //         ],
-    //         step: 2.5,
-    //         x_len: 4,
-    //         y_len: 4
-    //     })
-    //     .build();
-    //
-    // for v in 0..4 {
-    //     for h in 0..4 {
-    //         world.
-    //             create_entity()
-    //             .with(rx::Rotation {
-    //                 x: 0.0,
-    //                 y: 0.0,
-    //                 z: 0.0,
-    //             })
-    //             .with(rx::Position {
-    //                 x: 0.0,
-    //                 y: 15.0 - (v as f32 * 2.5),
-    //                 z: -1.-(h as f32 * 2.5),
-    //             })
-    //             .with(rx::Transformation::default())
-    //             .with(rx::Render {
-    //                 mesh: mesh_ptr.clone(),
-    //             })
-    //             .build();
-    //     }
-    // }
+    world
+        .create_entity()
+        .with(rx::Rotation::default())
+        .with(rx::Position::default())
+        .with(RectFromVec2::new(
+            glm::vec3(1., 0., 0.),
+            glm::vec3(0., 0., 1.)).unwrap()
+        )
+        .with(GridComponent(Some(grid::Grid2D::new_symmetrical(1., 10, 1))))
+        .build();
+}
+#[derive(Component, Debug, Default)]
+#[storage(VecStorage)]
+pub struct GridComponent(Option<grid::Grid2D>);
+
+#[derive(Default)]
+struct GridSystem {
+    reader: rx::EventReader<()>,
+}
+
+impl<'a> specs::System<'a> for GridSystem {
+    type SystemData = (
+        specs::Read<'a, rx::EventChannelReader<()>>,
+        specs::ReadStorage<'a, GridComponent>,
+        specs::ReadStorage<'a, RectFromVec2>,
+        specs::ReadStorage<'a, rx::Position>,
+        specs::ReadStorage<'a, rx::Rotation>,
+    );
+
+    fn run(&mut self, (events, grid_st, rect_st, pos_st, rot_st): Self::SystemData) {
+        if let Some(reader_id) = &mut self.reader {
+            let clicks: Vec<(glm::Vec3, glm::Vec3)> = events.read(reader_id).map(|rx_event| {
+                match rx_event {
+                    rx::RxEvent::EcsEvent(
+                        rx::EcsEvent::ScreenClick(
+                            rx::ScreenClickEvent {
+                                state: ElementState::Pressed,
+                                mouse_button: MouseButton::Left,
+                                world_vec,
+                                cam_pos,
+                                ..
+                            })) => Some((world_vec.clone(), cam_pos.clone())),
+                    _ => None
+                }
+            }).flatten().collect();
+
+            const STEP_LEN: f32 = 2.5;
+            const STEP_N: u32 = 4;
+
+            for (grid, rect, pos, rot, ) in (&grid_st, &rect_st, &pos_st, &rot_st).join() {
+                for (cam_vec, cam_pos) in clicks.iter() {
+                    let new_rect = rect.rotate(rot);
+                    let intrsect = crate::maths::intersection(&new_rect.normal(), &pos.as_vec3(), cam_vec, cam_pos);
+                    if let Some(intersection) = intrsect {
+                        grid.0.as_ref().map(|grid| {
+                            let cells = grid.get_cell_at(&pos.xz(), &intersection.xz(), 0);
+                            let cells_1 = grid.get_cell_at(&pos.xz(), &intersection.xz(), 1);
+                            info!("cells_0 {:?}", cells);
+                            info!("cells_1 {:?}", cells_1);
+                        });
+                    }
+
+                }
+            }
+        }
+    }
+
+    fn setup(&mut self, world: &mut specs::World) {
+        use rx::{specs::SystemData, specs::shrev::EventChannel};
+        Self::SystemData::setup(world);
+        self.reader = Some(world.fetch_mut::<EventChannel<rx::RxEvent<()>>>().register_reader());
+    }
 }

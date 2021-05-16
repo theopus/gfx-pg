@@ -9,7 +9,8 @@ use rx::glm;
 
 use crate::glm::Vec2;
 
-struct Grid2D {
+#[derive(Debug)]
+pub struct Grid2D {
     step: f32,
     dimensions: u32,
     depth: u32,
